@@ -1,0 +1,21 @@
+# Build y dependencias
+target/
+node_modules/
+dist/
+build/
+
+# Datos locales (H2)
+data/
+
+# Secretos y configuración local: nunca al repo
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+
+# IDE / SO
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

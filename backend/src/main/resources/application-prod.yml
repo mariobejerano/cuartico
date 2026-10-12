@@ -1,0 +1,10 @@
+# Perfil de producción: todo llega por variables de entorno.
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}

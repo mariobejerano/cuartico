@@ -1,0 +1,102 @@
+# Cuartico — guía del proyecto para Claude y el equipo de agentes
+
+## Qué es
+- **Cuartico**: sistema de gestión (back-office) de un negocio cubano que vende **combos** de productos.
+  Stock, compras a proveedores, combos (catálogo), pedidos, pagos manuales, clientes, gastos y utilidad.
+- **Combazo**: la marca de cara al cliente (tienda web y futuras apps móviles). Usa la misma API y el mismo stock.
+- Proyecto de aprendizaje: no hay prisa, se prioriza hacerlo bien y entender cada decisión.
+- Quien dirige el proyecto **supervisa** (en adelante, "la supervisión"); el equipo de agentes desarrolla. Nada llega a producción sin su aprobación.
+
+## Fases
+1. **Cuartico** (actual): gestión interna.
+2. **Combazo catálogo**: web pública con combos disponibles + "Pedir por WhatsApp".
+3. **Combazo tienda**: "arma tu combo", pedidos online que llegan a Cuartico.
+4. **Móvil**: PWA primero, luego React Native (Expo) con APK para Android (Google Play y App Store no están disponibles en Cuba).
+
+## Stack y estructura
+```
+cuartico/
+├── backend/        Java 17 · Spring Boot 4.1 · Spring Security 7 (JWT HS256) · JPA · Flyway · PostgreSQL (H2 en dev)
+├── cuartico-web/   React + TypeScript (Vite) — panel de gestión (pendiente)
+├── combazo-web/    React + TypeScript — tienda para clientes (fase 2+)
+├── docs/           historias, decisiones (ADR), diseño, diagramas
+└── .claude/agents/ definición del equipo de agentes
+```
+Infraestructura (todo en planes gratuitos): GitHub (repo público) + GitHub Actions · backend en Render (Docker) · PostgreSQL en Neon (solo como base de datos: no usamos Neon Auth ni Functions) · frontends en Vercel.
+
+## Comandos
+```bash
+cd backend
+./mvnw spring-boot:run     # arranca en perfil dev (H2 en ./data, admin inicial en application-dev.yml)
+./mvnw test                # tests de integración (H2 en memoria, perfil test)
+./mvnw -q -B verify        # lo mismo que corre el CI
+```
+
+## Idiomas
+- **Código, identificadores, mensajes de commit y nombres de ramas: inglés.**
+- **Documentación (README, docs/, ADR) y conversación con la supervisión: español.**
+- **La web es bilingüe (es/en) para el usuario final**:
+  - Frontend: textos en archivos de traducción (react-i18next), nunca escritos directamente en los componentes.
+  - Backend: mensajes al usuario vía `MessageSource` (`messages_es.properties` / `messages_en.properties`) según `Accept-Language`,
+    y siempre un código de error estable (p. ej. `auth.invalid_credentials`) en el ProblemDetail. *(Pendiente: hoy hay mensajes en español en el código.)*
+
+## Convenciones del backend
+- **Paquetes por módulo** (`auth`, `user`, `product`, `combo`, `order`…), no por capa. `config/` y `common/` para lo transversal.
+- Controller → Service → Repository. La lógica de negocio vive en el Service. `@Transactional` en el Service.
+- **DTOs como `record`** (agrupados en `dto/<Modulo>Dtos.java`). Las entidades JPA nunca salen por la API.
+- Validación con Bean Validation (`@Valid`) en los DTOs de entrada.
+- Errores: lanzar `ApiException` (o sus fábricas `notFound`, `conflict`…); el `GlobalExceptionHandler` responde ProblemDetail (RFC 9457).
+- Entidades de negocio extienden `AuditableEntity` (createdAt/updatedAt/createdBy/updatedBy automáticos desde el JWT).
+- **Esquema solo por Flyway** (`db/migration/V<n>__descripcion.sql`), SQL compatible con PostgreSQL y H2 en modo PostgreSQL.
+  `ddl-auto=validate`. Nunca modificar una migración ya mergeada: crear una nueva.
+- Inyección por constructor, sin Lombok. Inyectar `Clock` en lugar de usar `Instant.now()` directamente.
+- Seguridad: endpoints autenticados por defecto; roles `ADMIN` y `OPERATOR` con `@PreAuthorize`.
+- API bajo `/api/v1/...` para endpoints nuevos *(pendiente migrar los actuales de `/api/` a `/api/v1/`)*. Documentación OpenAPI (pendiente).
+- Cada funcionalidad viene con tests de integración (MockMvc + perfil `test`) que cubren el camino feliz y los errores.
+
+## Reglas de negocio clave
+- **Combos = solo catálogo** (receta: producto × cantidad + precio). Se arman al vender. **El stock se lleva por producto.**
+- **Trazabilidad de inventario**: todo cambio de stock es un **movimiento** inmutable (entrada por compra, reserva, salida por venta,
+  liberación, ajuste con motivo). Stock disponible = físico − reservado. Costo: **promedio ponderado**. Sin lotes/vencimientos por ahora.
+- **Pedido**: `PENDING` (reserva stock) → `CONFIRMED` → `IN_TRANSIT` → `DELIVERED` (descuenta stock); `CANCELLED` libera la reserva.
+- **Pago, independiente del pedido** y registrado a mano (no hay cobro online): `UNPAID` → `PARTIALLY_PAID` → `PAID`.
+  Cada pago guarda monto, **moneda**, **tasa de cambio del día**, método (efectivo, transferencia, Zelle…) y referencia.
+  Diseñado para que en el futuro una pasarela cree el registro de pago automáticamente.
+- **Multimoneda** (CUP, USD…): toda operación guarda su moneda y tasa; la utilidad se calcula en una moneda de referencia.
+
+## Git y flujo de trabajo
+- Ramas: `main` (producción, siempre estable) · `develop` (integración, se despliega a staging).
+- `feature/<nombre>` y `fix/<nombre>` salen de `develop` y vuelven por **PR a `develop` (squash merge)**.
+- `develop` → `main` por PR (merge commit) **solo con aprobación explícita de la supervisión**.
+- `hotfix/<nombre>` sale de `main` y vuelve a `main` y a `develop`.
+- Commits en inglés con Conventional Commits: `feat: ...`, `fix: ...`, `test: ...`, `docs: ...`, `refactor: ...`, `chore: ...`, `ci: ...`.
+- **Ningún agente hace push, merge ni force-push a `main`.** No se reescribe historia publicada.
+
+## Credenciales y seguridad
+- **Nunca** escribir secretos en el código, en el repositorio, en logs ni en el chat. Nunca pedir a la supervisión que pegue un secreto.
+- La supervisión inicia sesión personalmente en GitHub, Render, Neon y Vercel (OAuth vía GitHub), como mucho una vez al día por plataforma.
+  Al empezar la jornada, Timon avisa qué plataformas harán falta; al terminar, se cierran las sesiones de las CLI.
+- Los secretos de la app (`DB_*`, `APP_JWT_SECRET`, `APP_ADMIN_*`) viven solo en las variables de entorno de Render (uno distinto por entorno).
+- Los valores de `application-dev.yml` y `application-test.yml` son solo para desarrollo local y tests.
+
+## El equipo
+| Agente | Rol |
+|---|---|
+| **Timon** (sesión principal) | Orquesta, mantiene el backlog, integra, DevOps (Docker, Actions, Render, Neon, Vercel), abre PRs |
+| **Faro** (`faro`) | Analista y arquitecto: historias de usuario, criterios de aceptación, diseño técnico, ADR |
+| **Lienzo** (`lienzo`) | Diseñador web y de marca: design system, prototipos HTML, UX móvil, textos de interfaz |
+| **Forja-Back** (`forja-back`) | Implementa el backend Spring Boot |
+| **Forja-Front** (`forja-front`) | Implementa el frontend React **y enseña a la supervisión** (modo mentor) |
+| **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación |
+| **Pluto** (`pluto`) | Documentación: README, guías, diagramas Mermaid, registro de decisiones |
+
+**Flujo de una funcionalidad importante**: Faro (historia + diseño) → Lienzo (prototipo, si hay UI; la supervisión aprueba) →
+Forja-Back / Forja-Front → Vera (tests contra criterios) → `/code-review` y `/security-review` → Pluto (docs) → Timon (PR a `develop`).
+Las funcionalidades sencillas pueden saltarse pasos; Timon decide y lo dice.
+
+## Definición de "terminado"
+- Cumple los criterios de aceptación de la historia.
+- `./mvnw verify` en verde (y los tests del frontend cuando exista).
+- Sin secretos ni datos personales en el diff.
+- Documentación actualizada si cambia el comportamiento, la API o la configuración.
+- PR a `develop` con descripción clara (qué, por qué, cómo probarlo).
