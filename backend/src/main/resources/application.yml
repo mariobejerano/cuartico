@@ -11,6 +11,8 @@ spring:
     enabled: true
 
 server:
+  # Render (y otros PaaS) indican el puerto en la variable PORT
+  port: ${PORT:8080}
   error:
     include-message: always
 
