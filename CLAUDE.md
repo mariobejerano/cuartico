@@ -88,15 +88,19 @@ cd backend
 | **Forja-Back** (`forja-back`) | Implementa el backend Spring Boot |
 | **Forja-Front** (`forja-front`) | Implementa el frontend React **y enseña a la supervisión** (modo mentor) |
 | **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación |
+| **Lupa** (`lupa`) | Revisión de código adversaria: contrapeso del desarrollador; revisa a fondo el diff y emite veredicto. Solo lectura |
 | **Pluto** (`pluto`) | Documentación: README, guías, diagramas Mermaid, registro de decisiones |
 
 **Flujo de una funcionalidad importante**: Faro (historia + diseño) → Lienzo (prototipo, si hay UI; la supervisión aprueba) →
-Forja-Back / Forja-Front → Vera (tests contra criterios) → `/code-review` y `/security-review` → Pluto (docs) → Timon (PR a `develop`).
-Las funcionalidades sencillas pueden saltarse pasos; Timon decide y lo dice.
+Forja-Back / Forja-Front → Vera (tests contra criterios) → **Lupa** + `/code-review` + `/security-review` → Pluto (docs) → Timon (PR a `develop`).
+Si Lupa pide cambios, Forja corrige y Lupa vuelve a revisar (máximo 3 rondas; después se escala a la supervisión).
+**Ningún PR se abre sin el veredicto APROBADO de Lupa**, aunque la funcionalidad sea sencilla. El resto de pasos pueden saltarse en
+funcionalidades sencillas; Timon decide y lo dice.
 
 ## Definición de "terminado"
 - Cumple los criterios de aceptación de la historia.
 - `./mvnw verify` en verde (y los tests del frontend cuando exista).
+- Revisión de Lupa con veredicto **APROBADO**.
 - Sin secretos ni datos personales en el diff.
 - Documentación actualizada si cambia el comportamiento, la API o la configuración.
 - PR a `develop` con descripción clara (qué, por qué, cómo probarlo).

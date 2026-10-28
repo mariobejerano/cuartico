@@ -16,7 +16,7 @@ cuartico/
 ├── cuartico-web/   Panel de gestión · React + TypeScript (pendiente)
 ├── combazo-web/    Tienda para clientes · React + TypeScript (fase 2+)
 ├── docs/           Historias, decisiones (ADR), diseño, guías, diagramas
-└── .claude/agents/ Equipo de agentes: Faro, Lienzo, Forja-Back, Forja-Front, Vera, Pluto
+└── .claude/agents/ Equipo de agentes: Faro, Lienzo, Forja-Back, Forja-Front, Vera, Lupa, Pluto
 ```
 
 ## Fases
