@@ -33,7 +33,8 @@ USER app
 # Render inyecta PORT; en local se usa 8080 (ver server.port en application.yml)
 EXPOSE 8080
 
-# Plan gratuito de Render: 512 MB en total. Reparto aproximado:
+# Plan gratuito de Render: 512 MB en total. Topes (no consumo real; con C1 el code cache y el metaspace
+# usan bastante menos). Medir en staging antes de producción. Reparto:
 #   heap ≤ 60% (~300 MB) + metaspace ≤ 128 MB + code cache ≤ 64 MB + pilas de hilos (512 KB c/u, ≤ 50 hilos Tomcat en prod).
 # - SerialGC: el más ligero; la JVM ya lo elige con menos de 2 CPU.
 # - TieredStopAtLevel=1: arranca más rápido (importa porque el plan gratuito "duerme" el servicio),
