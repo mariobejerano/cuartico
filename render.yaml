@@ -1,0 +1,66 @@
+# Render Blueprint: infraestructura del backend como código.
+# Dos servicios web Docker (plan gratuito, región Virginia, junto a Neon aws-us-east-1):
+#   - cuartico-api-staging  ← rama develop  (base de datos: rama "staging" de Neon)
+#   - cuartico-api          ← rama main     (base de datos: rama "production" de Neon)
+# Solo se despliega cuando los checks del CI de GitHub pasan (autoDeployTrigger: checksPass).
+#
+# Secretos: las variables con "sync: false" NO tienen valor aquí. Render las pide al crear el Blueprint
+# y la supervisión las introduce directamente en el panel de Render (nunca en el repo ni en el chat).
+# APP_JWT_SECRET lo genera Render (256 bits en Base64), distinto en cada servicio.
+
+services:
+  - type: web
+    name: cuartico-api-staging
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: develop
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL            # jdbc:postgresql://<host de la rama staging>/neondb?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_ADMIN_USERNAME
+        value: admin
+      - key: APP_ADMIN_PASSWORD  # contraseña del primer admin; cambiarla tras el primer login
+        sync: false
+      - key: APP_CORS_ORIGINS    # se actualizará con la URL del frontend en Vercel
+        value: http://localhost:5173
+
+  - type: web
+    name: cuartico-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL            # jdbc:postgresql://<host de la rama production>/neondb?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_ADMIN_USERNAME
+        value: admin
+      - key: APP_ADMIN_PASSWORD
+        sync: false
+      - key: APP_CORS_ORIGINS
+        value: http://localhost:5173

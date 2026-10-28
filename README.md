@@ -111,7 +111,7 @@ Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de 
 - [x] Equipo de agentes y `CLAUDE.md`
 - [x] Repositorio en GitHub, ramas `main`/`develop` y protección de ramas
 - [x] Dockerfile y CI con GitHub Actions
-- [ ] Despliegue: Render (staging y producción) + Neon
+- [ ] Despliegue: Render (staging y producción) + Neon — Blueprint `render.yaml` y guía `docs/guides/deploy.md` listos; falta el alta en Render
 - [ ] i18n del backend (códigos de error + mensajes es/en)
 - [ ] API versionada `/api/v1` y documentación OpenAPI
 

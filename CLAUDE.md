@@ -80,7 +80,7 @@ cd backend
 
 - Los veredictos se publican como **comentario en el PR** con la línea `Revisado: <SHA>` (Lupa) o `Certificado: <SHA>` (Vera).
   Lupa solo mergea si ese SHA coincide con el commit actual del PR, y siempre con `--match-head-commit`. Si llega un commit nuevo, hay que revisar o certificar otra vez.
-- Timon abre los PRs (como **borrador** hasta tener el APROBADO de Lupa), pide los OK a la supervisión y transmite a Lupa el OK con el número de PR. Sin ese OK explícito, nadie mergea.
+- Timon abre los PRs (como **borrador**), los pasa a "listo" (`gh pr ready`) al recibir el APROBADO de Lupa, pide los OK a la supervisión y transmite a Lupa el OK con el número de PR. Sin ese OK explícito, nadie mergea.
 - Nadie hace push directo ni force-push a `main` o `develop`, ni usa `--admin` o `--auto`. No se reescribe historia publicada.
 
 ## Credenciales y seguridad
@@ -89,6 +89,7 @@ cd backend
   Al empezar la jornada, Timon avisa qué plataformas harán falta; al terminar, se cierran las sesiones de las CLI.
 - Los secretos de la app (`DB_*`, `APP_JWT_SECRET`, `APP_ADMIN_*`) viven solo en las variables de entorno de Render (uno distinto por entorno).
 - Los valores de `application-dev.yml` y `application-test.yml` son solo para desarrollo local y tests.
+- Cada `gh pr merge` muestra una ventana de aprobación a la supervisión (regla `ask` en `.claude/settings.local.json`).
 - Pruebas autenticadas en staging: usuario de QA (rol `OPERATOR`) cuya contraseña la supervisión pone en la variable de entorno local
   `STAGING_QA_PASSWORD`. Los agentes la usan solo como `$STAGING_QA_PASSWORD`, sin mostrarla nunca. Nunca se prueba contra producción.
 

@@ -36,7 +36,7 @@ jobs:
           - db: postgres
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine  # misma versión mayor que Neon
         env:
           POSTGRES_DB: cuartico
           POSTGRES_USER: cuartico
