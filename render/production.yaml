@@ -1,0 +1,33 @@
+# Render Blueprint de PRODUCCIÓN (enlazado a la rama main, archivo render/production.yaml).
+# Servicio cuartico-api ← main, base de datos: rama "production" de Neon.
+# Al estar enlazado a main, cualquier cambio de este archivo solo se aplica tras un release (certificación de Vera + OK de la supervisión).
+# APP_CORS_ORIGINS: sustituir por la URL del frontend en Vercel antes de abrir producción a usuarios.
+
+services:
+  - type: web
+    name: cuartico-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL            # jdbc:postgresql://<host de la rama production>/neondb?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_ADMIN_USERNAME
+        value: admin
+      - key: APP_ADMIN_PASSWORD
+        sync: false
+      - key: APP_CORS_ORIGINS
+        value: http://localhost:5173

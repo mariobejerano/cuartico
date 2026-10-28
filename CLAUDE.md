@@ -74,7 +74,7 @@ cd backend
 ### Quién mergea y cuándo (solo Lupa mergea)
 | Destino | Condiciones (todas) | Quién mergea |
 |---|---|---|
-| `develop` | CI en verde + **APROBADO** de Lupa sobre el SHA exacto del PR + **OK de la supervisión** a ese PR | Lupa (`--squash`) |
+| `develop` | CI en verde + **APROBADO** de Lupa sobre el SHA exacto del PR + **OK de la supervisión** a ese PR | Lupa (`--squash`; excepción: el PR `main` → `develop` tras un hotfix va con `--merge`) |
 | `main` (release) | CI en verde + **LISTO PARA PRODUCCIÓN** de Vera en staging sobre el SHA exacto de `develop` + **OK de la supervisión** a ese release | Lupa (`--merge`) |
 | `main` (hotfix) | CI en verde + **APROBADO** de Lupa + verificación de Vera, ambos sobre el SHA exacto + **OK de la supervisión**; después el cambio se lleva a `develop` | Lupa (`--merge`) |
 

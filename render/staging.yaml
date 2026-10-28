@@ -1,0 +1,33 @@
+# Render Blueprint de STAGING (enlazado a la rama develop, archivo render/staging.yaml).
+# Servicio cuartico-api-staging ← develop, base de datos: rama "staging" de Neon.
+# Solo despliega cuando el CI pasa (autoDeployTrigger: checksPass). Secretos: "sync: false" (los introduce la supervisión en Render).
+
+services:
+  - type: web
+    name: cuartico-api-staging
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: develop
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_URL            # jdbc:postgresql://<host de la rama staging>/neondb?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_ADMIN_USERNAME
+        value: admin
+      - key: APP_ADMIN_PASSWORD  # contraseña del primer admin; cambiarla tras el primer login
+        sync: false
+      - key: APP_CORS_ORIGINS    # se actualizará con la URL del frontend en Vercel
+        value: http://localhost:5173
+

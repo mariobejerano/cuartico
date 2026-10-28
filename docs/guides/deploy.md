@@ -7,15 +7,17 @@
 | Staging | `develop` | `cuartico-api-staging` | `staging` |
 | Producción | `main` | `cuartico-api` | `production` |
 
-- Definido como código en [`render.yaml`](../../render.yaml) (Blueprint). Validar cambios con `render blueprints validate render.yaml`.
+- Definido como código en **dos Blueprints**: [`render/staging.yaml`](../../render/staging.yaml) (enlazado a `develop`) y [`render/production.yaml`](../../render/production.yaml) (enlazado a `main`).
+  Así, un cambio de infraestructura de producción solo se aplica tras un release. Validar con `render blueprints validate <archivo>`.
 - Docker (`backend/Dockerfile`), plan gratuito, región Virginia (junto a Neon `aws-us-east-1`).
 - Render despliega solo cuando los checks del CI pasan en la rama correspondiente (`autoDeployTrigger: checksPass`).
 - Health check: `/actuator/health`. El plan gratuito "duerme" el servicio tras ~15 min sin uso; la primera petición tarda ~1 min.
 
 ## Alta inicial (una sola vez)
 
-1. Render → **New → Blueprint** → repo `mariobejerano/cuartico`, rama `develop` → Render lee `render.yaml`.
-2. Render pide las variables marcadas `sync: false` de cada servicio. Las introduce la supervisión, copiándolas del panel de Neon
+1. Render → **New → Blueprint** → repo `mariobejerano/cuartico`, rama `develop`, **Blueprint Path** `render/staging.yaml`.
+   Repetir con rama `main` y path `render/production.yaml` (producción, cuando haya el primer release).
+2. Render pide las variables marcadas `sync: false` del servicio. Las introduce la supervisión, copiándolas del panel de Neon
    (**Connect** → elegir la rama → formato *Java* / parámetros sueltos):
 
    | Variable | Valor |
@@ -35,5 +37,8 @@
 | `'url' must start with "jdbc"` | Falta `DB_URL` o no empieza por `jdbc:postgresql://` |
 | `Failed to configure a DataSource` | `DB_URL` está vacía |
 | `app.jwt.secret ... must not be blank` | Falta `APP_JWT_SECRET` |
+| `Illegal base64 character` o `al menos 256 bits` | `APP_JWT_SECRET` mal formado (debe ser Base64 estándar de ≥ 32 bytes; comprobar en el primer arranque de staging) |
 | `password authentication failed` | `DB_USERNAME` / `DB_PASSWORD` incorrectos |
 | El proceso se reinicia sin logs de la JVM | Memoria: revisar `/actuator/metrics/jvm.memory.used` y los flags del Dockerfile |
+
+> Antes de abrir producción a usuarios: cambiar `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend en Vercel.
