@@ -74,11 +74,14 @@ cd backend
 ### Quién mergea y cuándo (solo Lupa mergea)
 | Destino | Condiciones (todas) | Quién mergea |
 |---|---|---|
-| `develop` | CI en verde + veredicto **APROBADO** de Lupa + **OK de la supervisión** a ese PR | Lupa (`--squash`) |
-| `main` | CI en verde + certificación **LISTO PARA PRODUCCIÓN** de Vera en staging + **OK de la supervisión** a ese release | Lupa (`--merge`) |
+| `develop` | CI en verde + **APROBADO** de Lupa sobre el SHA exacto del PR + **OK de la supervisión** a ese PR | Lupa (`--squash`) |
+| `main` (release) | CI en verde + **LISTO PARA PRODUCCIÓN** de Vera en staging sobre el SHA exacto de `develop` + **OK de la supervisión** a ese release | Lupa (`--merge`) |
+| `main` (hotfix) | CI en verde + **APROBADO** de Lupa + verificación de Vera, ambos sobre el SHA exacto + **OK de la supervisión**; después el cambio se lleva a `develop` | Lupa (`--merge`) |
 
-- Timon abre los PRs, pide los OK a la supervisión y transmite a Lupa el OK con el número de PR. Sin ese OK explícito, nadie mergea.
-- Nadie hace push directo ni force-push a `main` o `develop`, ni usa `--admin` para saltarse la protección de ramas. No se reescribe historia publicada.
+- Los veredictos se publican como **comentario en el PR** con la línea `Revisado: <SHA>` (Lupa) o `Certificado: <SHA>` (Vera).
+  Lupa solo mergea si ese SHA coincide con el commit actual del PR, y siempre con `--match-head-commit`. Si llega un commit nuevo, hay que revisar o certificar otra vez.
+- Timon abre los PRs (como **borrador** hasta tener el APROBADO de Lupa), pide los OK a la supervisión y transmite a Lupa el OK con el número de PR. Sin ese OK explícito, nadie mergea.
+- Nadie hace push directo ni force-push a `main` o `develop`, ni usa `--admin` o `--auto`. No se reescribe historia publicada.
 
 ## Credenciales y seguridad
 - **Nunca** escribir secretos en el código, en el repositorio, en logs ni en el chat. Nunca pedir a la supervisión que pegue un secreto.
@@ -86,6 +89,8 @@ cd backend
   Al empezar la jornada, Timon avisa qué plataformas harán falta; al terminar, se cierran las sesiones de las CLI.
 - Los secretos de la app (`DB_*`, `APP_JWT_SECRET`, `APP_ADMIN_*`) viven solo en las variables de entorno de Render (uno distinto por entorno).
 - Los valores de `application-dev.yml` y `application-test.yml` son solo para desarrollo local y tests.
+- Pruebas autenticadas en staging: usuario de QA (rol `OPERATOR`) cuya contraseña la supervisión pone en la variable de entorno local
+  `STAGING_QA_PASSWORD`. Los agentes la usan solo como `$STAGING_QA_PASSWORD`, sin mostrarla nunca. Nunca se prueba contra producción.
 
 ## El equipo
 | Agente | Rol |
@@ -95,23 +100,25 @@ cd backend
 | **Lienzo** (`lienzo`) | Diseñador web y de marca: design system, prototipos HTML, UX móvil, textos de interfaz |
 | **Forja-Back** (`forja-back`) | Implementa el backend Spring Boot |
 | **Forja-Front** (`forja-front`) | Implementa el frontend React **y enseña a la supervisión** (modo mentor) |
-| **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación; **certifica cada release en staging** |
-| **Lupa** (`lupa`) | Revisión de código adversaria (contrapeso del desarrollador) y **único integrador**: mergea a `develop` y a `main` según la tabla de arriba. No modifica código |
+| **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación (APTO/NO APTO); **certifica cada release en staging** y verifica los hotfix |
+| **Lupa** (`lupa`) | Revisión de código adversaria (contrapeso del desarrollador) y **única integradora**: mergea a `develop` y a `main` según la tabla de arriba. No modifica código |
 | **Pluto** (`pluto`) | Documentación: README, guías, diagramas Mermaid, registro de decisiones |
 
 **Flujo de una funcionalidad importante**: Faro (historia + diseño) → Lienzo (prototipo, si hay UI; la supervisión aprueba) →
-Forja-Back / Forja-Front → Vera (tests contra criterios) → **Lupa** + `/code-review` + `/security-review` → Pluto (docs) → Timon (PR a `develop`).
-Si Lupa pide cambios, Forja corrige y Lupa vuelve a revisar (máximo 3 rondas; después se escala a la supervisión).
-**Ningún PR se abre sin el veredicto APROBADO de Lupa**, aunque la funcionalidad sea sencilla. El resto de pasos pueden saltarse en
+Forja-Back / Forja-Front → Vera (tests contra criterios: **APTO**) → Pluto (docs) → Timon abre el PR en borrador →
+**Lupa** + `/code-review` + `/security-review` (Lupa revisa también la documentación) → OK de la supervisión → Lupa mergea a `develop`.
+Si Lupa pide cambios, Forja (o quien corresponda) corrige y Lupa vuelve a revisar. Si tras **3 rondas** siguen bloqueantes o importantes
+sin resolver, Lupa lo escala a la supervisión a través de Timon.
+**Ningún PR se mergea sin el APROBADO de Lupa**, aunque la funcionalidad sea sencilla. El resto de pasos pueden saltarse en
 funcionalidades sencillas; Timon decide y lo dice.
 
-**Flujo de un release**: PRs mergeados en `develop` → despliegue automático a staging → Vera certifica en staging →
-Timon abre el PR `develop` → `main` y pide el OK a la supervisión → Lupa mergea → despliegue automático a producción.
+**Flujo de un release**: PRs mergeados en `develop` → despliegue automático a staging → Timon abre el PR `develop` → `main` →
+Vera certifica en staging (`Certificado: <SHA>`) → la supervisión da el OK → Lupa mergea → despliegue automático a producción.
 
 ## Definición de "terminado"
 - Cumple los criterios de aceptación de la historia.
 - `./mvnw verify` en verde (y los tests del frontend cuando exista).
-- Revisión de Lupa con veredicto **APROBADO**.
+- Vera: **APTO**. Lupa: **APROBADO** sobre el commit final (comentario en el PR con `Revisado: <SHA>`).
 - Sin secretos ni datos personales en el diff.
 - Documentación actualizada si cambia el comportamiento, la API o la configuración.
 - PR a `develop` con descripción clara (qué, por qué, cómo probarlo).

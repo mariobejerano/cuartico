@@ -46,7 +46,7 @@ cuartico/
 | Base de datos | Neon (PostgreSQL) · rama `staging` y rama principal |
 | Frontend | Vercel |
 
-Flujo Git: `feature/*` → PR a `develop` → staging → PR a `main` (con aprobación) → producción.
+Flujo Git: `feature/*` → PR a `develop` (APROBADO de Lupa + OK de la supervisión; mergea Lupa) → staging → PR a `main` (certificación de Vera en staging + OK de la supervisión; mergea Lupa) → producción.
 
 ## Backend: arrancar en local
 
