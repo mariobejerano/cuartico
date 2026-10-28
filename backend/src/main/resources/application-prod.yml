@@ -1,10 +1,22 @@
-# Perfil de producción: todo llega por variables de entorno.
+# Perfil de producción (y staging): todo llega por variables de entorno.
+# Los valores vacíos por defecto hacen que, si falta una variable, el arranque falle con un error claro
+# (validación de AppProperties) en lugar de un error críptico con el placeholder literal.
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    # Neon: jdbc:postgresql://<host>/<db>?sslmode=require
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+server:
+  tomcat:
+    threads:
+      # Pocos usuarios y 512 MB de memoria: limitar hilos reduce la memoria fuera del heap
+      max: 50
+  error:
+    # No devolver mensajes internos de excepciones al cliente; los errores de la API ya salen como ProblemDetail
+    include-message: never
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET}
+    secret: ${APP_JWT_SECRET:}

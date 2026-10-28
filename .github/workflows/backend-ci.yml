@@ -20,6 +20,9 @@ defaults:
     working-directory: backend
 
 jobs:
+  # IMPORTANTE: los nombres "Tests (h2)", "Tests (postgres)" y "Docker build" son checks OBLIGATORIOS en la
+  # protección de main y develop. No renombrar jobs ni la clave "db" de la matriz sin actualizar la protección,
+  # y no añadir filtros "paths:" (los checks no se reportarían y los PRs quedarían bloqueados esperando).
   test:
     name: Tests (${{ matrix.db }})
     runs-on: ubuntu-latest
@@ -27,30 +30,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # H2 en modo PostgreSQL: lo mismo que en local
+          # H2 en modo PostgreSQL: lo mismo que en local (usa la configuración de application-test.yml)
           - db: h2
           # PostgreSQL real: valida que las migraciones Flyway y las consultas funcionan igual que en producción (Neon)
           - db: postgres
-            datasource_url: jdbc:postgresql://localhost:5432/cuartico
     services:
       postgres:
         image: postgres:17-alpine
         env:
           POSTGRES_DB: cuartico
           POSTGRES_USER: cuartico
-          POSTGRES_PASSWORD: cuartico-ci-only
+          POSTGRES_PASSWORD: cuartico-ci-only   # contenedor efímero del CI, no es un secreto real
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U cuartico"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      # Solo para la variante postgres: sobrescribe la URL de application-test.yml.
-      # Valores de un contenedor efímero del CI, no son secretos reales.
-      SPRING_DATASOURCE_URL: ${{ matrix.datasource_url }}
-      SPRING_DATASOURCE_USERNAME: ${{ matrix.db == 'postgres' && 'cuartico' || 'sa' }}
-      SPRING_DATASOURCE_PASSWORD: ${{ matrix.db == 'postgres' && 'cuartico-ci-only' || '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -62,9 +58,23 @@ jobs:
           cache-dependency-path: backend/pom.xml
 
       - name: Build and test
+        shell: bash
         run: |
-          if [ -z "$SPRING_DATASOURCE_URL" ]; then unset SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; fi
-          ./mvnw -B verify
+          set -o pipefail
+          if [ "${{ matrix.db }}" = "postgres" ]; then
+            # Sobrescribe la base H2 de application-test.yml con el PostgreSQL del service
+            export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/cuartico
+            export SPRING_DATASOURCE_USERNAME=cuartico
+            export SPRING_DATASOURCE_PASSWORD=cuartico-ci-only
+          fi
+          ./mvnw -B verify | tee build.log
+
+      - name: Verify the expected database was used
+        shell: bash
+        run: |
+          # Flyway registra la base a la que se conecta: evita un falso verde si la variante postgres acabara usando H2
+          if [ "${{ matrix.db }}" = "postgres" ]; then pattern="Database: jdbc:postgresql"; else pattern="Database: jdbc:h2"; fi
+          grep -q "$pattern" build.log || { echo "No se encontró '$pattern' en el log de Flyway"; exit 1; }
 
       - name: Upload test reports
         if: failure()

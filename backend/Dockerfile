@@ -11,8 +11,8 @@ COPY mvnw pom.xml ./
 RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
 
 COPY src/ src/
-# Los tests ya corren en el CI; aquí solo empaquetamos.
-RUN ./mvnw -B -q package -DskipTests \
+# Los tests ya corren en el CI; aquí solo empaquetamos (sin compilar siquiera los tests).
+RUN ./mvnw -B -q package -Dmaven.test.skip=true \
     && java -Djarmode=tools -jar target/backend-*.jar extract --layers --launcher --destination target/extracted
 
 # ---- Etapa 2: imagen final, solo JRE ----
@@ -33,8 +33,13 @@ USER app
 # Render inyecta PORT; en local se usa 8080 (ver server.port en application.yml)
 EXPOSE 8080
 
-# Plan gratuito de Render: 512 MB. La JVM usa como máximo el 75% de la memoria del contenedor.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC -XX:TieredStopAtLevel=1" \
+# Plan gratuito de Render: 512 MB en total. Reparto aproximado:
+#   heap ≤ 60% (~300 MB) + metaspace ≤ 128 MB + code cache ≤ 64 MB + pilas de hilos (512 KB c/u, ≤ 50 hilos Tomcat en prod).
+# - SerialGC: el más ligero; la JVM ya lo elige con menos de 2 CPU.
+# - TieredStopAtLevel=1: arranca más rápido (importa porque el plan gratuito "duerme" el servicio),
+#   a cambio de menos rendimiento sostenido. Decisión consciente; revisar si se pasa a un plan de pago.
+# - ExitOnOutOfMemoryError: ante un OOM el proceso termina y Render lo reinicia, en vez de quedar vivo pero roto.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=60 -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:+ExitOnOutOfMemoryError" \
     SPRING_PROFILES_ACTIVE=prod
 
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
