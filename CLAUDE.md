@@ -67,10 +67,18 @@ cd backend
 ## Git y flujo de trabajo
 - Ramas: `main` (producción, siempre estable) · `develop` (integración, se despliega a staging).
 - `feature/<nombre>` y `fix/<nombre>` salen de `develop` y vuelven por **PR a `develop` (squash merge)**.
-- `develop` → `main` por PR (merge commit) **solo con aprobación explícita de la supervisión**.
+- `develop` → `main` por PR (merge commit): es un *release* a producción.
 - `hotfix/<nombre>` sale de `main` y vuelve a `main` y a `develop`.
 - Commits en inglés con Conventional Commits: `feat: ...`, `fix: ...`, `test: ...`, `docs: ...`, `refactor: ...`, `chore: ...`, `ci: ...`.
-- **Ningún agente hace push, merge ni force-push a `main`.** No se reescribe historia publicada.
+
+### Quién mergea y cuándo (solo Lupa mergea)
+| Destino | Condiciones (todas) | Quién mergea |
+|---|---|---|
+| `develop` | CI en verde + veredicto **APROBADO** de Lupa + **OK de la supervisión** a ese PR | Lupa (`--squash`) |
+| `main` | CI en verde + certificación **LISTO PARA PRODUCCIÓN** de Vera en staging + **OK de la supervisión** a ese release | Lupa (`--merge`) |
+
+- Timon abre los PRs, pide los OK a la supervisión y transmite a Lupa el OK con el número de PR. Sin ese OK explícito, nadie mergea.
+- Nadie hace push directo ni force-push a `main` o `develop`, ni usa `--admin` para saltarse la protección de ramas. No se reescribe historia publicada.
 
 ## Credenciales y seguridad
 - **Nunca** escribir secretos en el código, en el repositorio, en logs ni en el chat. Nunca pedir a la supervisión que pegue un secreto.
@@ -82,13 +90,13 @@ cd backend
 ## El equipo
 | Agente | Rol |
 |---|---|
-| **Timon** (sesión principal) | Orquesta, mantiene el backlog, integra, DevOps (Docker, Actions, Render, Neon, Vercel), abre PRs |
+| **Timon** (sesión principal) | Orquesta, mantiene el backlog, DevOps (Docker, Actions, Render, Neon, Vercel), abre PRs y pide los OK a la supervisión |
 | **Faro** (`faro`) | Analista y arquitecto: historias de usuario, criterios de aceptación, diseño técnico, ADR |
 | **Lienzo** (`lienzo`) | Diseñador web y de marca: design system, prototipos HTML, UX móvil, textos de interfaz |
 | **Forja-Back** (`forja-back`) | Implementa el backend Spring Boot |
 | **Forja-Front** (`forja-front`) | Implementa el frontend React **y enseña a la supervisión** (modo mentor) |
-| **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación |
-| **Lupa** (`lupa`) | Revisión de código adversaria: contrapeso del desarrollador; revisa a fondo el diff y emite veredicto. Solo lectura |
+| **Vera** (`vera`) | QA: tests, casos límite, verificación de criterios de aceptación; **certifica cada release en staging** |
+| **Lupa** (`lupa`) | Revisión de código adversaria (contrapeso del desarrollador) y **único integrador**: mergea a `develop` y a `main` según la tabla de arriba. No modifica código |
 | **Pluto** (`pluto`) | Documentación: README, guías, diagramas Mermaid, registro de decisiones |
 
 **Flujo de una funcionalidad importante**: Faro (historia + diseño) → Lienzo (prototipo, si hay UI; la supervisión aprueba) →
@@ -96,6 +104,9 @@ Forja-Back / Forja-Front → Vera (tests contra criterios) → **Lupa** + `/code
 Si Lupa pide cambios, Forja corrige y Lupa vuelve a revisar (máximo 3 rondas; después se escala a la supervisión).
 **Ningún PR se abre sin el veredicto APROBADO de Lupa**, aunque la funcionalidad sea sencilla. El resto de pasos pueden saltarse en
 funcionalidades sencillas; Timon decide y lo dice.
+
+**Flujo de un release**: PRs mergeados en `develop` → despliegue automático a staging → Vera certifica en staging →
+Timon abre el PR `develop` → `main` y pide el OK a la supervisión → Lupa mergea → despliegue automático a producción.
 
 ## Definición de "terminado"
 - Cumple los criterios de aceptación de la historia.
