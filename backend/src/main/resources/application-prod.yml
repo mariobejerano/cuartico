@@ -1,5 +1,6 @@
 # Perfil de producción (y staging): todo llega por variables de entorno.
-# - DB_*: SIN valor por defecto a propósito. Si falta alguna, el arranque falla con "Could not resolve placeholder 'DB_URL'".
+# - DB_*: SIN valor por defecto a propósito. Si falta alguna, el arranque falla (Hikari: "'url' must start with \"jdbc\"";
+#   si DB_URL llega vacía: "Failed to configure a DataSource").
 #   (Con un valor vacío, Spring Boot buscaría una base embebida y arrancaría en silencio sobre H2 en memoria.)
 # - APP_JWT_SECRET: valor vacío por defecto para que la validación de AppProperties falle con un mensaje claro.
 spring:

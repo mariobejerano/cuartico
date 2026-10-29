@@ -111,11 +111,12 @@ Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de 
 - [x] Equipo de agentes y `CLAUDE.md`
 - [x] Repositorio en GitHub, ramas `main`/`develop` y protección de ramas
 - [x] Dockerfile y CI con GitHub Actions
-- [ ] Despliegue: Render (staging y producción) + Neon
+- [ ] Despliegue: Render (staging y producción) + Neon — Blueprints `render/staging.yaml` y `render/production.yaml`, y guía `docs/guides/deploy.md` listos; falta el alta en Render
 - [ ] i18n del backend (códigos de error + mensajes es/en)
 - [ ] API versionada `/api/v1` y documentación OpenAPI
 
 **Fase 1: Cuartico**
+- [ ] Acceso de solo lectura a Neon (MCP) para Vera y Faro, limitado a la rama `staging` (al empezar las tablas de negocio)
 - [ ] Catálogos: Productos, Proveedores, Clientes
 - [ ] Combos (receta, costo, margen, combos disponibles según stock)
 - [ ] Compras y movimientos de inventario
