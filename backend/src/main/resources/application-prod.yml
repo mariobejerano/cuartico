@@ -1,10 +1,26 @@
-# Perfil de producción: todo llega por variables de entorno.
+# Perfil de producción (y staging): todo llega por variables de entorno.
+# - DB_*: SIN valor por defecto a propósito. Si falta alguna, el arranque falla (Hikari: "'url' must start with \"jdbc\"";
+#   si DB_URL llega vacía: "Failed to configure a DataSource").
+#   (Con un valor vacío, Spring Boot buscaría una base embebida y arrancaría en silencio sobre H2 en memoria.)
+# - APP_JWT_SECRET: valor vacío por defecto para que la validación de AppProperties falle con un mensaje claro.
 spring:
   datasource:
+    # Neon: jdbc:postgresql://<host>/<db>?sslmode=require
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    # Defensa adicional: en producción nunca usar una base embebida (H2), aunque la URL llegara vacía
+    embedded-database-connection: none
+
+server:
+  tomcat:
+    threads:
+      # Pocos usuarios y 512 MB de memoria: limitar hilos reduce la memoria fuera del heap
+      max: 50
+  error:
+    # No devolver mensajes internos de excepciones al cliente; los errores de la API ya salen como ProblemDetail
+    include-message: never
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET}
+    secret: ${APP_JWT_SECRET:}

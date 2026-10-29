@@ -1,0 +1,104 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Un push nuevo a la misma rama cancela la ejecución anterior
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  # IMPORTANTE: los nombres "Tests (h2)", "Tests (postgres)" y "Docker build" son checks OBLIGATORIOS en la
+  # protección de main y develop. No renombrar jobs ni la clave "db" de la matriz sin actualizar la protección,
+  # y no añadir filtros "paths:" (los checks no se reportarían y los PRs quedarían bloqueados esperando).
+  test:
+    name: Tests (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # H2 en modo PostgreSQL: lo mismo que en local (usa la configuración de application-test.yml)
+          - db: h2
+          # PostgreSQL real: valida que las migraciones Flyway y las consultas funcionan igual que en producción (Neon)
+          - db: postgres
+    services:
+      postgres:
+        image: postgres:18-alpine  # misma versión mayor que Neon
+        env:
+          POSTGRES_DB: cuartico
+          POSTGRES_USER: cuartico
+          POSTGRES_PASSWORD: cuartico-ci-only   # contenedor efímero del CI, no es un secreto real
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cuartico"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build and test
+        shell: bash
+        run: |
+          set -o pipefail
+          if [ "${{ matrix.db }}" = "postgres" ]; then
+            # Sobrescribe la base H2 de application-test.yml con el PostgreSQL del service
+            export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/cuartico
+            export SPRING_DATASOURCE_USERNAME=cuartico
+            export SPRING_DATASOURCE_PASSWORD=cuartico-ci-only
+          fi
+          ./mvnw -B verify | tee build.log
+
+      - name: Verify the expected database was used
+        shell: bash
+        run: |
+          # Flyway registra la base a la que se conecta: evita un falso verde si la variante postgres acabara usando H2
+          if [ "${{ matrix.db }}" = "postgres" ]; then pattern="Database: jdbc:postgresql"; else pattern="Database: jdbc:h2"; fi
+          grep -q "$pattern" build.log || { echo "No se encontró '$pattern' en el log de Flyway"; exit 1; }
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ matrix.db }}
+          path: backend/target/surefire-reports/
+          retention-days: 7
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Solo comprueba que la imagen se construye (Render la construye y despliega por su cuenta)
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          push: false
+          tags: cuartico-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

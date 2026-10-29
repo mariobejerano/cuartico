@@ -16,7 +16,7 @@ cuartico/
 ├── cuartico-web/   Panel de gestión · React + TypeScript (pendiente)
 ├── combazo-web/    Tienda para clientes · React + TypeScript (fase 2+)
 ├── docs/           Historias, decisiones (ADR), diseño, guías, diagramas
-└── .claude/agents/ Equipo de agentes: Faro, Lienzo, Forja-Back, Forja-Front, Vera, Pluto
+└── .claude/agents/ Equipo de agentes: Faro, Lienzo, Forja-Back, Forja-Front, Vera, Lupa, Pluto
 ```
 
 ## Fases
@@ -46,7 +46,7 @@ cuartico/
 | Base de datos | Neon (PostgreSQL) · rama `staging` y rama principal |
 | Frontend | Vercel |
 
-Flujo Git: `feature/*` → PR a `develop` → staging → PR a `main` (con aprobación) → producción.
+Flujo Git: `feature/*` → PR a `develop` (APROBADO de Lupa + OK de la supervisión; mergea Lupa) → staging → PR a `main` (certificación de Vera en staging + OK de la supervisión; mergea Lupa) → producción.
 
 ## Backend: arrancar en local
 
@@ -69,9 +69,11 @@ cd backend
 | Perfil | Base de datos | Secretos |
 |---|---|---|
 | `dev` (por defecto) | H2 en archivo | En `application-dev.yml` (solo para desarrollo) |
-| `prod` | PostgreSQL | Variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_USERNAME`, `APP_ADMIN_PASSWORD`, `APP_CORS_ORIGINS` |
+| `prod` | PostgreSQL | Variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_USERNAME`, `APP_ADMIN_PASSWORD`, `APP_CORS_ORIGINS` (y `PORT`, que inyecta Render) |
 
-Generar un secreto JWT para producción: `openssl rand -base64 32`
+Generar un secreto JWT para producción: `openssl rand -base64 32`. En Neon, `DB_URL` tiene la forma `jdbc:postgresql://<host>/<db>?sslmode=require` (usuario y contraseña van aparte).
+
+Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de Render). CI: `.github/workflows/backend-ci.yml` (tests con H2 y con PostgreSQL real, y build de la imagen).
 
 ## Seguridad
 
@@ -107,13 +109,14 @@ Generar un secreto JWT para producción: `openssl rand -base64 32`
 - [x] Arquitectura base del backend (perfiles, Flyway, ProblemDetail, auditoría)
 - [x] Usuarios, login JWT, refresh tokens con rotación, roles
 - [x] Equipo de agentes y `CLAUDE.md`
-- [ ] Repositorio en GitHub, ramas `main`/`develop` y protección de ramas
-- [ ] Dockerfile y CI con GitHub Actions
-- [ ] Despliegue: Render (staging y producción) + Neon
+- [x] Repositorio en GitHub, ramas `main`/`develop` y protección de ramas
+- [x] Dockerfile y CI con GitHub Actions
+- [ ] Despliegue: Render (staging y producción) + Neon — Blueprints `render/staging.yaml` y `render/production.yaml`, y guía `docs/guides/deploy.md` listos; falta el alta en Render
 - [ ] i18n del backend (códigos de error + mensajes es/en)
 - [ ] API versionada `/api/v1` y documentación OpenAPI
 
 **Fase 1: Cuartico**
+- [ ] Acceso de solo lectura a Neon (MCP) para Vera y Faro, limitado a la rama `staging` (al empezar las tablas de negocio)
 - [ ] Catálogos: Productos, Proveedores, Clientes
 - [ ] Combos (receta, costo, margen, combos disponibles según stock)
 - [ ] Compras y movimientos de inventario
