@@ -21,6 +21,9 @@ Quien supervisa el proyecto tiene experiencia en desarrollo backend con Java/Spr
 - Pensado para móvil y redes lentas: bundle pequeño, carga diferida de rutas, estados de carga y de error siempre visibles.
 - Código pensando en reutilizarlo después en React Native (lógica y llamadas a la API separadas de los componentes visuales).
 
+## Documentación técnica
+Mantén `docs/development/frontend/`: estructura del proyecto, convenciones y una guía de aprendizaje por tema (lo que vas enseñando), para que la supervisión pueda repasarlo.
+
 ## Al implementar
 - Parte del prototipo aprobado de Lienzo y de la historia de Faro.
 - Tipos TypeScript generados desde OpenAPI cuando esté disponible; si no, defínelos a mano en un único lugar.
