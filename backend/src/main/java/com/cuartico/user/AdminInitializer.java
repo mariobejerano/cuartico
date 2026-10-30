@@ -40,11 +40,11 @@ public class AdminInitializer implements ApplicationRunner {
 		}
 		AppProperties.Admin admin = props.admin();
 		if (admin == null || !StringUtils.hasText(admin.username()) || !StringUtils.hasText(admin.password())) {
-			log.warn("No hay usuarios y no se definió APP_ADMIN_USERNAME / APP_ADMIN_PASSWORD: nadie podrá entrar");
+			log.warn("No users exist and APP_ADMIN_USERNAME / APP_ADMIN_PASSWORD are not set: nobody will be able to log in");
 			return;
 		}
 		users.save(new User(admin.username(), passwordEncoder.encode(admin.password()), "Administrador", Role.ADMIN));
-		log.info("Usuario administrador inicial creado: {}", admin.username());
+		log.info("Initial administrator user created: {}", admin.username());
 	}
 
 }

@@ -40,13 +40,13 @@ public class UserService {
 
 	public User getByUsername(String username) {
 		return users.findByUsername(username)
-			.orElseThrow(() -> ApiException.notFound("Usuario no encontrado: " + username));
+			.orElseThrow(() -> ApiException.notFound("user.not_found", username));
 	}
 
 	@Transactional
 	public UserResponse create(CreateUserRequest req) {
 		if (users.existsByUsername(req.username())) {
-			throw ApiException.conflict("Ya existe un usuario con ese nombre: " + req.username());
+			throw ApiException.conflict("user.username_taken", req.username());
 		}
 		User user = new User(req.username(), passwordEncoder.encode(req.password()), req.fullName(), req.role());
 		return UserResponse.from(users.save(user));
@@ -56,7 +56,7 @@ public class UserService {
 	public UserResponse update(Long id, UpdateUserRequest req, String currentUsername) {
 		User user = get(id);
 		if (user.getUsername().equals(currentUsername) && (!req.active() || req.role() != Role.ADMIN)) {
-			throw ApiException.badRequest("No puedes desactivarte ni quitarte el rol de administrador a ti mismo");
+			throw ApiException.badRequest("user.cannot_demote_self");
 		}
 		user.update(req.fullName(), req.role(), req.active());
 		if (!req.active()) {
@@ -71,7 +71,7 @@ public class UserService {
 	public void changeOwnPassword(String username, ChangePasswordRequest req) {
 		User user = getByUsername(username);
 		if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
-			throw ApiException.badRequest("La contraseña actual no es correcta");
+			throw ApiException.badRequest("user.wrong_current_password");
 		}
 		user.changePassword(passwordEncoder.encode(req.newPassword()));
 		refreshTokens.revokeAll(user);
@@ -86,7 +86,7 @@ public class UserService {
 	}
 
 	private User get(Long id) {
-		return users.findById(id).orElseThrow(() -> ApiException.notFound("Usuario no encontrado: " + id));
+		return users.findById(id).orElseThrow(() -> ApiException.notFound("user.not_found", String.valueOf(id)));
 	}
 
 }

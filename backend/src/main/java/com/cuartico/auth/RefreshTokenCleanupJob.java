@@ -20,7 +20,7 @@ public class RefreshTokenCleanupJob {
 	@Scheduled(cron = "0 0 3 * * *")
 	public void purge() {
 		int deleted = refreshTokens.purgeExpired();
-		log.debug("Refresh tokens expirados eliminados: {}", deleted);
+		log.debug("Expired refresh tokens deleted: {}", deleted);
 	}
 
 }

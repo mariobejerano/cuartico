@@ -30,7 +30,7 @@ class AuthFlowIntegrationTests {
 
 	@Test
 	void loginWithValidCredentialsReturnsTokens() throws Exception {
-		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 				.content(loginJson("admin", ADMIN_PASSWORD)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessToken").isNotEmpty())
@@ -41,15 +41,16 @@ class AuthFlowIntegrationTests {
 
 	@Test
 	void loginWithWrongPasswordReturns401() throws Exception {
-		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 				.content(loginJson("admin", "incorrecta")))
 			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("auth.invalid_credentials"))
 			.andExpect(jsonPath("$.detail").value("Usuario o contraseña incorrectos"));
 	}
 
 	@Test
 	void loginValidatesRequestBody() throws Exception {
-		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"\"}"))
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors.username").exists())
 			.andExpect(jsonPath("$.errors.password").exists());
@@ -57,14 +58,14 @@ class AuthFlowIntegrationTests {
 
 	@Test
 	void protectedEndpointRequiresToken() throws Exception {
-		mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
-		mvc.perform(get("/api/auth/me").header("Authorization", "Bearer basura")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer basura")).andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void meReturnsCurrentUser() throws Exception {
 		String token = accessToken(login("admin", ADMIN_PASSWORD));
-		mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+		mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.username").value("admin"));
 	}
@@ -75,27 +76,28 @@ class AuthFlowIntegrationTests {
 		String refresh1 = refreshToken(first);
 
 		// Primer uso: OK y entrega un refresh token nuevo
-		MvcResult second = mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+		MvcResult second = mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
 				.content(refreshJson(refresh1)))
 			.andExpect(status().isOk())
 			.andReturn();
 		String refresh2 = refreshToken(second);
 
 		// Reutilizar el viejo: 401 y se revocan todas las sesiones...
-		mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh1)))
-			.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh1)))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("auth.refresh_invalid"));
 
 		// ...incluido el refresh token nuevo
-		mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh2)))
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh2)))
 			.andExpect(status().isUnauthorized());
 	}
 
 	@Test
 	void logoutRevokesRefreshToken() throws Exception {
 		String refresh = refreshToken(login("admin", ADMIN_PASSWORD));
-		mvc.perform(post("/api/auth/logout").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh)))
+		mvc.perform(post("/api/v1/auth/logout").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh)))
 			.andExpect(status().isNoContent());
-		mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh)))
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh)))
 			.andExpect(status().isUnauthorized());
 	}
 
@@ -103,7 +105,7 @@ class AuthFlowIntegrationTests {
 	void adminManagesUsersAndOperatorIsForbidden() throws Exception {
 		String adminToken = accessToken(login("admin", ADMIN_PASSWORD));
 
-		MvcResult created = mvc.perform(post("/api/users").header("Authorization", "Bearer " + adminToken)
+		MvcResult created = mvc.perform(post("/api/v1/users").header("Authorization", "Bearer " + adminToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username":"socio","password":"Socio123!x","fullName":"Mi Socio","role":"OPERATOR"}
@@ -113,41 +115,42 @@ class AuthFlowIntegrationTests {
 			.andReturn();
 		Integer socioId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
 
-		mvc.perform(get("/api/users").header("Authorization", "Bearer " + adminToken))
+		mvc.perform(get("/api/v1/users").header("Authorization", "Bearer " + adminToken))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[*].username", hasItem("socio")));
 
 		// Usuario duplicado -> 409
-		mvc.perform(post("/api/users").header("Authorization", "Bearer " + adminToken)
+		mvc.perform(post("/api/v1/users").header("Authorization", "Bearer " + adminToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"username":"socio","password":"Socio123!x","fullName":"Otro","role":"OPERATOR"}
 						"""))
-			.andExpect(status().isConflict());
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("user.username_taken"));
 
 		// El operador entra, pero no puede administrar usuarios
 		MvcResult socioLogin = login("socio", "Socio123!x");
 		String socioToken = accessToken(socioLogin);
-		mvc.perform(get("/api/users").header("Authorization", "Bearer " + socioToken))
+		mvc.perform(get("/api/v1/users").header("Authorization", "Bearer " + socioToken))
 			.andExpect(status().isForbidden());
 
 		// Al desactivarlo pierde la sesión (su refresh token deja de servir) y no puede volver a entrar
-		mvc.perform(put("/api/users/" + socioId).header("Authorization", "Bearer " + adminToken)
+		mvc.perform(put("/api/v1/users/" + socioId).header("Authorization", "Bearer " + adminToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"fullName":"Mi Socio","role":"OPERATOR","active":false}
 						"""))
 			.andExpect(status().isOk());
-		mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
 				.content(refreshJson(refreshToken(socioLogin))))
 			.andExpect(status().isUnauthorized());
-		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 				.content(loginJson("socio", "Socio123!x")))
 			.andExpect(status().isUnauthorized());
 	}
 
 	private MvcResult login(String username, String password) throws Exception {
-		return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+		return mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 				.content(loginJson(username, password)))
 			.andExpect(status().isOk())
 			.andReturn();

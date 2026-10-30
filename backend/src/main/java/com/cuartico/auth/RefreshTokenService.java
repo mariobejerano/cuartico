@@ -66,19 +66,19 @@ public class RefreshTokenService {
 	public User consume(String raw) {
 		Instant now = clock.instant();
 		RefreshToken token = repository.findByTokenHash(hash(raw))
-			.orElseThrow(() -> ApiException.unauthorized("Refresh token inválido"));
+			.orElseThrow(() -> ApiException.unauthorized("auth.refresh_invalid"));
 		User user = token.getUser();
 		if (token.isRevoked()) {
-			log.warn("Reutilización de refresh token detectada para '{}': se revocan todas sus sesiones",
+			log.warn("Refresh token reuse detected for '{}': revoking all of their sessions",
 					user.getUsername());
 			repository.revokeAllByUser(user, now);
-			throw ApiException.unauthorized("Refresh token inválido");
+			throw ApiException.unauthorized("auth.refresh_invalid");
 		}
 		if (token.isExpired(now)) {
-			throw ApiException.unauthorized("Refresh token expirado");
+			throw ApiException.unauthorized("auth.refresh_expired");
 		}
 		if (!user.isActive()) {
-			throw ApiException.unauthorized("Usuario desactivado");
+			throw ApiException.unauthorized("auth.user_disabled");
 		}
 		token.revoke(now);
 		return user;

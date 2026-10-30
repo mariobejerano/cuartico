@@ -38,7 +38,7 @@ cd backend
 - **La web es bilingüe (es/en) para el usuario final**:
   - Frontend: textos en archivos de traducción (react-i18next), nunca escritos directamente en los componentes.
   - Backend: mensajes al usuario vía `MessageSource` (`messages_es.properties` / `messages_en.properties`) según `Accept-Language`,
-    y siempre un código de error estable (p. ej. `auth.invalid_credentials`) en el ProblemDetail. *(Pendiente: hoy hay mensajes en español en el código.)*
+    y siempre un código de error estable (p. ej. `auth.invalid_credentials`) en el ProblemDetail.
 
 ## Convenciones del backend
 - **Paquetes por módulo** (`auth`, `user`, `product`, `combo`, `order`…), no por capa. `config/` y `common/` para lo transversal.
@@ -51,7 +51,8 @@ cd backend
   `ddl-auto=validate`. Nunca modificar una migración ya mergeada: crear una nueva.
 - Inyección por constructor, sin Lombok. Inyectar `Clock` en lugar de usar `Instant.now()` directamente.
 - Seguridad: endpoints autenticados por defecto; roles `ADMIN` y `OPERATOR` con `@PreAuthorize`.
-- API bajo `/api/v1/...` para endpoints nuevos *(pendiente migrar los actuales de `/api/` a `/api/v1/`)*. Documentación OpenAPI (pendiente).
+- API bajo `/api/v1/...` (todos los endpoints). Documentación OpenAPI con springdoc: Swagger UI en `/swagger-ui.html` y JSON en `/v3/api-docs` (activos en `dev` y `test`; en `prod`/staging solo con `SPRINGDOC_ENABLED=true`, que está en `render/staging.yaml`).
+- **Errores con código + MessageSource**: `ApiException` no lleva texto, lleva `HttpStatus` + código (`user.not_found`) + argumentos. El texto vive en `src/main/resources/messages_es.properties` (por defecto) y `messages_en.properties`, y se elige por `Accept-Language` (es/en; otro idioma → es). Todo ProblemDetail de error incluye `code` (estable, en inglés) y `detail` traducido; al añadir un error nuevo, añade su código a ambos archivos. Las anotaciones de Bean Validation usan `message = "{clave}"` (nunca texto fijo). Los logs van en inglés.
 - Cada funcionalidad viene con tests de integración (MockMvc + perfil `test`) que cubren el camino feliz y los errores.
 
 ## Reglas de negocio clave

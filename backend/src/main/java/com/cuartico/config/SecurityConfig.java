@@ -6,6 +6,7 @@ import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -64,16 +65,27 @@ public class SecurityConfig {
 
 	@Bean
 	@Order(2)
-	SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
-		http.authorizeHttpRequests(auth -> auth
-				.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
-				.requestMatchers("/actuator/health", "/error").permitAll()
-				.anyRequest().authenticated())
+	SecurityFilterChain apiFilterChain(HttpSecurity http, SecurityErrorHandlers errorHandlers,
+			@Value("${springdoc.api-docs.enabled:false}") boolean apiDocsEnabled) throws Exception {
+		http.authorizeHttpRequests(auth -> {
+				auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh",
+						"/api/v1/auth/logout").permitAll();
+				auth.requestMatchers("/actuator/health", "/error").permitAll();
+				if (apiDocsEnabled) {
+					// Documentación OpenAPI y Swagger UI (solo cuando springdoc está habilitado)
+					auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+				}
+				auth.anyRequest().authenticated();
+			})
+			// 401/403 como ProblemDetail con código estable
+			.exceptionHandling(ex -> ex.authenticationEntryPoint(errorHandlers).accessDeniedHandler(errorHandlers))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			// API stateless con token en cabecera (no cookies): CSRF no aplica
 			.csrf(csrf -> csrf.disable())
 			.cors(Customizer.withDefaults())
 			.oauth2ResourceServer(oauth -> oauth
+				.authenticationEntryPoint(errorHandlers)
+				.accessDeniedHandler(errorHandlers)
 				.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 		return http.build();
 	}
@@ -82,7 +94,7 @@ public class SecurityConfig {
 	SecretKey jwtSecretKey(AppProperties props) {
 		byte[] bytes = Base64.getDecoder().decode(props.jwt().secret());
 		if (bytes.length < 32) {
-			throw new IllegalStateException("app.jwt.secret debe tener al menos 256 bits (32 bytes en Base64)");
+			throw new IllegalStateException("app.jwt.secret must be at least 256 bits (32 bytes, Base64-encoded)");
 		}
 		return new SecretKeySpec(bytes, "HmacSHA256");
 	}

@@ -7,7 +7,7 @@
 
 ### 1. Login -> copia accessToken y refreshToken de la respuesta
 # @name login
-POST {{host}}/api/auth/login
+POST {{host}}/api/v1/auth/login
 Content-Type: application/json
 
 { "username": "{{adminUser}}", "password": "{{adminPassword}}" }
@@ -17,28 +17,28 @@ Content-Type: application/json
 @refreshToken = {{login.response.body.refreshToken}}
 
 ### 2. Quién soy
-GET {{host}}/api/auth/me
+GET {{host}}/api/v1/auth/me
 Authorization: Bearer {{accessToken}}
 
 ### 3. Renovar tokens (el refresh token viejo deja de servir)
-POST {{host}}/api/auth/refresh
+POST {{host}}/api/v1/auth/refresh
 Content-Type: application/json
 
 { "refreshToken": "{{refreshToken}}" }
 
 ### 4. Crear el usuario de tu socio/a
-POST {{host}}/api/users
+POST {{host}}/api/v1/users
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 { "username": "socio", "password": "CambiarEsto123", "fullName": "Nombre del socio", "role": "OPERATOR" }
 
 ### 5. Listar usuarios
-GET {{host}}/api/users
+GET {{host}}/api/v1/users
 Authorization: Bearer {{accessToken}}
 
 ### 6. Logout
-POST {{host}}/api/auth/logout
+POST {{host}}/api/v1/auth/logout
 Content-Type: application/json
 
 { "refreshToken": "{{refreshToken}}" }

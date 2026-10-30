@@ -21,6 +21,13 @@ server:
     # No devolver mensajes internos de excepciones al cliente; los errores de la API ya salen como ProblemDetail
     include-message: never
 
+# Swagger UI y /v3/api-docs: desactivados por defecto; en staging se activan con SPRINGDOC_ENABLED=true
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}
+
 app:
   jwt:
     secret: ${APP_JWT_SECRET:}

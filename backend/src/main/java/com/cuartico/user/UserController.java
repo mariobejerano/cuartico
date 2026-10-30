@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Administración de usuarios: solo ADMIN. */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
