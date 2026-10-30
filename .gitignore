@@ -19,3 +19,7 @@ data/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Notas locales con credenciales: nunca al repo
+env.txt
+*.secret.txt

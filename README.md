@@ -62,6 +62,7 @@ cd backend
 - API: http://localhost:8080
 - Consola H2 (solo perfil `dev`): http://localhost:8080/h2-console (JDBC URL en `application-dev.yml`)
 - Usuario admin inicial de desarrollo: ver `backend/src/main/resources/application-dev.yml`
+- Swagger UI (OpenAPI; solo `dev`/`test`): http://localhost:8080/swagger-ui.html · JSON: http://localhost:8080/v3/api-docs
 - Peticiones de ejemplo: `backend/requests.http`
 
 ### Perfiles
@@ -69,7 +70,7 @@ cd backend
 | Perfil | Base de datos | Secretos |
 |---|---|---|
 | `dev` (por defecto) | H2 en archivo | En `application-dev.yml` (solo para desarrollo) |
-| `prod` | PostgreSQL | Variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_USERNAME`, `APP_ADMIN_PASSWORD`, `APP_CORS_ORIGINS` (y `PORT`, que inyecta Render) |
+| `prod` | PostgreSQL | Variables de entorno: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`, `APP_ADMIN_USERNAME`, `APP_ADMIN_PASSWORD`, `APP_CORS_ORIGINS`, `SPRINGDOC_ENABLED` (opcional, por defecto `false`: Swagger UI desactivado) (y `PORT`, que inyecta Render) |
 
 Generar un secreto JWT para producción: `openssl rand -base64 32`. En Neon, `DB_URL` tiene la forma `jdbc:postgresql://<host>/<db>?sslmode=require` (usuario y contraseña van aparte).
 
@@ -85,7 +86,7 @@ Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de 
     sesiones del usuario.
   - Cambiar o restablecer contraseña, o desactivar un usuario, revoca sus sesiones.
 - **Roles**: `ADMIN` (gestiona usuarios) y `OPERATOR` (operación diaria).
-- **Errores**: siempre en formato ProblemDetail (RFC 9457), con `errors` por campo en validaciones.
+- **Errores**: siempre en formato ProblemDetail (RFC 9457) con `code` estable (p. ej. `user.not_found`) y `detail` traducido según `Accept-Language` (`es` por defecto, `en`); en validaciones, `errors` por campo (también traducido). Incluye 401/403, JSON malformado, 405, 415 y 500.
 - **Auditoría**: las entidades que extienden `AuditableEntity` guardan `createdBy`/`updatedBy`
   automáticamente con el usuario del token.
 
@@ -93,15 +94,16 @@ Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de 
 
 | Método | Ruta | Acceso |
 |---|---|---|
-| POST | `/api/auth/login` | público |
-| POST | `/api/auth/refresh` | público (requiere refresh token) |
-| POST | `/api/auth/logout` | público (requiere refresh token) |
-| GET | `/api/auth/me` | autenticado |
-| POST | `/api/auth/change-password` | autenticado |
-| GET/POST | `/api/users` | ADMIN |
-| GET/PUT | `/api/users/{id}` | ADMIN |
-| POST | `/api/users/{id}/reset-password` | ADMIN |
+| POST | `/api/v1/auth/login` | público |
+| POST | `/api/v1/auth/refresh` | público (requiere refresh token) |
+| POST | `/api/v1/auth/logout` | público (requiere refresh token) |
+| GET | `/api/v1/auth/me` | autenticado |
+| POST | `/api/v1/auth/change-password` | autenticado |
+| GET/POST | `/api/v1/users` | ADMIN |
+| GET/PUT | `/api/v1/users/{id}` | ADMIN |
+| POST | `/api/v1/users/{id}/reset-password` | ADMIN |
 | GET | `/actuator/health` | público |
+| GET | `/swagger-ui.html`, `/v3/api-docs` | público, solo si está habilitado (`dev`/`test`; en staging con `SPRINGDOC_ENABLED=true`) |
 
 ## Backlog
 
@@ -112,8 +114,8 @@ Imagen Docker: `backend/Dockerfile` (ajustada a los 512 MB del plan gratuito de 
 - [x] Repositorio en GitHub, ramas `main`/`develop` y protección de ramas
 - [x] Dockerfile y CI con GitHub Actions
 - [ ] Despliegue: Render (staging y producción) + Neon — Blueprints `render/staging.yaml` y `render/production.yaml`, y guía `docs/guides/deploy.md` listos; falta el alta en Render
-- [ ] i18n del backend (códigos de error + mensajes es/en)
-- [ ] API versionada `/api/v1` y documentación OpenAPI
+- [x] i18n del backend (códigos de error + mensajes es/en)
+- [x] API versionada `/api/v1` y documentación OpenAPI
 
 **Fase 1: Cuartico**
 - [ ] Acceso de solo lectura a Neon (MCP) para Vera y Faro, limitado a la rama `staging` (al empezar las tablas de negocio)

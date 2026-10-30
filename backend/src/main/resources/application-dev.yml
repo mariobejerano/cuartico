@@ -12,6 +12,12 @@ spring:
   jpa:
     show-sql: false
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 app:
   jwt:
     secret: h2eC/eGyswk9Dq7UWKBNMDpemt6vPxy1IPG00oGIU4M=

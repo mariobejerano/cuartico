@@ -28,7 +28,7 @@ public final class UserDtos {
 
 	public record CreateUserRequest(
 			@NotBlank @Size(min = 3, max = 50) @Pattern(regexp = "^[a-zA-Z0-9._-]+$",
-					message = "solo letras, números, punto, guion y guion bajo") String username,
+					message = "{user.username.pattern}") String username,
 			@NotBlank @Size(min = 8, max = 72) String password,
 			@NotBlank @Size(max = 100) String fullName,
 			@NotNull Role role) {

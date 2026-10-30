@@ -28,6 +28,8 @@ services:
         value: admin
       - key: APP_ADMIN_PASSWORD  # contraseña del primer admin; cambiarla tras el primer login
         sync: false
-      - key: APP_CORS_ORIGINS    # se actualizará con la URL del frontend en Vercel
+      - key: SPRINGDOC_ENABLED   # Swagger UI y /v3/api-docs solo en staging (en producción quedan desactivados)
+        value: "true"
+      - key: APP_CORS_ORIGINS   # se actualizará con la URL del frontend en Vercel
         value: http://localhost:5173
 
