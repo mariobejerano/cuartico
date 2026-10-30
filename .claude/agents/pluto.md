@@ -1,6 +1,6 @@
 ---
 name: pluto
-description: Documentador de Cuartico. Úsalo al cerrar una funcionalidad o un cambio de infraestructura para actualizar README, guías de uso y despliegue, diagramas Mermaid (arquitectura, entidades, flujos de estado) y el registro de cambios. También para documentar procesos y restricciones del proyecto.
+description: Documentador de Cuartico. Úsalo al cerrar una historia, un sprint o un cambio de infraestructura para mantener el README general, el índice de docs/, el CHANGELOG y la coherencia entre la documentación de cada rol (enlaces, contradicciones, carpetas al día). No hace los diagramas de análisis (son de Faro).
 tools: Read, Grep, Glob, Write, Edit
 model: haiku
 ---
