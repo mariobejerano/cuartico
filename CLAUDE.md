@@ -19,7 +19,7 @@ cuartico/
 ├── backend/        Java 17 · Spring Boot 4.1 · Spring Security 7 (JWT HS256) · JPA · Flyway · PostgreSQL (H2 en dev)
 ├── cuartico-web/   React + TypeScript (Vite) — panel de gestión (pendiente)
 ├── combazo-web/    React + TypeScript — tienda para clientes (fase 2+)
-├── docs/           historias, decisiones (ADR), diseño, diagramas
+├── docs/           documentación por rol (ver "Documentación" más abajo)
 └── .claude/agents/ definición del equipo de agentes
 ```
 Infraestructura (todo en planes gratuitos): GitHub (repo público) + GitHub Actions · backend en Render (Docker) · PostgreSQL en Neon (solo como base de datos: no usamos Neon Auth ni Functions) · frontends en Vercel.
@@ -94,6 +94,28 @@ cd backend
 - Pruebas autenticadas en staging: usuario de QA (rol `OPERATOR`) cuya contraseña la supervisión pone en la variable de entorno local
   `STAGING_QA_PASSWORD`. Los agentes la usan solo como `$STAGING_QA_PASSWORD`, sin mostrarla nunca. Nunca se prueba contra producción.
 
+## Metodología: Scrum
+- **Product backlog** priorizado en `docs/scrum/product-backlog.md` (lo mantiene Timon con la supervisión).
+- **Sprints** en `docs/scrum/sprints/<NN>.md`: objetivo, historias comprometidas, resultado y notas de la **review con la supervisión**.
+- La unidad de trabajo es la **historia de usuario completa (vertical slice)**: si requiere backend y frontend, se desarrolla entera
+  (análisis, diseño, backend, frontend, QA y documentación) antes de darla por terminada. No se cierran historias "a medias".
+- Las tareas técnicas sin valor directo de negocio (infraestructura, refactors) entran al backlog como *tareas técnicas*.
+
+## Documentación (cada rol en su carpeta)
+| Carpeta | Contenido | Responsable |
+|---|---|---|
+| `README.md` (raíz) | Información general: qué es, stack, cómo arrancar, enlaces a `docs/` | Pluto |
+| `docs/README.md` | Índice de toda la documentación | Pluto |
+| `docs/scrum/` | Product backlog y sprints | Timon |
+| `docs/analysis/` | Historias (`stories/`), casos de uso (`use-cases/`), diagramas (`diagrams/`), ADR (`adr/`) | Faro |
+| `docs/design/` | Design system y prototipos | Lienzo |
+| `docs/development/backend/` | Arquitectura, convenciones, API, códigos de error | Forja-Back |
+| `docs/development/frontend/` | Estructura, convenciones, guías de aprendizaje | Forja-Front |
+| `docs/devops/` | Despliegue, entornos, CI/CD, configuración de Render/Neon/Vercel | Timon |
+| `docs/qa/` | Estrategia de pruebas, matrices CA → tests, certificaciones de staging | Vera |
+
+Si más adelante hace falta otra carpeta, se añade aquí primero.
+
 ## El equipo
 | Agente | Rol |
 |---|---|
@@ -122,5 +144,6 @@ Vera certifica en staging (`Certificado: <SHA>`) → la supervisión da el OK �
 - `./mvnw verify` en verde (y los tests del frontend cuando exista).
 - Vera: **APTO**. Lupa: **APROBADO** sobre el commit final (comentario en el PR con `Revisado: <SHA>`).
 - Sin secretos ni datos personales en el diff.
-- Documentación actualizada si cambia el comportamiento, la API o la configuración.
+- Historia completa: backend **y** frontend cuando la historia lo requiera (vertical slice).
+- Documentación de cada rol actualizada en su carpeta de `docs/` (análisis, desarrollo, QA, devops) y el índice al día.
 - PR a `develop` con descripción clara (qué, por qué, cómo probarlo).
