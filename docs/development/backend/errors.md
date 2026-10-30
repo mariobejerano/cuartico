@@ -1,4 +1,5 @@
 # Errores de la API
+> Aplica a `develop`/staging. Producción (v0.1.0) aún no incluye los códigos ni la traducción; llegarán con la próxima release.
 
 Responsable: Forja-Back. Todas las respuestas de error usan **ProblemDetail (RFC 9457)** con `Content-Type: application/problem+json`.
 

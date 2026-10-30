@@ -16,7 +16,7 @@ Cambios en `develop`, pendientes de la próxima release.
 ## [0.1.0]
 
 Primera release a producción. Certificada en staging el SHA `7e18b69` (ver [registro de certificaciones](docs/qa/certifications.md)).
-Fecha no registrada en este documento.
+Fecha: 2026-10-29. Release PR #4 (`develop` → `main`), merge commit `ab4b546`, certificado sobre `7e18b69`.
 
 ### Added
 - Backend Spring Boot 4.1 con perfiles `dev`, `test` y `prod`, Flyway, ProblemDetail (RFC 9457) y auditoría de entidades.

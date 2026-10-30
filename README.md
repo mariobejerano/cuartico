@@ -31,6 +31,8 @@ Proyecto personal de aprendizaje, desarrollado con un equipo de agentes de IA. L
 
 Swagger UI de staging: https://cuartico-api-staging.onrender.com/swagger-ui.html (en producción está desactivado).
 
+> Producción ejecuta todavía la release v0.1.0: rutas sin `/api/v1` y errores sin `code` ni traducción. Llegará con la próxima release.
+
 ## Arrancar el backend en local
 
 Solo hace falta Java 17. El proyecto usa el Maven Wrapper y H2 en archivo (`backend/data/`, en modo PostgreSQL).

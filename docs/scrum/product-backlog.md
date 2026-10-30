@@ -50,6 +50,7 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-08 | 8 | Esqueleto de `cuartico-web` (Vite + React + TypeScript, react-i18next, PWA) | Pendiente | Prerrequisito de HU-01. Lo implementa Forja-Front. |
 | TT-09 | 9 | Medir memoria de la JVM en staging y revisar los topes del `Dockerfile` | Pendiente | El propio `Dockerfile` pide medir en staging antes de producción. |
 | TT-10 | 10 | Sustituir `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend en Vercel | Pendiente | Antes de abrir producción a usuarios. |
+| TT-11 | 1 | **Bug:** `UpdateUserRequest.active` es `boolean` primitivo: si el cliente lo omite llega `false`, desactiva al usuario y revoca sus sesiones. Cambiar a `@NotNull Boolean` | Pendiente | Detectado por Lupa en la revisión del PR #6 (`UserDtos.java`). |
 
 ## Hecho
 
@@ -62,7 +63,7 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | Equipo de agentes y `CLAUDE.md` | Hecho | PR #2 |
 | Repositorio en GitHub, ramas `main` / `develop` y protección de ramas | Hecho | |
 | Dockerfile y CI con GitHub Actions | Hecho | PR #1 |
-| Despliegue en Render (staging y producción) y Neon | Hecho | Release v0.1.0 (PR #3 y blueprints) |
+| Despliegue en Render (staging y producción) y Neon | Hecho | Release v0.1.0 (PRs #1–#3; release PR #4, `ab4b546`) |
 | i18n del backend (códigos de error y mensajes es/en) | Hecho | PR #5 |
 | API versionada `/api/v1` y documentación OpenAPI | Hecho en `develop` | PR #5, pendiente de la próxima release (ver [`CHANGELOG.md`](../../CHANGELOG.md)) |
 

@@ -16,11 +16,11 @@ Método y reglas: [strategy.md](strategy.md#certificación-en-staging).
 |---|---|
 | Release | v0.1.0 (primera release a producción) |
 | SHA certificado (`develop`) | `7e18b69` |
-| Commit en `main` tras el merge | `ab4b546` (según las referencias locales de `origin/main`; pendiente de verificar contra el remoto) |
+| Commit en `main` tras el merge | `ab4b546` |
 | Veredicto | **LISTO PARA PRODUCCIÓN** |
 | Alcance | Pruebas no autenticadas en staging. **Sin pruebas autenticadas** en esta certificación. |
-| Fecha | No registrada en este documento (ver el PR de release). |
-| PR de release | Pendiente de completar por Timon. |
+| Fecha | 2026-10-29 |
+| PR de release | #4 |
 
 Contenido de la release: lo que había en `develop` hasta `7e18b69`. El PR #5 (`5f236b6`) llegó después y no forma parte de esta certificación.
 
