@@ -37,7 +37,7 @@ public final class UserDtos {
 	public record UpdateUserRequest(
 			@NotBlank @Size(max = 100) String fullName,
 			@NotNull Role role,
-			boolean active) {
+			@NotNull Boolean active) {
 	}
 
 	public record ChangePasswordRequest(

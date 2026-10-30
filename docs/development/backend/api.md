@@ -34,7 +34,7 @@ Consola H2 (`/h2-console`): solo perfil `dev`, no forma parte de la API.
 | `RefreshRequest` | `refreshToken` | Obligatorio. Se usa en `/refresh` y en `/logout`. |
 | `ChangePasswordRequest` | `currentPassword`, `newPassword` | Obligatorios. `newPassword` de 8 a 72 caracteres. |
 | `CreateUserRequest` | `username`, `password`, `fullName`, `role` | `username`: 3–50 caracteres, solo letras, números, `.`, `-` y `_`, único. `password`: 8–72. `fullName`: hasta 100. `role`: `ADMIN` u `OPERATOR`. |
-| `UpdateUserRequest` | `fullName`, `role`, `active` | `fullName` obligatorio, hasta 100. `role` obligatorio. `active`: booleano; **envíalo siempre**: si se omite, hoy llega como `false` y desactiva al usuario (bug TT-11). |
+| `UpdateUserRequest` | `fullName`, `role`, `active` | `fullName` obligatorio, hasta 100. `role` obligatorio. `active` obligatorio (`true`/`false`); si se omite o es `null` responde 400 `validation.failed` con `errors.active` y no se modifica nada (corregido TT-11: antes se omitía como `false` y desactivaba al usuario). |
 | `ResetPasswordRequest` | `newPassword` | Obligatorio, 8–72. |
 
 ## Cuerpos de respuesta
