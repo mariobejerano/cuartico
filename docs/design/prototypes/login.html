@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuartico · Iniciar sesión</title>
+<!--
+  Prototipo HU-01 (login) · Lienzo · Sprint 1 · pendiente de aprobación de la supervisión.
+  Autocontenido: solo depende de ../tokens.css. El JS simula la API; NO es código para copiar a cuartico-web.
+  Notas de UX y textos: ../ux-notes/login.md y ../copy.md
+-->
+<link rel="stylesheet" href="../tokens.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; min-height: 100dvh; background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-family-base); font-size: var(--text-md); line-height: var(--line-height-base);
+  display: flex; flex-direction: column;
+}
+h1 { font-size: var(--text-2xl); line-height: var(--line-height-tight); margin: 0 0 var(--space-1); }
+p { margin: 0; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: var(--focus-ring-offset); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.muted { color: var(--color-text-muted); }
+
+/* --- Cabecera: solo selector de idioma (arriba a la derecha, donde se busca) --- */
+.login-top { display: flex; justify-content: flex-end; padding: var(--space-3) var(--space-4); }
+.lang-switch { display: inline-flex; border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-md); overflow: hidden; }
+.lang-switch button {
+  min-height: var(--touch-target-min); padding: 0 var(--space-3); font: inherit; font-size: var(--text-sm);
+  background: var(--color-surface); color: var(--color-text); border: 0; cursor: pointer;
+}
+.lang-switch button + button { border-left: var(--border-width) solid var(--color-border-strong); }
+.lang-switch button[aria-pressed="true"] { background: var(--color-brand-subtle); color: var(--color-brand); font-weight: var(--font-weight-semibold); }
+
+/* --- Tarjeta de login: una columna, ancho de lectura cómodo --- */
+.login-main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: var(--space-4) var(--space-4) var(--space-12); }
+@media (min-height: 640px) { .login-main { align-items: center; } }
+.login-card {
+  width: 100%; max-width: 26rem; background: var(--color-surface); border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-6) var(--space-4);
+}
+@media (min-width: 480px) { .login-card { padding: var(--space-8); } }
+.brand { display: flex; align-items: center; gap: var(--space-2); color: var(--color-brand); font-weight: var(--font-weight-bold); font-size: var(--text-lg); letter-spacing: 0.02em; margin-bottom: var(--space-6); }
+.brand svg { width: 28px; height: 28px; }
+.login-head { margin-bottom: var(--space-6); }
+.login-form { display: grid; gap: var(--space-4); }
+
+/* --- Campos (copiados del design system §7.2) --- */
+.c-field { display: grid; gap: var(--space-1); }
+.c-label { font-weight: var(--font-weight-medium); }
+.c-input {
+  width: 100%; min-height: var(--control-height); padding: 0 var(--space-3); font: inherit; color: var(--color-text);
+  background: var(--color-surface); border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-md);
+}
+.c-input:focus-visible { outline-offset: 0; border-color: var(--color-focus); }
+.c-input[aria-invalid="true"] { border: 2px solid var(--color-danger-text); padding-left: calc(var(--space-3) - 1px); }
+.c-error { font-size: var(--text-sm); color: var(--color-danger-text); display: flex; gap: var(--space-1); align-items: flex-start; }
+.c-error .icon { width: 16px; height: 16px; margin-top: 3px; }
+.c-error[hidden] { display: none; }
+.pw-group { position: relative; }
+.pw-group .c-input { padding-right: 6.5rem; }
+.pw-toggle {
+  position: absolute; right: 2px; top: 2px; bottom: 2px; min-width: var(--touch-target-min); padding: 0 var(--space-3);
+  border: 0; border-radius: calc(var(--radius-md) - 2px); background: transparent; color: var(--color-link);
+  font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); cursor: pointer;
+}
+@media (hover: hover) { .pw-toggle:hover { background: var(--color-surface-hover); } }
+
+/* --- Botón --- */
+.c-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-height);
+  padding: 0 var(--space-4); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold);
+  line-height: 1.2; cursor: pointer; border: var(--border-width) solid transparent;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+.c-btn--primary { background: var(--color-action-primary-bg); color: var(--color-action-primary-text); width: 100%; }
+.c-btn--secondary { background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); border-color: var(--color-action-secondary-border); }
+@media (hover: hover) {
+  .c-btn--primary:hover { background: var(--color-action-primary-bg-hover); }
+  .c-btn--secondary:hover { background: var(--color-action-secondary-bg-hover); }
+}
+.c-btn:disabled { background: var(--color-action-disabled-bg); color: var(--color-action-disabled-text); border-color: transparent; cursor: not-allowed; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+/* --- Alertas --- */
+.alerts { display: grid; gap: var(--space-3); }
+.alerts:empty { display: none; }
+.c-alert { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border-left: 4px solid currentColor; }
+.c-alert .icon { margin-top: 2px; }
+.c-alert strong { display: block; }
+.c-alert .c-btn { margin-top: var(--space-3); min-height: var(--control-height); }
+.c-alert--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-alert--info    { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
+.c-alert--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-alert--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+
+.help-foot { margin-top: var(--space-6); font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* --- Pantalla "comprobando sesión" (CA-11): sustituye al login mientras se llama a /auth/refresh --- */
+.checking { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--color-bg); display: grid; place-items: center; text-align: center; }
+.checking[hidden] { display: none; }
+.checking .spinner { width: 32px; height: 32px; margin: 0 auto var(--space-3); color: var(--color-brand); border-width: 3px; }
+
+/* --- Controles del prototipo (NO forman parte del diseño: borde discontinuo magenta) --- */
+.proto-fab {
+  position: fixed; z-index: 70; right: var(--space-3); bottom: var(--space-3); min-height: 44px; padding: 0 var(--space-4);
+  border: 2px dashed #c026d3; border-radius: var(--radius-full); background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); cursor: pointer; box-shadow: var(--shadow-md);
+}
+.proto-panel { border: 2px dashed #c026d3; border-radius: var(--radius-lg); padding: var(--space-5); width: min(26rem, calc(100% - 2rem));
+  background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.proto-panel::backdrop { background: var(--overlay-bg); }
+.proto-panel h2 { font-size: var(--text-lg); margin: 0 0 var(--space-3); }
+.proto-panel label { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+.proto-panel select { min-height: 44px; font: inherit; padding: 0 var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); }
+.proto-panel p { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+</style>
+</head>
+<body>
+
+<!-- CA-11: mientras se comprueba la sesión guardada se ve esto, no el formulario -->
+<div class="checking" id="checking" role="status" hidden>
+  <div><div class="spinner" aria-hidden="true"></div><p data-i18n="login.checking_session">Comprobando tu sesión…</p></div>
+</div>
+
+<header class="login-top">
+  <!-- Nombres de idioma escritos en su propio idioma: quien no entiende el actual reconoce el suyo -->
+  <div class="lang-switch" role="group" aria-label="Idioma" data-i18n-aria="common.language">
+    <button type="button" lang="es" data-lang="es" aria-pressed="true">Español</button>
+    <button type="button" lang="en" data-lang="en" aria-pressed="false">English</button>
+  </div>
+</header>
+
+<main class="login-main" id="main">
+  <div class="login-card">
+    <div class="brand" aria-hidden="true">
+      <!-- Marca: monograma SVG en línea (~300 bytes), sin imagen que descargar -->
+      <svg viewBox="0 0 28 28"><rect width="28" height="28" rx="6" fill="currentColor"/><path d="M19 9.5a6 6 0 1 0 0 9" fill="none" stroke="var(--color-surface)" stroke-width="3" stroke-linecap="round"/></svg>
+      Cuartico
+    </div>
+    <div class="login-head">
+      <h1 data-i18n="login.title">Inicia sesión</h1>
+      <p class="muted" data-i18n="login.subtitle">Panel de gestión del negocio</p>
+    </div>
+
+    <form class="login-form" id="loginForm" novalidate>
+      <!-- Mensajes globales: info (servidor despertando) se anuncia con status; errores con alert -->
+      <div class="alerts" id="alerts"></div>
+
+      <div class="c-field">
+        <label class="c-label" for="username" data-i18n="login.username">Usuario</label>
+        <input class="c-input" id="username" name="username" autocomplete="username" autocapitalize="none"
+               autocorrect="off" spellcheck="false" aria-describedby="username-error">
+        <p class="c-error" id="username-error" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span></span></p>
+      </div>
+
+      <div class="c-field">
+        <label class="c-label" for="password" data-i18n="login.password">Contraseña</label>
+        <div class="pw-group">
+          <input class="c-input" id="password" name="password" type="password" autocomplete="current-password" aria-describedby="password-error">
+          <!-- Mostrar contraseña: evita errores de tecleo en teclados de móvil -->
+          <button type="button" class="pw-toggle" id="pwToggle" aria-controls="password" aria-pressed="false" data-i18n="login.show_password">Mostrar</button>
+        </div>
+        <p class="c-error" id="password-error" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span></span></p>
+      </div>
+
+      <button class="c-btn c-btn--primary" type="submit" id="submitBtn"><span data-i18n="login.submit">Entrar</span></button>
+    </form>
+
+    <!-- No hay recuperación por correo (fuera de alcance): decirlo evita que el usuario busque un enlace que no existe -->
+    <p class="help-foot" data-i18n="login.forgot_help">¿Olvidaste tu contraseña? Pide a un administrador que te la restablezca.</p>
+  </div>
+</main>
+
+<!-- ===================== Solo prototipo ===================== -->
+<button type="button" class="proto-fab" id="protoOpen">⚙ Prototipo</button>
+<dialog class="proto-panel" id="protoPanel" aria-labelledby="protoTitle">
+  <h2 id="protoTitle">Controles del prototipo</h2>
+  <p>No forman parte del diseño. Cualquier usuario y contraseña sirven: la respuesta la eliges aquí.</p>
+  <label>Respuesta de la API al pulsar «Entrar»
+    <select id="scenario">
+      <option value="ok_admin">Correcto · ADMIN (1 s)</option>
+      <option value="ok_operator">Correcto · OPERATOR (1 s)</option>
+      <option value="invalid">401 auth.invalid_credentials</option>
+      <option value="waking">Servidor dormido: responde a los 12 s</option>
+      <option value="network">Error de red (sin conexión / CORS)</option>
+      <option value="timeout">Sin respuesta en 90 s (simulado en 9 s)</option>
+      <option value="server500">500 con ProblemDetail</option>
+    </select>
+  </label>
+  <label>Simular al cargar la página
+    <select id="onload">
+      <option value="none">Nada (primera visita)</option>
+      <option value="checking">Comprobando sesión guardada (2 s)</option>
+      <option value="session_ended">Vengo de «sesión terminada» (CA-15)</option>
+      <option value="password_changed">Vengo de «contraseña cambiada» (HU-14 CA-7)</option>
+    </select>
+  </label>
+  <label>Tema
+    <select id="theme">
+      <option value="">Según el sistema</option>
+      <option value="light">Claro</option>
+      <option value="dark">Oscuro</option>
+    </select>
+  </label>
+  <form method="dialog"><button class="c-btn c-btn--secondary" style="width:100%">Cerrar</button></form>
+</dialog>
+
+<script>
+/* ---------- i18n mínimo (en la app: react-i18next) ---------- */
+const I18N = {
+  es: {
+    "common.language": "Idioma",
+    "common.retry": "Reintentar",
+    "login.page_title": "Cuartico · Iniciar sesión",
+    "login.checking_session": "Comprobando tu sesión…",
+    "login.title": "Inicia sesión",
+    "login.subtitle": "Panel de gestión del negocio",
+    "login.username": "Usuario",
+    "login.password": "Contraseña",
+    "login.show_password": "Mostrar",
+    "login.hide_password": "Ocultar",
+    "login.submit": "Entrar",
+    "login.submitting": "Entrando…",
+    "login.forgot_help": "¿Olvidaste tu contraseña? Pide a un administrador que te la restablezca.",
+    "login.username_required": "Escribe tu usuario.",
+    "login.password_required": "Escribe tu contraseña.",
+    "api.auth.invalid_credentials": "Usuario o contraseña incorrectos",
+    "net.waking_title": "El servidor se está despertando",
+    "net.waking_body": "Puede tardar hasta un minuto. No cierres esta pantalla.",
+    "net.unreachable_title": "No pudimos conectar con el servidor",
+    "net.unreachable_body": "Revisa tu conexión a internet e inténtalo de nuevo.",
+    "net.unexpected_generic": "Algo salió mal en el servidor. Inténtalo de nuevo en unos minutos.",
+    "api.server_detail": "Error interno del servidor",
+    "session.ended": "Tu sesión ha terminado, vuelve a iniciar sesión.",
+    "session.password_changed": "Contraseña cambiada, inicia sesión de nuevo."
+  },
+  en: {
+    "common.language": "Language",
+    "common.retry": "Try again",
+    "login.page_title": "Cuartico · Log in",
+    "login.checking_session": "Checking your session…",
+    "login.title": "Log in",
+    "login.subtitle": "Business management panel",
+    "login.username": "Username",
+    "login.password": "Password",
+    "login.show_password": "Show",
+    "login.hide_password": "Hide",
+    "login.submit": "Log in",
+    "login.submitting": "Logging in…",
+    "login.forgot_help": "Forgot your password? Ask an administrator to reset it.",
+    "login.username_required": "Enter your username.",
+    "login.password_required": "Enter your password.",
+    "api.auth.invalid_credentials": "Invalid username or password",
+    "net.waking_title": "The server is waking up",
+    "net.waking_body": "It can take up to a minute. Please keep this screen open.",
+    "net.unreachable_title": "We couldn't reach the server",
+    "net.unreachable_body": "Check your internet connection and try again.",
+    "net.unexpected_generic": "Something went wrong on the server. Please try again in a few minutes.",
+    "api.server_detail": "Internal server error",
+    "session.ended": "Your session has ended. Please log in again.",
+    "session.password_changed": "Password changed. Please log in again."
+  }
+};
+const $ = (s) => document.querySelector(s);
+let lang = localStorage.getItem("cuartico.lang") || (navigator.language.toLowerCase().startsWith("en") ? "en" : "es"); // CA-21
+const t = (k) => (I18N[lang] && I18N[lang][k]) || k;
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.title = t("login.page_title");
+  document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+  document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  const pressed = $("#pwToggle").getAttribute("aria-pressed") === "true";
+  $("#pwToggle").textContent = t(pressed ? "login.hide_password" : "login.show_password");
+  // Los mensajes visibles se vuelven a pintar en el idioma nuevo (CA-22)
+  rerenderMessages();
+}
+document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+  lang = b.dataset.lang; localStorage.setItem("cuartico.lang", lang); applyI18n();
+}));
+
+/* ---------- Mensajes ---------- */
+const ICONS = {
+  info: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  danger: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+  success: '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'
+};
+let messages = []; // {variant, titleKey?, bodyKey, retry?}
+function showMessage(m) { messages = [m]; rerenderMessages(); }
+function clearMessages() { messages = []; rerenderMessages(); }
+function rerenderMessages() {
+  const box = $("#alerts");
+  box.innerHTML = "";
+  messages.forEach((m) => {
+    const el = document.createElement("div");
+    el.className = "c-alert c-alert--" + m.variant;
+    // Info = role=status (no interrumpe); error = role=alert (se anuncia ya)
+    el.setAttribute("role", m.variant === "danger" ? "alert" : "status");
+    el.innerHTML = ICONS[m.variant === "warning" ? "info" : m.variant] +
+      '<div>' + (m.titleKey ? "<strong>" + t(m.titleKey) + "</strong>" : "") + "<p>" + t(m.bodyKey) + "</p>" +
+      (m.retry ? '<button type="button" class="c-btn c-btn--secondary" data-retry>' + t("common.retry") + "</button>" : "") +
+      "</div>";
+    box.appendChild(el);
+  });
+  const r = box.querySelector("[data-retry]");
+  if (r) r.addEventListener("click", () => $("#loginForm").requestSubmit());
+}
+
+/* ---------- Validación de campos (CA-3: no se llama a la API) ---------- */
+function setFieldError(id, key) {
+  const input = $("#" + id), err = $("#" + id + "-error");
+  if (key) { input.setAttribute("aria-invalid", "true"); err.hidden = false; err.querySelector("span").textContent = t(key); err.dataset.key = key; }
+  else { input.removeAttribute("aria-invalid"); err.hidden = true; delete err.dataset.key; }
+}
+["username", "password"].forEach((id) => $("#" + id).addEventListener("input", () => setFieldError(id, null)));
+const _apply = applyI18n;
+applyI18n = function () { _apply(); document.querySelectorAll(".c-error:not([hidden])").forEach((e) => (e.querySelector("span").textContent = t(e.dataset.key))); };
+
+/* ---------- Mostrar / ocultar contraseña ---------- */
+$("#pwToggle").addEventListener("click", (e) => {
+  const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
+  e.currentTarget.setAttribute("aria-pressed", String(on));
+  $("#password").type = on ? "text" : "password";
+  e.currentTarget.textContent = t(on ? "login.hide_password" : "login.show_password");
+});
+
+/* ---------- Envío (CA-4: envío único; CA-8: aviso a los 5 s; CA-9: error de red) ---------- */
+let busy = false;
+$("#loginForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (busy) return; // doble clic ignorado
+  const u = $("#username").value.trim(), p = $("#password").value;
+  setFieldError("username", u ? null : "login.username_required");
+  setFieldError("password", p ? null : "login.password_required");
+  if (!u || !p) { (u ? $("#password") : $("#username")).focus(); return; }
+
+  clearMessages(); setBusy(true);
+  const scenario = $("#scenario").value;
+  const delay = { ok_admin: 1000, ok_operator: 1000, invalid: 1200, waking: 12000, network: 1500, timeout: 9000, server500: 1500 }[scenario];
+  const wakeTimer = setTimeout(() => showMessage({ variant: "info", titleKey: "net.waking_title", bodyKey: "net.waking_body" }), 5000);
+
+  setTimeout(() => {
+    clearTimeout(wakeTimer); setBusy(false);
+    if (scenario === "ok_admin" || scenario === "ok_operator" || scenario === "waking") {
+      sessionStorage.setItem("proto.role", scenario === "ok_operator" ? "OPERATOR" : "ADMIN");
+      showMessage({ variant: "success", bodyKey: "login.submitting" });
+      // CA-1/CA-6: la app iría a Inicio o a la ruta que se pidió; el prototipo va a Productos
+      location.href = "products.html";
+    } else if (scenario === "invalid") {
+      showMessage({ variant: "danger", bodyKey: "api.auth.invalid_credentials" }); // detail traducido del ProblemDetail
+      $("#password").value = ""; $("#password").focus(); // CA-2: se vacía la contraseña, el usuario se conserva
+    } else if (scenario === "network" || scenario === "timeout") {
+      showMessage({ variant: "danger", titleKey: "net.unreachable_title", bodyKey: "net.unreachable_body", retry: true }); // CA-9
+    } else if (scenario === "server500") {
+      showMessage({ variant: "danger", bodyKey: "api.server_detail", retry: true }); // CA-10: se muestra el detail
+    }
+  }, delay);
+});
+function setBusy(on) {
+  busy = on;
+  const b = $("#submitBtn");
+  b.disabled = on; b.setAttribute("aria-busy", String(on));
+  b.innerHTML = on ? '<span class="spinner" aria-hidden="true"></span><span data-i18n="login.submitting">' + t("login.submitting") + "</span>"
+                   : '<span data-i18n="login.submit">' + t("login.submit") + "</span>";
+}
+
+/* ---------- Controles del prototipo ---------- */
+$("#protoOpen").addEventListener("click", () => $("#protoPanel").showModal());
+$("#theme").addEventListener("change", (e) => {
+  if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme;
+});
+$("#onload").addEventListener("change", (e) => runOnload(e.target.value));
+function runOnload(v) {
+  clearMessages();
+  if (v === "checking") {
+    $("#checking").hidden = false; $("#protoPanel").close();
+    setTimeout(() => ($("#checking").hidden = true), 2000);
+  } else if (v === "session_ended") showMessage({ variant: "warning", bodyKey: "session.ended" });
+  else if (v === "password_changed") showMessage({ variant: "success", bodyKey: "session.password_changed" });
+}
+const fromQuery = new URLSearchParams(location.search).get("msg"); // products.html → «Cerrar sesión» no deja mensaje
+if (fromQuery) runOnload(fromQuery);
+
+/* CA-7: en la app, aquí se haría fetch(API + "/actuator/health", { mode: "no-cors" }) para despertar Render. */
+applyI18n();
+// Foco inicial solo en escritorio: en móvil abriría el teclado y taparía la mitad de la pantalla
+if (matchMedia("(min-width: 768px)").matches) $("#username").focus();
+</script>
+</body>
+</html>

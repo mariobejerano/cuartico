@@ -1,0 +1,1238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuartico · Productos</title>
+<!--
+  Prototipo HU-01 (layout del panel) + HU-02 (productos) · Lienzo · Sprint 1 · pendiente de aprobación de la supervisión.
+  Autocontenido: solo depende de ../tokens.css. El JS simula API, rutas y roles; NO es código para copiar a cuartico-web.
+  Rutas simuladas con hash: #/?q=&cat=&status=active&page=1&sort=name,asc · #/new · #/edit/<id>
+  Notas de UX y textos: ../ux-notes/products.md y ../copy.md
+-->
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* ===== Base ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-family-base); font-size: var(--text-md); line-height: var(--line-height-base); }
+h1, h2, h3 { line-height: var(--line-height-tight); margin: 0; }
+h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-bold); }
+h2 { font-size: var(--text-lg); font-weight: var(--font-weight-semibold); }
+p { margin: 0; }
+a { color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: var(--focus-ring-offset); }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.muted { color: var(--color-text-muted); }
+.small { font-size: var(--text-sm); }
+.num { font-variant-numeric: tabular-nums; }
+.skip-link { position: absolute; left: var(--space-2); top: -100px; z-index: var(--z-toast); background: var(--color-surface); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+.skip-link:focus { top: var(--space-2); }
+
+/* ===== Layout (design system §7.8) ===== */
+.sidebar { display: none; position: fixed; inset: 0 auto 0 0; width: 4rem; background: var(--color-surface); border-right: var(--border-width) solid var(--color-border); flex-direction: column; padding: var(--space-4) var(--space-2); z-index: var(--z-nav); }
+.brand { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--font-weight-bold); font-size: var(--text-lg); color: var(--color-brand); letter-spacing: 0.02em; text-decoration: none; }
+.brand svg { width: 28px; height: 28px; flex: none; }
+.sidebar .brand { justify-content: center; padding: var(--space-2) 0 var(--space-6); }
+.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.nav a { display: flex; align-items: center; justify-content: center; gap: var(--space-3); min-height: var(--touch-target-min); padding: 0; border-radius: var(--radius-md); color: var(--color-text); text-decoration: none; border-left: 3px solid transparent; }
+.nav a[aria-current="page"] { background: var(--color-brand-subtle); color: var(--color-brand); border-left-color: var(--color-brand); font-weight: var(--font-weight-semibold); }
+.sidebar .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sidebar-footer { margin-top: auto; border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-4); display: grid; gap: var(--space-3); }
+.account-full { display: none; }
+.avatar-btn { width: var(--touch-target-min); height: var(--touch-target-min); border-radius: var(--radius-full); border: var(--border-width) solid var(--color-border-strong); background: var(--color-brand-subtle); color: var(--color-brand); font: inherit; font-weight: var(--font-weight-bold); font-size: var(--text-sm); cursor: pointer; justify-self: center; }
+.user-name { font-weight: var(--font-weight-semibold); }
+.c-tag { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+
+.topbar { position: sticky; top: 0; z-index: var(--z-sticky); height: var(--layout-topbar-height); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2) 0 var(--space-4); background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border); }
+.topbar-title { flex: 1; font-size: var(--text-lg); font-weight: var(--font-weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .back { margin-left: calc(-1 * var(--space-2)); }
+
+.bottomnav { position: fixed; inset: auto 0 0 0; z-index: var(--z-nav); background: var(--color-surface); border-top: var(--border-width) solid var(--color-border); box-shadow: var(--shadow-md); padding-bottom: env(safe-area-inset-bottom); }
+.bottomnav ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--layout-bottomnav-height); }
+.bottomnav a, .bottomnav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 100%; width: 100%; color: var(--color-text-muted); text-decoration: none; font: inherit; font-size: var(--text-xs); font-weight: var(--font-weight-medium); background: none; border: 0; cursor: pointer; padding: 0 2px; }
+.bottomnav [aria-current="page"] { color: var(--color-brand); }
+.bottomnav [aria-current="page"] .icon { stroke-width: 2.5; }
+
+main { padding: var(--space-4); padding-bottom: calc(var(--layout-bottomnav-height) + 6rem + env(safe-area-inset-bottom)); max-width: var(--layout-content-max); }
+main:focus { outline: none; }
+.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.page-head h1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+/* En móvil el título vive en la barra superior: el h1 queda solo para lectores de pantalla (ahorra ~48 px) */
+@media (max-width: 767.98px) { .page-head h1.mobile-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+
+@media (max-width: 767.98px) { .desktop-only { display: none !important; } }
+@media (min-width: 768px) {
+  .topbar, .bottomnav, .fab, .mobile-only { display: none !important; }
+  .sidebar { display: flex; }
+  main { margin-left: 4rem; padding: var(--space-8); }
+}
+@media (min-width: 1024px) {
+  .sidebar { width: var(--layout-sidebar-width); padding-inline: var(--space-3); }
+  .sidebar .brand { justify-content: flex-start; padding-inline: var(--space-3); }
+  .sidebar .label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+  .nav a { justify-content: flex-start; padding: 0 var(--space-3); }
+  .account-full { display: grid; gap: var(--space-3); }
+  .avatar-btn { display: none; }
+  main { margin-left: var(--layout-sidebar-width); }
+}
+@media (hover: hover) {
+  .nav a:hover { background: var(--color-surface-hover); }
+  .nav a[aria-current="page"]:hover { background: var(--color-brand-subtle); }
+}
+
+/* ===== Botones ===== */
+.c-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-height); padding: 0 var(--space-4); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold); line-height: 1.2; text-decoration: none; cursor: pointer; border: var(--border-width) solid transparent; transition: background-color var(--duration-fast) var(--easing-standard); white-space: nowrap; }
+.c-btn--primary { background: var(--color-action-primary-bg); color: var(--color-action-primary-text); }
+.c-btn--secondary { background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); border-color: var(--color-action-secondary-border); }
+.c-btn--ghost { background: transparent; color: var(--color-link); }
+.c-btn--sm { min-height: var(--control-height-sm); padding: 0 var(--space-3); font-size: var(--text-sm); }
+.c-btn--icon { width: var(--control-height); padding: 0; }
+@media (hover: hover) {
+  .c-btn--primary:hover { background: var(--color-action-primary-bg-hover); }
+  .c-btn--secondary:hover { background: var(--color-action-secondary-bg-hover); }
+  .c-btn--ghost:hover { background: var(--color-surface-hover); }
+}
+.c-btn--primary:active { background: var(--color-action-primary-bg-active); }
+.c-btn:disabled { background: var(--color-action-disabled-bg); color: var(--color-action-disabled-text); border-color: transparent; cursor: not-allowed; }
+.c-btn--ghost:disabled { background: transparent; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.btn-bar { display: flex; flex-direction: column-reverse; gap: var(--space-3); }
+.btn-bar .c-btn { width: 100%; }
+@media (min-width: 768px) { .btn-bar { flex-direction: row; justify-content: flex-end; } .btn-bar .c-btn { width: auto; } }
+
+/* Botón flotante (móvil): acción principal al alcance del pulgar, visible al hacer scroll */
+.fab { position: fixed; z-index: var(--z-nav); right: var(--space-4); bottom: calc(var(--layout-bottomnav-height) + var(--space-4) + env(safe-area-inset-bottom)); min-height: 3.5rem; padding: 0 var(--space-5); border-radius: var(--radius-full); box-shadow: var(--shadow-lg); }
+
+/* ===== Campos ===== */
+.c-field { display: grid; gap: var(--space-1); align-content: start; }
+.c-label { font-weight: var(--font-weight-medium); }
+.c-label .hint { font-weight: var(--font-weight-regular); color: var(--color-text-muted); font-size: var(--text-sm); }
+.c-input, .c-select { width: 100%; min-height: var(--control-height); padding: 0 var(--space-3); font: inherit; color: var(--color-text); background-color: var(--color-surface); border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-md); }
+.c-input::placeholder { color: var(--color-text-muted); }
+.c-select { appearance: none; padding-right: var(--space-10); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right var(--space-3) center; }
+.c-input:focus-visible, .c-select:focus-visible { outline-offset: 0; border-color: var(--color-focus); }
+.c-input[aria-invalid="true"], .c-select[aria-invalid="true"] { border: 2px solid var(--color-danger-text); padding-left: calc(var(--space-3) - 1px); }
+.c-help { font-size: var(--text-sm); color: var(--color-text-muted); }
+.c-error { font-size: var(--text-sm); color: var(--color-danger-text); display: flex; gap: var(--space-1); align-items: flex-start; }
+.c-error .icon { width: 16px; height: 16px; margin-top: 3px; }
+.c-input-group { position: relative; }
+.c-input-group .c-input { padding-right: 4.5rem; }
+.c-input-group .suffix { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: var(--text-sm); font-weight: var(--font-weight-medium); pointer-events: none; }
+.c-search { position: relative; }
+.c-search .icon { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+.c-search .c-input { padding-left: var(--space-10); }
+.c-select--sm { min-height: var(--control-height); font-size: var(--text-sm); }
+
+/* ===== Badges ===== */
+.c-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--space-2) 2px 6px; border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--font-weight-medium); line-height: 1.4; white-space: nowrap; }
+.c-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.c-badge--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-badge--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-badge--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-badge--neutral { background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* ===== Barra de filtros ===== */
+.toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
+.toolbar .c-field:first-child { grid-column: 1 / -1; }
+.toolbar .c-label { font-size: var(--text-sm); }
+@media (min-width: 768px) { .toolbar { grid-template-columns: minmax(0, 1fr) 13rem 10rem; align-items: end; } .toolbar .c-field:first-child { grid-column: auto; } }
+.list-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); font-size: var(--text-sm); color: var(--color-text-muted); min-height: var(--control-height-sm); }
+
+/* ===== Tabla (≥768 px) ===== */
+.table-wrap { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.c-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.c-table th { text-align: left; background: var(--color-surface-muted); color: var(--color-text); font-weight: var(--font-weight-semibold); padding: var(--space-3) var(--space-4); white-space: nowrap; }
+.c-table td { padding: var(--space-3) var(--space-4); border-top: var(--border-width) solid var(--color-border); vertical-align: middle; }
+.c-table .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.c-table .cell-title { font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
+.c-table .cell-title .sub { display: block; font-weight: var(--font-weight-regular); font-size: var(--text-sm); color: var(--color-text-muted); }
+.c-table .actions { text-align: right; white-space: nowrap; }
+.c-table tr.is-inactive .cell-title { color: var(--color-text-muted); }
+.sort-btn { display: inline-flex; align-items: center; gap: var(--space-1); background: none; border: 0; padding: 0; font: inherit; font-weight: inherit; color: inherit; cursor: pointer; }
+.sort-btn .icon { width: 16px; height: 16px; }
+@media (hover: hover) { .c-table tbody tr:hover td { background: var(--color-surface-hover); } }
+
+/* ===== Tarjetas (<768 px): lista <ul> de <article>, semántica de lista real ===== */
+.card-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.p-card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-2); }
+.p-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.p-card h2 { font-size: var(--text-md); }
+.p-card.is-inactive h2 { color: var(--color-text-muted); }
+.p-card dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-4); }
+.p-card dt { font-size: var(--text-sm); color: var(--color-text-muted); }
+.p-card dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-medium); }
+.p-card-actions { display: flex; gap: var(--space-3); border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-2); }
+.p-card-actions .c-btn { flex: 1; }
+
+/* ===== Paginación ===== */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); }
+.pager .pages { display: flex; align-items: center; gap: var(--space-2); }
+.pager .pages span { font-size: var(--text-sm); color: var(--color-text-muted); white-space: nowrap; }
+@media (max-width: 767.98px) { .pager { justify-content: center; } .pager .pages { width: 100%; justify-content: space-between; } }
+
+/* ===== Alertas, vacío, carga ===== */
+.alerts { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+.alerts:empty { display: none; }
+.c-alert { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border-left: 4px solid currentColor; }
+.c-alert .icon { margin-top: 2px; }
+.c-alert strong { display: block; }
+.c-alert .c-btn { margin-top: var(--space-3); }
+.c-alert--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-alert--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-alert--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-alert--info    { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
+.c-empty { text-align: center; padding: var(--space-10) var(--space-4); display: grid; justify-items: center; gap: var(--space-2); background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); }
+.c-empty .icon { width: 48px; height: 48px; stroke-width: 1.5; color: var(--color-text-muted); }
+.c-empty.is-error .icon { color: var(--color-danger-text); }
+.c-empty h2 { margin-top: var(--space-2); }
+.c-empty p { color: var(--color-text-muted); max-width: 28rem; }
+.c-empty .c-btn { margin-top: var(--space-3); }
+.code { font-family: var(--font-family-mono); font-size: var(--text-xs); color: var(--color-text-muted); }
+.skeleton { display: grid; gap: var(--space-3); }
+.sk { height: 14px; border-radius: var(--radius-sm); background: var(--color-surface-muted); animation: pulse 1.4s ease-in-out infinite; }
+.sk-row { display: grid; grid-template-columns: 3fr 1fr 1fr 1fr; gap: var(--space-6); padding: var(--space-4); border-top: var(--border-width) solid var(--color-border); }
+.sk-card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: grid; gap: var(--space-3); }
+@keyframes pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+
+/* ===== Formulario ===== */
+.back-link { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--touch-target-min); margin-bottom: var(--space-2); font-weight: var(--font-weight-medium); }
+.form-layout { display: grid; gap: var(--space-4); max-width: 52rem; }
+.card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-4); }
+@media (min-width: 768px) { .card { padding: var(--space-6); } }
+.card > h2 { margin-bottom: var(--space-4); }
+.fields { display: grid; gap: var(--space-4); }
+.grid-2 { display: grid; gap: var(--space-4); }
+@media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; gap: var(--space-5); } .fields { gap: var(--space-5); } }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { padding: 0; font-weight: var(--font-weight-medium); margin-bottom: var(--space-1); }
+.price-row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: var(--space-3); }
+.ro-grid { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (min-width: 768px) { .ro-grid { grid-template-columns: repeat(4, 1fr); } }
+.ro-grid dt { font-size: var(--text-sm); color: var(--color-text-muted); }
+.ro-grid dd { margin: 0; font-size: var(--text-lg); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+.ro-note { display: flex; gap: var(--space-2); align-items: flex-start; margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-text-muted); }
+.ro-note .icon { width: 16px; height: 16px; margin-top: 3px; }
+.status-card { display: grid; gap: var(--space-3); }
+@media (min-width: 768px) { .status-card { grid-template-columns: 1fr auto; align-items: center; } }
+.audit { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* ===== Toast y modal ===== */
+.toast-region { position: fixed; z-index: var(--z-toast); left: var(--space-4); right: var(--space-4); bottom: calc(var(--layout-bottomnav-height) + 5.5rem + env(safe-area-inset-bottom)); display: grid; gap: var(--space-2); pointer-events: none; }
+@media (min-width: 768px) { .toast-region { left: auto; right: var(--space-6); bottom: var(--space-6); width: 24rem; } }
+.c-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--space-3); background: var(--color-surface); color: var(--color-text); border: var(--border-width) solid var(--color-border); border-left: 4px solid var(--color-success-text); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); }
+.c-toast .msg { flex: 1; }
+.c-toast > .icon { color: var(--color-success-text); }
+.c-toast--danger { border-left-color: var(--color-danger-text); }
+.c-toast--danger > .icon { color: var(--color-danger-text); }
+.c-modal { border: 0; padding: 0; width: min(32rem, calc(100% - 2 * var(--space-4))); border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.c-modal::backdrop { background: var(--overlay-bg); }
+.c-modal .body { padding: var(--space-6); display: grid; gap: var(--space-3); }
+.c-modal .actions { padding: 0 var(--space-6) var(--space-6); }
+@media (max-width: 767.98px) { .c-modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); } }
+.sheet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.sheet-list a, .sheet-list button { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--touch-target-min); padding: 0 var(--space-2); color: var(--color-text); text-decoration: none; background: none; border: 0; font: inherit; border-radius: var(--radius-md); cursor: pointer; }
+@media (hover: hover) { .sheet-list a:hover, .sheet-list button:hover { background: var(--color-surface-hover); } }
+
+/* ===== Controles del prototipo (NO son diseño: borde discontinuo magenta) ===== */
+.proto-fab { position: fixed; z-index: 70; top: var(--space-2); left: 50%; transform: translateX(-50%); min-height: 40px; padding: 0 var(--space-3); border: 2px dashed #c026d3; border-radius: var(--radius-full); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); cursor: pointer; box-shadow: var(--shadow-md); }
+@media (min-width: 768px) { .proto-fab { left: auto; right: var(--space-4); transform: none; } }
+.proto-panel { border: 2px dashed #c026d3; border-radius: var(--radius-lg); padding: var(--space-5); width: min(28rem, calc(100% - 2rem)); background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.proto-panel::backdrop { background: var(--overlay-bg); }
+.proto-panel h2 { margin-bottom: var(--space-2); }
+.proto-panel label { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+.proto-panel label.check { display: flex; align-items: center; gap: var(--space-2); }
+.proto-panel select { min-height: 44px; font: inherit; padding: 0 var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); }
+.proto-panel input[type=checkbox] { width: 20px; height: 20px; }
+.proto-panel p { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main" data-i18n="common.skip_to_content">Saltar al contenido</a>
+
+<!-- SVG sprite: iconos en línea, sin descargas -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-empty" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/><path d="M7.5 5.5l9 5" /></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20M5.8 8.6A5 5 0 0 0 7 18h10.5M20.6 15.6A4 4 0 0 0 17 9h-1.3A7 7 0 0 0 10 5.1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+</svg>
+
+<!-- ============ Barra lateral (tablet: iconos 64 px · escritorio: 240 px) ============ -->
+<aside class="sidebar">
+  <a class="brand" href="#/" aria-label="Cuartico">
+    <svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6" fill="currentColor"/><path d="M19 9.5a6 6 0 1 0 0 9" fill="none" stroke="var(--color-surface)" stroke-width="3" stroke-linecap="round"/></svg>
+    <span class="label">Cuartico</span>
+  </a>
+  <nav aria-label="Navegación principal" data-i18n-aria="nav.main">
+    <ul class="nav">
+      <li><a href="#home" data-home><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="label" data-i18n="nav.home">Inicio</span></a></li>
+      <li><a href="#/" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg><span class="label" data-i18n="nav.products">Productos</span></a></li>
+      <!-- «Usuarios» (solo ADMIN) llegará con su propia historia: no se ponen enlaces muertos -->
+    </ul>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="account-full">
+      <div><div class="user-name" data-user-name>Mario Bejerano</div><span class="c-tag" data-user-role>Administrador</span></div>
+      <div class="c-field">
+        <label class="c-label small" for="langSidebar" data-i18n="common.language">Idioma</label>
+        <select class="c-select c-select--sm" id="langSidebar" data-lang-select>
+          <option value="es" lang="es">Español</option><option value="en" lang="en">English</option>
+        </select>
+      </div>
+      <a class="c-btn c-btn--secondary" href="login.html"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span data-i18n="nav.logout">Cerrar sesión</span></a>
+    </div>
+    <button type="button" class="avatar-btn" data-open-account aria-haspopup="dialog" data-i18n-aria="nav.account">MB</button>
+  </div>
+</aside>
+
+<!-- ============ Barra superior (móvil) ============ -->
+<header class="topbar">
+  <a class="c-btn c-btn--ghost c-btn--icon back" id="topBack" href="#/" hidden data-i18n-aria="products.back_to_list"><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg></a>
+  <p class="topbar-title" id="topTitle" aria-hidden="true">Productos</p>
+  <button type="button" class="avatar-btn" data-open-account aria-haspopup="dialog" data-i18n-aria="nav.account">MB</button>
+</header>
+
+<main id="main" tabindex="-1">
+  <div id="offlineBox" class="alerts"></div>
+
+  <!-- ===================== VISTA: LISTADO ===================== -->
+  <section id="viewList" aria-labelledby="listTitle">
+    <div class="page-head">
+      <h1 id="listTitle" class="mobile-sr" data-i18n="products.title">Productos</h1>
+      <a class="c-btn c-btn--primary desktop-only" href="#/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="products.new">Nuevo producto</span></a>
+    </div>
+
+    <form class="toolbar" role="search" id="filters" onsubmit="return false">
+      <div class="c-field">
+        <label class="c-label" for="q" data-i18n="products.search_label">Buscar por nombre o SKU</label>
+        <div class="c-search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input class="c-input" id="q" type="search" autocomplete="off" enterkeyhint="search">
+        </div>
+      </div>
+      <div class="c-field">
+        <label class="c-label" for="cat" data-i18n="products.category">Categoría</label>
+        <select class="c-select" id="cat"></select>
+      </div>
+      <div class="c-field">
+        <label class="c-label" for="status" data-i18n="products.status">Estado</label>
+        <select class="c-select" id="status">
+          <option value="active" data-i18n="products.status_active">Activos</option>
+          <option value="inactive" data-i18n="products.status_inactive">Inactivos</option>
+          <option value="all" data-i18n="products.status_all">Todos</option>
+        </select>
+      </div>
+    </form>
+
+    <div class="alerts" id="listAlerts"></div>
+    <div class="list-meta" id="listMeta"></div>
+    <!-- Anuncia el resultado de búsqueda/filtros a lectores de pantalla sin mover el foco -->
+    <p class="sr-only" role="status" id="listStatus"></p>
+    <div id="listRegion" aria-busy="false"></div>
+  </section>
+
+  <!-- ===================== VISTA: FORMULARIO ===================== -->
+  <section id="viewForm" aria-labelledby="formTitle" hidden>
+    <a class="back-link desktop-only" href="#/" data-cancel><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg><span data-i18n="products.back_to_list">Volver a productos</span></a>
+    <div class="page-head">
+      <h1 id="formTitle" class="mobile-sr"><span id="formTitleText">Nuevo producto</span> <span id="formInactiveBadge" class="c-badge c-badge--neutral" hidden data-i18n="products.badge_inactive">Inactivo</span></h1>
+    </div>
+
+    <div id="notFound" hidden>
+      <div class="c-empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-empty"/></svg>
+        <h2 data-i18n="products.not_found_title">Este producto no existe</h2>
+        <p data-i18n="products.not_found_body">Puede que el enlace esté mal escrito.</p>
+        <a class="c-btn c-btn--secondary" href="#/" data-i18n="products.back_to_list">Volver a productos</a>
+      </div>
+    </div>
+
+    <div class="form-layout" id="formLayout">
+      <div class="alerts" id="formAlerts"></div>
+      <form id="productForm" novalidate class="form-layout">
+        <div class="card">
+          <h2 data-i18n="products.section_data">Datos del producto</h2>
+          <div class="fields">
+            <div class="c-field" data-field="name">
+              <label class="c-label" for="f-name"><span data-i18n="products.name">Nombre</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+              <input class="c-input" id="f-name" name="name" maxlength="120" autocomplete="off" aria-describedby="f-name-help f-name-error">
+              <p class="c-help" id="f-name-help" data-i18n="products.name_help">Incluye la presentación si importa: «Aceite de girasol 1 L».</p>
+              <p class="c-error" id="f-name-error" hidden></p>
+            </div>
+            <div class="grid-2">
+              <div class="c-field" data-field="sku">
+                <label class="c-label" for="f-sku"><span>SKU</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <input class="c-input" id="f-sku" name="sku" maxlength="50" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="f-sku-help f-sku-error">
+                <p class="c-help" id="f-sku-help" data-i18n="products.sku_help">Código interno único. Letras, números, punto, guion y guion bajo.</p>
+                <p class="c-error" id="f-sku-error" hidden></p>
+              </div>
+              <div class="c-field" data-field="category">
+                <label class="c-label" for="f-category"><span data-i18n="products.category">Categoría</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <!-- datalist nativo: autocompleta las categorías existentes sin librerías (CA-22) -->
+                <input class="c-input" id="f-category" name="category" maxlength="50" list="categoryList" autocomplete="off" aria-describedby="f-category-help f-category-error">
+                <datalist id="categoryList"></datalist>
+                <p class="c-help" id="f-category-help" data-i18n="products.category_help">Elige una existente o escribe una nueva.</p>
+                <p class="c-error" id="f-category-error" hidden></p>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="c-field" data-field="unit">
+                <label class="c-label" for="f-unit"><span data-i18n="products.unit">Unidad de medida</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+                <select class="c-select" id="f-unit" name="unit" aria-describedby="f-unit-help f-unit-error"></select>
+                <p class="c-help" id="f-unit-help" data-i18n="products.unit_help">Cómo se cuenta el stock de este producto.</p>
+                <p class="c-error" id="f-unit-error" hidden></p>
+              </div>
+              <div class="c-field" data-field="minStock">
+                <label class="c-label" for="f-minStock"><span data-i18n="products.min_stock">Stock mínimo</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+                <div class="c-input-group">
+                  <input class="c-input num" id="f-minStock" name="minStock" inputmode="decimal" autocomplete="off" aria-describedby="f-minStock-help f-minStock-error">
+                  <span class="suffix" id="minStockSuffix" aria-hidden="true">u</span>
+                </div>
+                <p class="c-help" id="f-minStock-help" data-i18n="products.min_stock_help">Te avisaremos cuando el disponible llegue a esta cantidad. 0 = sin aviso.</p>
+                <p class="c-error" id="f-minStock-error" hidden></p>
+              </div>
+            </div>
+            <fieldset data-field="salePrice" aria-describedby="f-price-help">
+              <legend><span data-i18n="products.sale_price">Precio de venta de referencia</span> <span class="hint muted small" data-i18n="common.optional">(opcional)</span></legend>
+              <div class="price-row">
+                <div class="c-field">
+                  <label class="sr-only" for="f-salePrice" data-i18n="products.amount">Importe</label>
+                  <input class="c-input num" id="f-salePrice" name="salePrice" inputmode="decimal" autocomplete="off" aria-describedby="f-price-help f-salePrice-error">
+                </div>
+                <div class="c-field">
+                  <label class="sr-only" for="f-currency" data-i18n="products.currency">Moneda</label>
+                  <select class="c-select" id="f-currency" name="salePriceCurrency">
+                    <option value="CUP">CUP</option><option value="USD">USD</option>
+                  </select>
+                </div>
+              </div>
+              <p class="c-help" id="f-price-help" data-i18n="products.sale_price_help">Orientativo. El precio real lo fija cada combo o pedido.</p>
+              <p class="c-error" id="f-salePrice-error" hidden></p>
+            </fieldset>
+          </div>
+        </div>
+
+        <!-- Solo lectura (edición): nunca son inputs, para que nadie intente cambiarlos -->
+        <div class="card" id="stockCard">
+          <h2 data-i18n="products.section_stock">Stock y costo</h2>
+          <dl class="ro-grid">
+            <div><dt data-i18n="products.on_hand">Físico</dt><dd id="ro-onHand">—</dd></div>
+            <div><dt data-i18n="products.reserved">Reservado</dt><dd id="ro-reserved">—</dd></div>
+            <div><dt data-i18n="products.available">Disponible</dt><dd id="ro-available">—</dd></div>
+            <div><dt data-i18n="products.avg_cost">Costo promedio</dt><dd id="ro-avgCost">—</dd></div>
+          </dl>
+          <p class="ro-note"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span data-i18n="products.stock_readonly_note">Se actualiza con las compras y ventas.</span></p>
+        </div>
+        <p class="c-help" id="newStockNote" data-i18n="products.stock_new_note">El stock empieza en 0 y se actualiza con las compras y ventas.</p>
+
+        <div class="btn-bar">
+          <a class="c-btn c-btn--secondary" href="#/" data-cancel data-i18n="common.cancel">Cancelar</a>
+          <button class="c-btn c-btn--primary" type="submit" id="saveBtn"><span data-i18n="products.save">Guardar producto</span></button>
+        </div>
+      </form>
+
+      <!-- Solo ADMIN (CA-24). Separado del formulario: cambiar el estado no depende de «Guardar» -->
+      <div class="card status-card" id="statusCard" hidden>
+        <div>
+          <h2 data-i18n="products.section_status">Estado del producto</h2>
+          <p class="muted small" id="statusText"></p>
+        </div>
+        <button type="button" class="c-btn c-btn--secondary" id="statusBtn"></button>
+      </div>
+      <p class="audit" id="auditLine"></p>
+    </div>
+  </section>
+</main>
+
+<!-- FAB móvil -->
+<a class="c-btn c-btn--primary fab" id="fab" href="#/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="products.new">Nuevo producto</span></a>
+
+<!-- ============ Barra inferior (móvil) ============ -->
+<nav class="bottomnav" aria-label="Navegación principal" data-i18n-aria="nav.main">
+  <ul>
+    <li><a href="#home" data-home><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span data-i18n="nav.home">Inicio</span></a></li>
+    <li><a href="#/" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg><span data-i18n="nav.products">Productos</span></a></li>
+    <li><button type="button" data-open-account aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span data-i18n="nav.account_short">Cuenta</span></button></li>
+  </ul>
+</nav>
+
+<!-- ============ Hoja de cuenta (móvil y tablet) ============ -->
+<dialog class="c-modal" id="accountDialog" aria-labelledby="accName">
+  <div class="body">
+    <div><h2 id="accName" data-user-name>Mario Bejerano</h2><span class="c-tag" data-user-role>Administrador</span></div>
+    <div class="c-field">
+      <label class="c-label" for="langSheet" data-i18n="common.language">Idioma</label>
+      <select class="c-select" id="langSheet" data-lang-select>
+        <option value="es" lang="es">Español</option><option value="en" lang="en">English</option>
+      </select>
+    </div>
+    <ul class="sheet-list">
+      <li><button type="button" data-change-pw><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span data-i18n="nav.change_password">Cambiar contraseña</span></button></li>
+      <li><a href="login.html"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span data-i18n="nav.logout">Cerrar sesión</span></a></li>
+    </ul>
+  </div>
+  <form method="dialog" class="actions btn-bar"><button class="c-btn c-btn--secondary" data-i18n="common.close">Cerrar</button></form>
+</dialog>
+
+<!-- ============ Confirmar desactivación (CA-14) ============ -->
+<dialog class="c-modal" id="deactivateDialog" aria-labelledby="deactTitle" aria-describedby="deactBody">
+  <div class="body">
+    <h2 id="deactTitle"></h2>
+    <p id="deactBody"></p>
+    <div class="c-alert c-alert--warning" id="deactStock" hidden><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><p></p></div>
+  </div>
+  <div class="actions btn-bar">
+    <button type="button" class="c-btn c-btn--secondary" data-close data-i18n="common.cancel">Cancelar</button>
+    <!-- Primario y no rojo: desactivar es reversible; el rojo se reserva a lo irreversible -->
+    <button type="button" class="c-btn c-btn--primary" id="deactConfirm"><span data-i18n="products.deactivate">Desactivar</span></button>
+  </div>
+</dialog>
+
+<!-- ============ Descartar cambios ============ -->
+<dialog class="c-modal" id="discardDialog" aria-labelledby="discTitle">
+  <div class="body"><h2 id="discTitle" data-i18n="products.discard_title">¿Descartar los cambios?</h2><p data-i18n="products.discard_body">Lo que has escrito en este producto no se guardará.</p></div>
+  <div class="actions btn-bar">
+    <button type="button" class="c-btn c-btn--secondary" data-close data-i18n="products.keep_editing">Seguir editando</button>
+    <button type="button" class="c-btn c-btn--primary" id="discardConfirm" data-i18n="products.discard">Descartar</button>
+  </div>
+</dialog>
+
+<div class="toast-region" id="toasts" aria-live="polite"></div>
+
+<!-- ===================== Solo prototipo ===================== -->
+<button type="button" class="proto-fab" id="protoOpen">⚙ Prototipo</button>
+<dialog class="proto-panel" id="protoPanel" aria-labelledby="protoTitle">
+  <h2 id="protoTitle">Controles del prototipo</h2>
+  <p>No forman parte del diseño. Cambia el ancho de la ventana para ver móvil (&lt;768), tablet y escritorio (≥1024).</p>
+  <label>Rol del usuario
+    <select id="pRole"><option value="ADMIN">ADMIN (ve Desactivar/Activar)</option><option value="OPERATOR">OPERATOR</option></select>
+  </label>
+  <label>Respuesta del listado
+    <select id="pList">
+      <option value="ok">Normal (0,6 s)</option>
+      <option value="waking">Servidor dormido (8 s, aviso a los 5 s)</option>
+      <option value="empty">Catálogo vacío (primera vez)</option>
+      <option value="error">Error 500 con ProblemDetail</option>
+      <option value="network">Error de red</option>
+    </select>
+  </label>
+  <label>Respuesta al guardar / desactivar
+    <select id="pSave">
+      <option value="ok">Correcto (0,8 s)</option>
+      <option value="sku_conflict">409 product.sku_conflict</option>
+      <option value="version_conflict">409 resource.version_conflict</option>
+      <option value="network">Error de red</option>
+      <option value="waking">Servidor dormido (7 s)</option>
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" id="pOffline"> Sin conexión (alerta persistente)</label>
+  <label class="check"><input type="checkbox" id="pStockBadges"> Previsualizar etiquetas de stock (llegan con HU-04)</label>
+  <label>Tema
+    <select id="pTheme"><option value="">Según el sistema</option><option value="light">Claro</option><option value="dark">Oscuro</option></select>
+  </label>
+  <form method="dialog"><button class="c-btn c-btn--secondary" style="width:100%">Cerrar</button></form>
+</dialog>
+
+<script>
+/* =====================================================================
+   i18n (en la app: react-i18next; mismas claves que docs/design/copy.md)
+   ===================================================================== */
+const I18N = {
+  es: {
+    "common.skip_to_content": "Saltar al contenido", "common.language": "Idioma", "common.required": "(obligatorio)",
+    "common.optional": "(opcional)", "common.cancel": "Cancelar", "common.close": "Cerrar", "common.retry": "Reintentar",
+    "common.undo": "Deshacer", "common.saving": "Guardando…", "common.loading": "Cargando…", "common.previous": "Anterior", "common.next": "Siguiente",
+    "common.page_of": "Página {{page}} de {{pages}}", "common.pagination": "Mostrando {{from}}–{{to}} de {{total}}",
+    "common.clear_filters": "Limpiar filtros", "common.not_available_proto": "Esta pantalla no forma parte del prototipo.",
+    "common.offline": "Sin conexión. Los cambios no se guardarán hasta que vuelvas a tener internet.",
+    "nav.main": "Navegación principal", "nav.home": "Inicio", "nav.products": "Productos", "nav.account": "Cuenta de {{name}}",
+    "nav.account_short": "Cuenta", "nav.logout": "Cerrar sesión", "nav.change_password": "Cambiar contraseña",
+    "role.ADMIN": "Administrador", "role.OPERATOR": "Operador",
+    "net.waking_title": "El servidor se está despertando", "net.waking_body": "Puede tardar hasta un minuto. No cierres esta pantalla.",
+    "net.unreachable_title": "No pudimos conectar con el servidor", "net.unreachable_body": "Revisa tu conexión a internet e inténtalo de nuevo.",
+    "products.page_title": "Cuartico · Productos", "products.title": "Productos", "products.new": "Nuevo producto",
+    "products.edit_title": "Editar producto", "products.back_to_list": "Volver a productos",
+    "products.search_label": "Buscar por nombre o SKU", "products.category": "Categoría", "products.all_categories": "Todas",
+    "products.status": "Estado", "products.status_active": "Activos", "products.status_inactive": "Inactivos", "products.status_all": "Todos",
+    "products.col_product": "Producto", "products.col_price": "Precio de referencia", "products.col_available": "Disponible",
+    "products.col_status": "Estado", "products.col_actions": "Acciones", "products.sort_by_name": "Ordenar por nombre",
+    "products.sku_inline": "SKU {{sku}}", "products.no_sku": "Sin SKU", "products.no_category": "Sin categoría", "products.no_price": "—",
+    "products.badge_inactive": "Inactivo", "products.badge_low_stock": "Stock bajo", "products.badge_out_of_stock": "Sin stock",
+    "products.edit": "Editar", "products.deactivate": "Desactivar", "products.activate": "Activar",
+    "products.results": "{{count}} productos", "products.results_one": "1 producto",
+    "products.empty_title": "Todavía no hay productos", "products.empty_body": "Crea el primero para poder registrar compras y armar combos.",
+    "products.no_results_query": "No hay productos que coincidan con «{{q}}»", "products.no_results_filters": "No hay productos con estos filtros",
+    "products.no_results_body": "Prueba con otra palabra o revisa los filtros. La búsqueda distingue tildes: «azucar» no encuentra «Azúcar».",
+    "products.load_error_title": "No se pudieron cargar los productos", "products.error_code": "Código para soporte: {{code}}",
+    "products.section_data": "Datos del producto", "products.name": "Nombre",
+    "products.name_help": "Incluye la presentación si importa: «Aceite de girasol 1 L».",
+    "products.sku_help": "Código interno único. Letras, números, punto, guion y guion bajo.",
+    "products.category_help": "Elige una existente o escribe una nueva.",
+    "products.unit": "Unidad de medida", "products.unit_placeholder": "Elige una unidad", "products.unit_help": "Cómo se cuenta el stock de este producto.",
+    "products.min_stock": "Stock mínimo", "products.min_stock_help": "Te avisaremos cuando el disponible llegue a esta cantidad. 0 = sin aviso.",
+    "products.sale_price": "Precio de venta de referencia", "products.amount": "Importe", "products.currency": "Moneda",
+    "products.sale_price_help": "Orientativo. El precio real lo fija cada combo o pedido.",
+    "products.section_stock": "Stock y costo", "products.on_hand": "Físico", "products.reserved": "Reservado",
+    "products.available": "Disponible", "products.avg_cost": "Costo promedio",
+    "products.stock_readonly_note": "Se actualiza con las compras y ventas.",
+    "products.stock_new_note": "El stock empieza en 0 y se actualiza con las compras y ventas.",
+    "products.save": "Guardar producto", "products.section_status": "Estado del producto",
+    "products.status_text_active": "Activo: se puede usar en compras, combos y pedidos.",
+    "products.status_text_inactive": "Inactivo: no se puede usar en compras, combos ni pedidos nuevos.",
+    "products.deactivate_product": "Desactivar producto", "products.activate_product": "Activar producto",
+    "products.audit": "Creado por {{createdBy}} el {{createdAt}} · Última modificación por {{updatedBy}} el {{updatedAt}}",
+    "products.created": "Producto «{{name}}» creado.", "products.saved": "Cambios guardados.",
+    "products.deactivated": "«{{name}}» desactivado.", "products.activated": "«{{name}}» activado.",
+    "products.deactivate_title": "¿Desactivar «{{name}}»?",
+    "products.deactivate_body": "No se podrá usar en compras, combos ni pedidos nuevos. Lo ya registrado no cambia. Puedes volver a activarlo cuando quieras.",
+    "products.deactivate_stock": "Todavía tiene stock: {{onHand}} físico y {{reserved}} reservado.",
+    "products.deactivating": "Desactivando…",
+    "products.discard_title": "¿Descartar los cambios?", "products.discard_body": "Lo que has escrito en este producto no se guardará.",
+    "products.keep_editing": "Seguir editando", "products.discard": "Descartar",
+    "products.not_found_title": "Este producto no existe", "products.not_found_body": "Puede que el enlace esté mal escrito.",
+    "products.version_conflict_title": "Otra persona cambió este producto mientras lo editabas",
+    "products.version_conflict_body": "Tus cambios no se han guardado. Recarga para ver la versión actual y vuelve a aplicarlos.",
+    "products.reload": "Recargar producto", "products.form_errors": "Revisa los campos marcados.",
+    "validation.required": "Este campo es obligatorio.", "validation.max_length": "Máximo {{max}} caracteres.",
+    "product.sku_pattern": "Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_).",
+    "product.price_format": "Escribe un número igual o mayor que 0, con hasta 2 decimales.",
+    "product.min_stock_format": "Escribe un número igual o mayor que 0, con hasta 3 decimales.",
+    "api.product.sku_conflict": "Ya existe un producto con el SKU {{sku}}.",
+    "api.server_detail": "Error interno del servidor",
+    "unit.UNIT": "Unidad (u)", "unit.KG": "Kilogramo (kg)", "unit.LB": "Libra (lb)", "unit.G": "Gramo (g)", "unit.L": "Litro (L)", "unit.ML": "Mililitro (mL)",
+    "unit_short.UNIT": "u", "unit_short.KG": "kg", "unit_short.LB": "lb", "unit_short.G": "g", "unit_short.L": "L", "unit_short.ML": "mL"
+  },
+  en: {
+    "common.skip_to_content": "Skip to content", "common.language": "Language", "common.required": "(required)",
+    "common.optional": "(optional)", "common.cancel": "Cancel", "common.close": "Close", "common.retry": "Try again",
+    "common.undo": "Undo", "common.saving": "Saving…", "common.loading": "Loading…", "common.previous": "Previous", "common.next": "Next",
+    "common.page_of": "Page {{page}} of {{pages}}", "common.pagination": "Showing {{from}}–{{to}} of {{total}}",
+    "common.clear_filters": "Clear filters", "common.not_available_proto": "This screen isn't part of the prototype.",
+    "common.offline": "You're offline. Changes won't be saved until you're back online.",
+    "nav.main": "Main navigation", "nav.home": "Home", "nav.products": "Products", "nav.account": "{{name}}'s account",
+    "nav.account_short": "Account", "nav.logout": "Log out", "nav.change_password": "Change password",
+    "role.ADMIN": "Administrator", "role.OPERATOR": "Operator",
+    "net.waking_title": "The server is waking up", "net.waking_body": "It can take up to a minute. Please keep this screen open.",
+    "net.unreachable_title": "We couldn't reach the server", "net.unreachable_body": "Check your internet connection and try again.",
+    "products.page_title": "Cuartico · Products", "products.title": "Products", "products.new": "New product",
+    "products.edit_title": "Edit product", "products.back_to_list": "Back to products",
+    "products.search_label": "Search by name or SKU", "products.category": "Category", "products.all_categories": "All",
+    "products.status": "Status", "products.status_active": "Active", "products.status_inactive": "Inactive", "products.status_all": "All",
+    "products.col_product": "Product", "products.col_price": "Reference price", "products.col_available": "Available",
+    "products.col_status": "Status", "products.col_actions": "Actions", "products.sort_by_name": "Sort by name",
+    "products.sku_inline": "SKU {{sku}}", "products.no_sku": "No SKU", "products.no_category": "No category", "products.no_price": "—",
+    "products.badge_inactive": "Inactive", "products.badge_low_stock": "Low stock", "products.badge_out_of_stock": "Out of stock",
+    "products.edit": "Edit", "products.deactivate": "Deactivate", "products.activate": "Activate",
+    "products.results": "{{count}} products", "products.results_one": "1 product",
+    "products.empty_title": "No products yet", "products.empty_body": "Create the first one so you can record purchases and build combos.",
+    "products.no_results_query": "No products match \"{{q}}\"", "products.no_results_filters": "No products match these filters",
+    "products.no_results_body": "Try another word or check the filters. Search is accent-sensitive: \"azucar\" won't find \"Azúcar\".",
+    "products.load_error_title": "We couldn't load the products", "products.error_code": "Support code: {{code}}",
+    "products.section_data": "Product details", "products.name": "Name",
+    "products.name_help": "Include the size if it matters: \"Sunflower oil 1 L\".",
+    "products.sku_help": "Unique internal code. Letters, numbers, dot, hyphen and underscore.",
+    "products.category_help": "Pick an existing one or type a new one.",
+    "products.unit": "Unit of measure", "products.unit_placeholder": "Choose a unit", "products.unit_help": "How this product's stock is counted.",
+    "products.min_stock": "Minimum stock", "products.min_stock_help": "We'll warn you when available stock reaches this amount. 0 = no warning.",
+    "products.sale_price": "Reference sale price", "products.amount": "Amount", "products.currency": "Currency",
+    "products.sale_price_help": "A guide only. The actual price is set by each combo or order.",
+    "products.section_stock": "Stock and cost", "products.on_hand": "On hand", "products.reserved": "Reserved",
+    "products.available": "Available", "products.avg_cost": "Average cost",
+    "products.stock_readonly_note": "Updated by purchases and sales.",
+    "products.stock_new_note": "Stock starts at 0 and is updated by purchases and sales.",
+    "products.save": "Save product", "products.section_status": "Product status",
+    "products.status_text_active": "Active: can be used in purchases, combos and orders.",
+    "products.status_text_inactive": "Inactive: can't be used in new purchases, combos or orders.",
+    "products.deactivate_product": "Deactivate product", "products.activate_product": "Activate product",
+    "products.audit": "Created by {{createdBy}} on {{createdAt}} · Last changed by {{updatedBy}} on {{updatedAt}}",
+    "products.created": "Product \"{{name}}\" created.", "products.saved": "Changes saved.",
+    "products.deactivated": "\"{{name}}\" deactivated.", "products.activated": "\"{{name}}\" activated.",
+    "products.deactivate_title": "Deactivate \"{{name}}\"?",
+    "products.deactivate_body": "It can't be used in new purchases, combos or orders. Existing records don't change. You can activate it again at any time.",
+    "products.deactivate_stock": "It still has stock: {{onHand}} on hand and {{reserved}} reserved.",
+    "products.deactivating": "Deactivating…",
+    "products.discard_title": "Discard changes?", "products.discard_body": "What you typed for this product won't be saved.",
+    "products.keep_editing": "Keep editing", "products.discard": "Discard",
+    "products.not_found_title": "This product doesn't exist", "products.not_found_body": "The link may be mistyped.",
+    "products.version_conflict_title": "Someone else changed this product while you were editing",
+    "products.version_conflict_body": "Your changes weren't saved. Reload to see the current version and apply them again.",
+    "products.reload": "Reload product", "products.form_errors": "Check the highlighted fields.",
+    "validation.required": "This field is required.", "validation.max_length": "Maximum {{max}} characters.",
+    "product.sku_pattern": "Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_).",
+    "product.price_format": "Enter a number of 0 or more, with up to 2 decimals.",
+    "product.min_stock_format": "Enter a number of 0 or more, with up to 3 decimals.",
+    "api.product.sku_conflict": "A product with SKU {{sku}} already exists.",
+    "api.server_detail": "Internal server error",
+    "unit.UNIT": "Piece (pcs)", "unit.KG": "Kilogram (kg)", "unit.LB": "Pound (lb)", "unit.G": "Gram (g)", "unit.L": "Liter (L)", "unit.ML": "Milliliter (mL)",
+    "unit_short.UNIT": "pcs", "unit_short.KG": "kg", "unit_short.LB": "lb", "unit_short.G": "g", "unit_short.L": "L", "unit_short.ML": "mL"
+  }
+};
+let lang = localStorage.getItem("cuartico.lang") || (navigator.language.toLowerCase().startsWith("en") ? "en" : "es");
+function t(key, vars) {
+  let s = (I18N[lang] && I18N[lang][key]) || key;
+  if (vars) for (const k in vars) s = s.split("{{" + k + "}}").join(vars[k]);
+  return s;
+}
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const locale = () => (lang === "en" ? "en-US" : "es-ES");
+const fmtMoney = (n, cur) => new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: "always" }).format(n) + " " + cur;
+const fmtQty = (n, unit) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 3, useGrouping: "always" }).format(n) + " " + t("unit_short." + unit);
+const fmtDate = (iso) => new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+
+/* =====================================================================
+   Datos de ejemplo (en Sprint 1 el stock real será 0: ver notas de UX)
+   [id, nombre, sku, unidad, categoría, precio, moneda, mínimo, físico, reservado, costoUSD, activo]
+   ===================================================================== */
+const RAW = [
+  [1, "Aceite de girasol 1 L", "ACE-001", "UNIT", "Aceites y grasas", 3.5, "USD", 10, 42, 6, 2.8, true],
+  [2, "Aceite de soya 900 mL", "ACE-002", "UNIT", "Aceites y grasas", 3, "USD", 10, 0, 0, null, false],
+  [3, "Arroz blanco", "ARR-001", "KG", "Granos", 1.4, "USD", 50, 180, 25, 1.05, true],
+  [4, "Azúcar blanca", "AZU-001", "KG", "Granos", 1.3, "USD", 30, 22, 4, 0.95, true],
+  [5, "Café molido Cubita 250 g", "CAF-250", "UNIT", "Bebidas", 4.8, "USD", 12, 30, 2, 3.6, true],
+  [6, "Cerveza Cristal lata 355 mL", "CER-CRI", "UNIT", "Bebidas", 1.2, "USD", 48, 240, 48, 0.85, true],
+  [7, "Chícharos 500 g", "CHI-500", "UNIT", "Granos", 650, "CUP", 20, 35, 0, 1.1, true],
+  [8, "Detergente en polvo 1 kg", "DET-001", "UNIT", "Aseo", 3, "USD", 10, 8, 0, 2.1, true],
+  [9, "Espaguetis 500 g", "PAS-500", "UNIT", "Pastas", 1.1, "USD", 24, 60, 12, 0.7, true],
+  [10, "Frijoles negros", "FRI-001", "KG", "Granos", 2.2, "USD", 20, 15, 3, 1.6, true],
+  [11, "Galletas de soda (paquete)", "GAL-001", "UNIT", "Dulces y galletas", 420, "CUP", 15, 50, 5, 0.95, true],
+  [12, "Harina de trigo", "HAR-001", "KG", "Granos", null, null, 0, 25, 0, 0.7, true],
+  [13, "Huevos (cartón de 30)", "HUE-030", "UNIT", "Cárnicos y huevos", 3200, "CUP", 10, 0, 0, null, true],
+  [14, "Jabón de baño (paquete de 3)", "JAB-003", "UNIT", "Aseo", 1200, "CUP", 10, 40, 0, 2.4, true],
+  [15, "Jamón de pierna", "JAM-001", "KG", "Cárnicos y huevos", 9.5, "USD", 5, 12.5, 2.5, 7.2, true],
+  [16, "Leche condensada lata 397 g", "LEC-CON", "UNIT", "Lácteos", 1.6, "USD", 12, 0, 0, null, false],
+  [17, "Leche en polvo entera 1 kg", "LEC-001", "UNIT", "Lácteos", 9.5, "USD", 8, 16, 3, 7.4, true],
+  [18, "Malta Guajira 355 mL", "MAL-355", "UNIT", "Bebidas", 280, "CUP", 24, 96, 0, 0.55, true],
+  [19, "Mayonesa 500 g", "MAY-500", "UNIT", "Salsas y conservas", 2.4, "USD", 6, 14, 0, 1.7, true],
+  [20, "Muslo de pollo", "POL-MUS", "KG", "Cárnicos y huevos", 2.9, "USD", 40, 120, 30, 2.05, true],
+  [21, "Papel higiénico (4 rollos)", "PAP-004", "UNIT", "Aseo", 2.5, "USD", 10, 24, 4, 1.8, true],
+  [22, "Pasta dental 90 g", "PAS-DEN", "UNIT", "Aseo", 1.5, "USD", 10, 20, 0, 1, true],
+  [23, "Picadillo de pollo 400 g", "PIC-400", "UNIT", "Cárnicos y huevos", 450, "CUP", 20, 18, 6, 0.8, true],
+  [24, "Puré de tomate 400 g", "PUR-400", "UNIT", "Salsas y conservas", 650, "CUP", 12, 45, 0, 1.2, true],
+  [25, "Queso gouda", "QUE-GOU", "KG", "Lácteos", 12, "USD", 3, 4.2, 0, 9.1, true],
+  [26, "Ron Havana Club Añejo 3 Años 700 mL", "RON-HC3", "UNIT", "Bebidas", 9, "USD", 6, 18, 2, 7, true],
+  [27, "Sal refina 1 kg", null, "UNIT", "Granos", 180, "CUP", 0, 30, 0, 0.3, true],
+  [28, "Salchichas de pollo (paquete de 10)", "SAL-010", "UNIT", "Cárnicos y huevos", 3.2, "USD", 15, 40, 10, 2.3, true]
+];
+let DATA = RAW.map(([id, name, sku, unit, category, salePrice, cur, minStock, onHand, reserved, avgCost, active]) => ({
+  id, name, sku, unit, category, salePrice, salePriceCurrency: cur, minStock, active, version: (id % 4) + 1,
+  stock: { onHand, reserved, available: +(onHand - reserved).toFixed(3), averageCost: avgCost, costCurrency: avgCost == null ? null : "USD" },
+  createdBy: "mario", createdAt: "2026-10-02T14:20:00Z", updatedBy: id % 2 ? "yanelis" : "mario", updatedAt: "2026-10-27T09:05:00Z"
+}));
+const lowStock = (p) => p.active && p.minStock > 0 && p.stock.available <= p.minStock; // lo calcula la API
+const UNITS = ["UNIT", "KG", "LB", "G", "L", "ML"];
+const USERS = { ADMIN: { name: "Mario Bejerano", initials: "MB" }, OPERATOR: { name: "Yanelis Pérez", initials: "YP" } };
+// stockBadges: false hasta HU-04 (decisión de la supervisión 2026-11-05); el panel ⚙ permite previsualizarlas
+const proto = { role: sessionStorage.getItem("proto.role") || "ADMIN", stockBadges: false };
+
+/* =====================================================================
+   API simulada
+   ===================================================================== */
+const PAGE_SIZE = 20;
+function apiList(query) {
+  const sc = $("#pList").value;
+  const delay = sc === "waking" ? 8000 : 600;
+  return new Promise((resolve, reject) => setTimeout(() => {
+    if (sc === "error") return reject({ status: 500, code: "internal.error", detail: t("api.server_detail") });
+    if (sc === "network") return reject({ status: 0 });
+    let rows = sc === "empty" ? [] : DATA.slice();
+    const q = query.q.trim().toLowerCase(); // sin quitar tildes, como el backend (CA-18)
+    if (q) rows = rows.filter((p) => p.name.toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q));
+    if (query.status !== "all") rows = rows.filter((p) => p.active === (query.status === "active"));
+    if (query.cat) rows = rows.filter((p) => (p.category || "").toLowerCase() === query.cat.toLowerCase());
+    const dir = query.sort.endsWith("desc") ? -1 : 1;
+    rows.sort((a, b) => dir * a.name.localeCompare(b.name, "es", { sensitivity: "base" }) || a.id - b.id);
+    const total = rows.length, totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const page = query.page - 1;
+    resolve({ content: rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE), page, size: PAGE_SIZE, totalElements: total, totalPages });
+  }, delay));
+}
+function apiSave(scenarioDelay, onlyNetworkErrors) {
+  const sc = $("#pSave").value;
+  const delay = sc === "waking" ? 7000 : scenarioDelay || 800;
+  return new Promise((resolve, reject) => setTimeout(() => {
+    if (sc === "sku_conflict" && !onlyNetworkErrors) return reject({ status: 409, code: "product.sku_conflict" });
+    if (sc === "version_conflict" && !onlyNetworkErrors) return reject({ status: 409, code: "resource.version_conflict" });
+    if (sc === "network") return reject({ status: 0 });
+    resolve();
+  }, delay));
+}
+/* Aviso «servidor despertando» a los 5 s para cualquier petición (CA-8 de HU-01) */
+function withWakeNotice(promise, box) {
+  const timer = setTimeout(() => showAlert(box, { variant: "info", title: "net.waking_title", body: "net.waking_body" }), 5000);
+  return promise.finally(() => { clearTimeout(timer); clearAlert(box); });
+}
+
+/* =====================================================================
+   Alertas y toasts
+   ===================================================================== */
+const ICON = (id) => '<svg class="icon" aria-hidden="true"><use href="#i-' + id + '"/></svg>';
+const alertState = new Map();
+function showAlert(box, a) { alertState.set(box, a); renderAlert(box); }
+function clearAlert(box) { alertState.delete(box); box.innerHTML = ""; }
+function renderAlert(box) {
+  const a = alertState.get(box); if (!a) return;
+  const role = a.variant === "danger" ? "alert" : "status";
+  box.innerHTML = '<div class="c-alert c-alert--' + a.variant + '" role="' + role + '">' + ICON(a.variant === "danger" ? "alert" : "info") +
+    "<div>" + (a.title ? "<strong>" + esc(t(a.title)) + "</strong>" : "") + "<p>" + esc(t(a.body, a.vars)) + "</p>" +
+    (a.action ? '<button type="button" class="c-btn c-btn--secondary" data-alert-action>' + esc(t(a.action.label)) + "</button>" : "") + "</div></div>";
+  if (a.action) $("[data-alert-action]", box).addEventListener("click", a.action.run);
+}
+function toast(text, { variant = "success", action } = {}) {
+  const el = document.createElement("div");
+  el.className = "c-toast c-toast--" + variant;
+  if (variant === "danger") el.setAttribute("role", "alert");
+  el.innerHTML = ICON(variant === "danger" ? "alert" : "check") + '<span class="msg">' + esc(text) + "</span>" +
+    (action ? '<button type="button" class="c-btn c-btn--ghost c-btn--sm">' + esc(t(action.label)) + "</button>" : "") +
+    '<button type="button" class="c-btn c-btn--ghost c-btn--icon" aria-label="' + esc(t("common.close")) + '">' + ICON("x") + "</button>";
+  const close = () => el.remove();
+  const btns = $$("button", el);
+  if (action) btns[0].addEventListener("click", () => { close(); action.run(); });
+  btns[btns.length - 1].addEventListener("click", close);
+  const region = $("#toasts");
+  region.appendChild(el);
+  while (region.children.length > 3) region.firstElementChild.remove();
+  if (variant !== "danger") { // éxito: 5 s, en pausa con ratón o foco
+    let remaining = 5000, start = Date.now(), timer = setTimeout(close, remaining);
+    const pause = () => { clearTimeout(timer); remaining -= Date.now() - start; };
+    const resume = () => { start = Date.now(); timer = setTimeout(close, remaining); };
+    el.addEventListener("mouseenter", pause); el.addEventListener("mouseleave", resume);
+    el.addEventListener("focusin", pause); el.addEventListener("focusout", resume);
+  }
+}
+
+/* =====================================================================
+   Rutas (hash). En la app: React Router con searchParams (CA-26).
+   ===================================================================== */
+const DEFAULT_QUERY = { q: "", cat: "", status: "active", page: 1, sort: "name,asc" };
+let lastListHash = "#/";
+function parseHash() {
+  const h = location.hash || "#/";
+  if (h === "#/new") return { view: "form", id: null };
+  const m = h.match(/^#\/edit\/(\d+)$/);
+  if (m) return { view: "form", id: Number(m[1]) };
+  const params = new URLSearchParams(h.split("?")[1] || "");
+  return { view: "list", query: {
+    q: params.get("q") || "", cat: params.get("cat") || "", status: params.get("status") || "active",
+    page: Math.max(1, parseInt(params.get("page") || "1", 10) || 1), sort: params.get("sort") === "name,desc" ? "name,desc" : "name,asc" } };
+}
+function queryToHash(q) {
+  const p = new URLSearchParams();
+  if (q.q) p.set("q", q.q);
+  if (q.cat) p.set("cat", q.cat);
+  if (q.status !== "active") p.set("status", q.status);
+  if (q.page > 1) p.set("page", q.page);
+  if (q.sort !== "name,asc") p.set("sort", q.sort);
+  const s = p.toString();
+  return "#/" + (s ? "?" + s : "");
+}
+let currentQuery = { ...DEFAULT_QUERY };
+function navigateList(patch, { replace = false } = {}) {
+  const q = { ...currentQuery, ...patch };
+  const h = queryToHash(q);
+  if (replace) { history.replaceState(null, "", h); route(); } else location.hash = h;
+}
+window.addEventListener("hashchange", route);
+
+let formDirty = false;
+function route() {
+  if (location.hash === "#home") { toast(t("common.not_available_proto")); history.replaceState(null, "", lastListHash); return; }
+  const r = parseHash();
+  $("#viewList").hidden = r.view !== "list";
+  $("#viewForm").hidden = r.view !== "form";
+  $("#fab").hidden = r.view !== "list";
+  $("#topBack").hidden = r.view !== "form";
+  if (r.view === "list") {
+    lastListHash = location.hash || "#/";
+    $$("a[data-cancel], #topBack").forEach((a) => (a.href = lastListHash)); // «Volver» conserva búsqueda, filtros y página
+    currentQuery = r.query; syncFilters(); loadList();
+  } else openForm(r.id);
+  updateTitles();
+}
+
+/* =====================================================================
+   Listado
+   ===================================================================== */
+let lastResult = null, lastError = null, loading = false, reqSeq = 0;
+function syncFilters() {
+  if (document.activeElement !== $("#q")) $("#q").value = currentQuery.q;
+  renderCategoryOptions();
+  $("#status").value = currentQuery.status;
+}
+function categories() { return [...new Set(DATA.map((p) => p.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")); }
+function renderCategoryOptions() {
+  $("#cat").innerHTML = '<option value="">' + esc(t("products.all_categories")) + "</option>" +
+    categories().map((c) => '<option value="' + esc(c) + '">' + esc(c) + "</option>").join("");
+  $("#cat").value = currentQuery.cat;
+  $("#categoryList").innerHTML = categories().map((c) => '<option value="' + esc(c) + '"></option>').join("");
+}
+let debounce;
+$("#q").addEventListener("input", (e) => { clearTimeout(debounce); debounce = setTimeout(() => navigateList({ q: e.target.value.trim(), page: 1 }, { replace: true }), 300); });
+$("#cat").addEventListener("change", (e) => navigateList({ cat: e.target.value, page: 1 }));
+$("#status").addEventListener("change", (e) => navigateList({ status: e.target.value, page: 1 }));
+
+function loadList() {
+  const seq = ++reqSeq; loading = true; lastError = null; renderList();
+  withWakeNotice(apiList(currentQuery), $("#listAlerts"))
+    .then((res) => { if (seq !== reqSeq) return; lastResult = res; })
+    .catch((err) => { if (seq !== reqSeq) return; lastError = err; })
+    .finally(() => { if (seq !== reqSeq) return; loading = false; renderList(); announce(); });
+}
+function announce() {
+  $("#listStatus").textContent = lastError ? t("products.load_error_title")
+    : lastResult.totalElements === 1 ? t("products.results_one") : t("products.results", { count: lastResult.totalElements });
+}
+const filtersActive = () => currentQuery.q || currentQuery.cat || currentQuery.status !== "active";
+function clearFilters() { $("#q").value = ""; navigateList({ ...DEFAULT_QUERY }); $("#q").focus(); }
+
+function badgesHtml(p) {
+  const b = [];
+  if (!p.active) b.push('<span class="c-badge c-badge--neutral">' + esc(t("products.badge_inactive")) + "</span>");
+  else if (!proto.stockBadges) { /* Hasta HU-04 no hay etiquetas de stock (ver ux-notes/products.md §5) */ }
+  else if (p.stock.available <= 0) b.push('<span class="c-badge c-badge--danger">' + esc(t("products.badge_out_of_stock")) + "</span>");
+  else if (lowStock(p)) b.push('<span class="c-badge c-badge--warning">' + esc(t("products.badge_low_stock")) + "</span>");
+  return b.join("");
+}
+const priceHtml = (p) => (p.salePrice == null ? '<span class="muted">' + t("products.no_price") + "</span>" : esc(fmtMoney(p.salePrice, p.salePriceCurrency)));
+const subLine = (p) => [p.sku ? t("products.sku_inline", { sku: p.sku }) : t("products.no_sku"), p.category || t("products.no_category")].join(" · ");
+function actionHtml(p, cls) {
+  const name = '<span class="sr-only"> ' + esc(p.name) + "</span>";
+  let h = '<a class="c-btn ' + cls + '" href="#/edit/' + p.id + '">' + esc(t("products.edit")) + name + "</a>";
+  if (proto.role === "ADMIN") { // CA-24: el OPERATOR no ve estos botones
+    h += '<button type="button" class="c-btn ' + cls + '" data-toggle="' + p.id + '">' +
+      esc(t(p.active ? "products.deactivate" : "products.activate")) + name + "</button>";
+  }
+  return h;
+}
+
+function renderList() {
+  const region = $("#listRegion"), meta = $("#listMeta");
+  region.setAttribute("aria-busy", String(loading));
+  if (loading) {
+    meta.innerHTML = "";
+    region.innerHTML =
+      '<div class="table-wrap desktop-only" aria-hidden="true"><div style="padding:var(--space-4)"><div class="sk" style="width:30%"></div></div>' +
+      Array.from({ length: 5 }, () => '<div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join("") + "</div>" +
+      '<div class="skeleton mobile-only" aria-hidden="true">' +
+      Array.from({ length: 4 }, () => '<div class="sk-card"><div class="sk" style="width:65%"></div><div class="sk" style="width:40%"></div><div class="sk" style="width:85%"></div></div>').join("") + "</div>" +
+      '<p class="sr-only">' + esc(t("common.loading")) + "</p>";
+    return;
+  }
+  if (lastError) {
+    meta.innerHTML = "";
+    const net = lastError.status === 0;
+    region.innerHTML = '<div class="c-empty is-error">' + ICON(net ? "cloud-off" : "alert") +
+      "<h2>" + esc(t(net ? "net.unreachable_title" : "products.load_error_title")) + "</h2>" +
+      "<p>" + esc(net ? t("net.unreachable_body") : lastError.detail) + "</p>" +
+      (lastError.code ? '<p class="code">' + esc(t("products.error_code", { code: lastError.code })) + "</p>" : "") +
+      '<button type="button" class="c-btn c-btn--secondary" id="retryList">' + esc(t("common.retry")) + "</button></div>";
+    $("#retryList").addEventListener("click", loadList);
+    return;
+  }
+  const res = lastResult;
+  if (res.totalElements === 0) {
+    meta.innerHTML = "";
+    if (!filtersActive()) {
+      region.innerHTML = '<div class="c-empty">' + ICON("empty") + "<h2>" + esc(t("products.empty_title")) + "</h2><p>" + esc(t("products.empty_body")) +
+        '</p><a class="c-btn c-btn--primary" href="#/new">' + ICON("plus") + esc(t("products.new")) + "</a></div>";
+    } else {
+      const title = currentQuery.q ? t("products.no_results_query", { q: currentQuery.q }) : t("products.no_results_filters");
+      region.innerHTML = '<div class="c-empty">' + ICON("search") + "<h2>" + esc(title) + "</h2><p>" + esc(t("products.no_results_body")) +
+        '</p><button type="button" class="c-btn c-btn--secondary" id="clearFilters2">' + esc(t("common.clear_filters")) + "</button></div>";
+      $("#clearFilters2").addEventListener("click", clearFilters);
+    }
+    return;
+  }
+  const from = res.page * res.size + 1, to = from + res.content.length - 1;
+  meta.innerHTML = "<span>" + esc(t("common.pagination", { from, to, total: res.totalElements })) + "</span>" +
+    (filtersActive() ? '<button type="button" class="c-btn c-btn--ghost c-btn--sm" id="clearFilters">' + esc(t("common.clear_filters")) + "</button>" : "");
+  if (filtersActive()) $("#clearFilters").addEventListener("click", clearFilters);
+  if (res.content.length === 0) { // página fuera de rango (p. ej. enlace viejo): volver a la última
+    navigateList({ page: res.totalPages }, { replace: true }); return;
+  }
+  const asc = currentQuery.sort === "name,asc";
+  const table =
+    '<div class="table-wrap desktop-only"><table class="c-table">' +
+    '<caption class="sr-only">' + esc(t("products.title") + " · " + t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + "</caption>" +
+    '<thead><tr><th scope="col" aria-sort="' + (asc ? "ascending" : "descending") + '"><button type="button" class="sort-btn" id="sortName" aria-label="' +
+    esc(t("products.col_product") + ", " + t("products.sort_by_name")) + '">' + esc(t("products.col_product")) + ICON(asc ? "up" : "down") + "</button></th>" +
+    '<th scope="col" class="r">' + esc(t("products.col_price")) + '</th><th scope="col" class="r">' + esc(t("products.col_available")) +
+    '</th><th scope="col">' + esc(t("products.col_status")) + '</th><th scope="col"><span class="sr-only">' + esc(t("products.col_actions")) + "</span></th></tr></thead><tbody>" +
+    res.content.map((p) => '<tr class="' + (p.active ? "" : "is-inactive") + '"><td class="cell-title">' + esc(p.name) + '<span class="sub">' + esc(subLine(p)) + "</span></td>" +
+      '<td class="r">' + priceHtml(p) + '</td><td class="r">' + esc(fmtQty(p.stock.available, p.unit)) + "</td>" +
+      '<td><div class="badges">' + badgesHtml(p) + '</div></td><td class="actions">' + actionHtml(p, "c-btn--ghost c-btn--sm") + "</td></tr>").join("") +
+    "</tbody></table></div>";
+  const cards =
+    '<ul class="card-list mobile-only" aria-label="' + esc(t("products.title")) + '">' +
+    res.content.map((p) => '<li><article class="p-card ' + (p.active ? "" : "is-inactive") + '" aria-labelledby="pc-' + p.id + '">' +
+      '<div class="p-card-head"><div><h2 id="pc-' + p.id + '">' + esc(p.name) + '</h2><p class="small muted">' + esc(subLine(p)) + "</p></div>" +
+      '<div class="badges">' + badgesHtml(p) + "</div></div>" +
+      "<dl><div><dt>" + esc(t("products.col_price")) + "</dt><dd>" + priceHtml(p) + "</dd></div>" +
+      "<div><dt>" + esc(t("products.col_available")) + "</dt><dd>" + esc(fmtQty(p.stock.available, p.unit)) + "</dd></div></dl>" +
+      '<div class="p-card-actions">' + actionHtml(p, "c-btn--secondary") + "</div></article></li>").join("") + "</ul>";
+  const pager = res.totalPages > 1 ?
+    '<nav class="pager" aria-label="' + esc(t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + '"><div class="pages">' +
+    '<button type="button" class="c-btn c-btn--secondary" data-page="' + res.page + '"' + (res.page === 0 ? " disabled" : "") + ">" + ICON("left") + esc(t("common.previous")) + "</button>" +
+    "<span>" + esc(t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + "</span>" +
+    '<button type="button" class="c-btn c-btn--secondary" data-page="' + (res.page + 2) + '"' + (res.page + 1 >= res.totalPages ? " disabled" : "") + ">" + esc(t("common.next")) + ICON("right") + "</button>" +
+    "</div></nav>" : "";
+  region.innerHTML = table + cards + pager;
+  $("#sortName").addEventListener("click", () => navigateList({ sort: asc ? "name,desc" : "name,asc", page: 1 }));
+  $$("[data-page]", region).forEach((b) => b.addEventListener("click", () => {
+    navigateList({ page: Number(b.dataset.page) });
+    window.scrollTo(0, 0); $("#main").focus({ preventScroll: true }); // el foco vuelve arriba del listado
+  }));
+  $$("[data-toggle]", region).forEach((b) => b.addEventListener("click", () => toggleActive(DATA.find((p) => p.id === Number(b.dataset.toggle)), b)));
+}
+
+/* =====================================================================
+   Activar / desactivar (solo ADMIN)
+   ===================================================================== */
+let returnFocus = null;
+function toggleActive(p, opener) {
+  returnFocus = opener;
+  if (!p.active) return doActivate(p, true); // activar no es arriesgado: sin confirmación
+  const d = $("#deactivateDialog");
+  $("#deactTitle").textContent = t("products.deactivate_title", { name: p.name });
+  $("#deactBody").textContent = t("products.deactivate_body");
+  const hasStock = p.stock.onHand > 0 || p.stock.reserved > 0;
+  $("#deactStock").hidden = !hasStock;
+  if (hasStock) $("p", $("#deactStock")).textContent = t("products.deactivate_stock", { onHand: fmtQty(p.stock.onHand, p.unit), reserved: fmtQty(p.stock.reserved, p.unit) });
+  const btn = $("#deactConfirm");
+  btn.disabled = false; btn.innerHTML = "<span>" + esc(t("products.deactivate")) + "</span>";
+  btn.onclick = () => {
+    btn.disabled = true; btn.setAttribute("aria-busy", "true");
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("products.deactivating")) + "</span>";
+    apiSave(700, true).then(() => {
+      p.active = false; p.version++; d.close();
+      toast(t("products.deactivated", { name: p.name }), { action: { label: "common.undo", run: () => doActivate(p, false) } });
+      refreshAfterChange(p);
+    }).catch(() => { d.close(); toast(t("net.unreachable_title"), { variant: "danger" }); })
+      .finally(() => btn.removeAttribute("aria-busy"));
+  };
+  d.showModal();
+}
+function doActivate(p, announceIt) {
+  apiSave(500, true).then(() => {
+    p.active = true; p.version++;
+    if (announceIt) toast(t("products.activated", { name: p.name }));
+    refreshAfterChange(p);
+  }).catch(() => toast(t("net.unreachable_title"), { variant: "danger" }));
+}
+function refreshAfterChange(p) {
+  if (!$("#viewList").hidden) loadList(); else openForm(p.id, { keepValues: true });
+}
+// Si el botón que abrió el diálogo ya no existe (la fila se fue del listado), el foco vuelve al inicio del contenido
+$("#deactivateDialog").addEventListener("close", () => { if (returnFocus && document.contains(returnFocus)) returnFocus.focus(); else $("#main").focus(); });
+$$("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+
+/* =====================================================================
+   Formulario alta / edición
+   ===================================================================== */
+const FIELDS = ["name", "sku", "category", "unit", "minStock", "salePrice"];
+const fieldErrors = {};
+let editing = null;
+function renderUnitOptions() {
+  const v = $("#f-unit").value;
+  $("#f-unit").innerHTML = '<option value="">' + esc(t("products.unit_placeholder")) + "</option>" +
+    UNITS.map((u) => '<option value="' + u + '">' + esc(t("unit." + u)) + "</option>").join("");
+  $("#f-unit").value = v;
+}
+function decimalToInput(n) { return n == null ? "" : lang === "es" ? String(n).replace(".", ",") : String(n); }
+function openForm(id, { keepValues = false } = {}) {
+  const p = id ? DATA.find((x) => x.id === id) : null;
+  $("#notFound").hidden = !(id && !p);
+  $("#formLayout").hidden = !!(id && !p);
+  if (id && !p) return;
+  editing = p;
+  if (!keepValues) {
+    clearAlert($("#formAlerts"));
+    FIELDS.forEach((f) => setErr(f, null));
+    renderUnitOptions();
+    $("#f-name").value = p ? p.name : "";
+    $("#f-sku").value = p ? p.sku || "" : "";
+    $("#f-category").value = p ? p.category || "" : "";
+    $("#f-unit").value = p ? p.unit : "";
+    $("#f-minStock").value = p ? decimalToInput(p.minStock) : "0";
+    $("#f-salePrice").value = p ? decimalToInput(p.salePrice) : "";
+    // Moneda: la del producto; en alta, siempre USD (aprobado por la supervisión 2026-11-05)
+    $("#f-currency").value = p && p.salePriceCurrency ? p.salePriceCurrency : "USD";
+    formDirty = false;
+  }
+  renderCategoryOptions();
+  updateUnitSuffix();
+  $("#stockCard").hidden = !p;
+  $("#newStockNote").hidden = !!p;
+  $("#formInactiveBadge").hidden = !p || p.active;
+  $("#statusCard").hidden = !p || proto.role !== "ADMIN";
+  if (p) {
+    $("#ro-onHand").textContent = fmtQty(p.stock.onHand, p.unit);
+    $("#ro-reserved").textContent = fmtQty(p.stock.reserved, p.unit);
+    $("#ro-available").textContent = fmtQty(p.stock.available, p.unit);
+    $("#ro-avgCost").textContent = p.stock.averageCost == null ? "—" : fmtMoney(p.stock.averageCost, p.stock.costCurrency);
+    $("#statusText").textContent = t(p.active ? "products.status_text_active" : "products.status_text_inactive");
+    $("#statusBtn").textContent = t(p.active ? "products.deactivate_product" : "products.activate_product");
+    $("#auditLine").textContent = t("products.audit", { createdBy: p.createdBy, createdAt: fmtDate(p.createdAt), updatedBy: p.updatedBy, updatedAt: fmtDate(p.updatedAt) });
+  } else $("#auditLine").textContent = "";
+  if (!keepValues && matchMedia("(min-width: 768px)").matches) $("#f-name").focus();
+}
+$("#statusBtn").addEventListener("click", (e) => toggleActive(editing, e.currentTarget));
+function updateUnitSuffix() { const u = $("#f-unit").value; $("#minStockSuffix").textContent = u ? t("unit_short." + u) : ""; }
+$("#f-unit").addEventListener("change", updateUnitSuffix);
+
+function setErr(field, err) {
+  fieldErrors[field] = err;
+  const input = $("#f-" + field), box = $("#f-" + field + "-error");
+  if (err) { input.setAttribute("aria-invalid", "true"); box.hidden = false; box.innerHTML = ICON("alert") + "<span>" + esc(t(err.key, err.vars)) + "</span>"; }
+  else { input.removeAttribute("aria-invalid"); box.hidden = true; box.innerHTML = ""; }
+}
+function validateField(f) {
+  const v = $("#f-" + f).value.trim();
+  let e = null;
+  if (f === "name") e = !v ? { key: "validation.required" } : v.length > 120 ? { key: "validation.max_length", vars: { max: 120 } } : null;
+  if (f === "sku") { const s = v.toUpperCase(); $("#f-sku").value = s; e = s && !/^[A-Z0-9._-]+$/.test(s) ? { key: "product.sku_pattern" } : null; }
+  if (f === "category") e = v.length > 50 ? { key: "validation.max_length", vars: { max: 50 } } : null;
+  if (f === "unit") e = !v ? { key: "validation.required" } : null;
+  if (f === "minStock") e = !v ? { key: "validation.required" } : !/^\d{1,9}([.,]\d{1,3})?$/.test(v) ? { key: "product.min_stock_format" } : null;
+  if (f === "salePrice") e = v && !/^\d{1,10}([.,]\d{1,2})?$/.test(v) ? { key: "product.price_format" } : null;
+  setErr(f, e);
+  return !e;
+}
+// Se valida al salir del campo y al enviar; mientras se corrige, el error se quita en cuanto el valor es válido
+FIELDS.forEach((f) => {
+  const el = $("#f-" + f);
+  el.addEventListener("blur", () => { if (el.value.trim() || fieldErrors[f]) validateField(f); });
+  el.addEventListener("input", () => { formDirty = true; if (fieldErrors[f]) validateField(f); });
+  el.addEventListener("change", () => { formDirty = true; if (f === "unit") validateField(f); });
+});
+$("#f-currency").addEventListener("change", () => (formDirty = true));
+
+let saving = false;
+$("#productForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (saving) return;
+  const firstBad = FIELDS.filter((f) => !validateField(f))[0];
+  if (firstBad) { $("#f-" + firstBad).focus(); return; }
+  clearAlert($("#formAlerts"));
+  setSaving(true);
+  withWakeNotice(apiSave(), $("#formAlerts")).then(() => {
+    const val = (id) => $("#f-" + id).value.trim();
+    const num = (id) => (val(id) ? Number(val(id).replace(",", ".")) : null);
+    const data = { name: val("name"), sku: val("sku") || null, category: val("category") || null, unit: val("unit"),
+      minStock: num("minStock"), salePrice: num("salePrice"), salePriceCurrency: val("salePrice") ? $("#f-currency").value : null };
+    const now = new Date().toISOString(), user = proto.role === "ADMIN" ? "mario" : "yanelis";
+    if (editing) {
+      Object.assign(editing, data, { version: editing.version + 1, updatedBy: user, updatedAt: now });
+      toast(t("products.saved"));
+    } else {
+      const id = Math.max(...DATA.map((p) => p.id)) + 1;
+      DATA.push({ id, ...data, active: true, version: 0, stock: { onHand: 0, reserved: 0, available: 0, averageCost: null, costCurrency: null },
+        createdBy: user, createdAt: now, updatedBy: user, updatedAt: now });
+      toast(t("products.created", { name: data.name }));
+    }
+    formDirty = false;
+    location.hash = lastListHash;
+  }).catch((err) => {
+    if (err.code === "product.sku_conflict") { // CA-25: el 409 se muestra en el campo SKU
+      setErr("sku", { key: "api.product.sku_conflict", vars: { sku: $("#f-sku").value } }); $("#f-sku").focus();
+    } else if (err.code === "resource.version_conflict") { // CA-9
+      showAlert($("#formAlerts"), { variant: "danger", title: "products.version_conflict_title", body: "products.version_conflict_body",
+        action: { label: "products.reload", run: () => { formDirty = false; openForm(editing.id); } } });
+      $("#formAlerts").scrollIntoView({ block: "start" });
+    } else {
+      showAlert($("#formAlerts"), { variant: "danger", title: "net.unreachable_title", body: "net.unreachable_body",
+        action: { label: "common.retry", run: () => $("#productForm").requestSubmit() } });
+      $("#formAlerts").scrollIntoView({ block: "start" });
+    }
+  }).finally(() => setSaving(false));
+});
+function setSaving(on) {
+  saving = on;
+  const b = $("#saveBtn");
+  b.disabled = on; b.setAttribute("aria-busy", String(on));
+  b.innerHTML = on ? '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>" : "<span>" + esc(t("products.save")) + "</span>";
+}
+
+// Cancelar / volver con cambios sin guardar → confirmación
+let pendingHref = null;
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-cancel], #topBack");
+  if (!a || !formDirty || $("#viewForm").hidden) return;
+  e.preventDefault(); pendingHref = lastListHash; returnFocus = a; $("#discardDialog").showModal();
+});
+$("#discardConfirm").addEventListener("click", () => { formDirty = false; $("#discardDialog").close(); location.hash = pendingHref; });
+
+/* =====================================================================
+   Layout: usuario, idioma, cuenta
+   ===================================================================== */
+function updateTitles() {
+  const r = parseHash();
+  const title = r.view === "list" ? t("products.title") : r.id ? t("products.edit_title") : t("products.new");
+  $("#topTitle").textContent = title;
+  $("#formTitleText").textContent = r.view === "form" ? title : "";
+  document.title = "Cuartico · " + title;
+}
+function renderUser() {
+  const u = USERS[proto.role];
+  $$("[data-user-name]").forEach((el) => (el.textContent = u.name));
+  $$("[data-user-role]").forEach((el) => (el.textContent = t("role." + proto.role)));
+  $$(".avatar-btn").forEach((el) => { el.textContent = u.initials; el.setAttribute("aria-label", t("nav.account", { name: u.name })); });
+}
+function applyI18n() {
+  document.documentElement.lang = lang;
+  $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  $$("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+  $$("[data-lang-select]").forEach((s) => (s.value = lang));
+  renderUser(); renderUnitOptions(); updateUnitSuffix(); updateTitles();
+  FIELDS.forEach((f) => fieldErrors[f] && setErr(f, fieldErrors[f]));
+  $$(".alerts").forEach((b) => renderAlert(b));
+  if (!$("#viewList").hidden) { renderCategoryOptions(); if (!loading && (lastResult || lastError)) renderList(); }
+  else if (editing) openForm(editing.id, { keepValues: true });
+}
+$$("[data-lang-select]").forEach((s) => s.addEventListener("change", (e) => { lang = e.target.value; localStorage.setItem("cuartico.lang", lang); applyI18n(); }));
+$$("[data-open-account]").forEach((b) => b.addEventListener("click", () => { returnFocus = b; $("#accountDialog").showModal(); }));
+$("#accountDialog").addEventListener("close", () => returnFocus && returnFocus.focus());
+$("[data-change-pw]").addEventListener("click", () => { $("#accountDialog").close(); toast(t("common.not_available_proto")); });
+
+/* =====================================================================
+   Controles del prototipo
+   ===================================================================== */
+$("#protoOpen").addEventListener("click", () => $("#protoPanel").showModal());
+$("#pRole").value = proto.role;
+$("#pRole").addEventListener("change", (e) => {
+  proto.role = e.target.value; sessionStorage.setItem("proto.role", proto.role); renderUser();
+  if (!$("#viewList").hidden) renderList(); else if (editing) openForm(editing.id, { keepValues: true });
+});
+$("#pList").addEventListener("change", () => { if (!$("#viewList").hidden) loadList(); });
+$("#pOffline").addEventListener("change", (e) => {
+  if (e.target.checked) showAlert($("#offlineBox"), { variant: "warning", body: "common.offline" }); else clearAlert($("#offlineBox"));
+});
+$("#pStockBadges").addEventListener("change", (e) => { proto.stockBadges = e.target.checked; if (!$("#viewList").hidden && !loading && (lastResult || lastError)) renderList(); });
+$("#pTheme").addEventListener("change", (e) => { if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme; });
+
+applyI18n();
+route();
+</script>
+</body>
+</html>

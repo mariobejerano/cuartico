@@ -1,0 +1,388 @@
+/* ==========================================================================
+   Cuartico — design tokens (v0.1, Sprint 1)
+   Fuente de verdad: docs/design/design-system.md
+   Uso en React: import "./styles/tokens.css" una vez en main.tsx.
+
+   Capas:
+     1. Base (--base-*)      Valores crudos (paleta, escalas). No usar en componentes.
+     2. Semántica (--color-*, --space-*, --radius-*, ...)
+                             Lo que usan los componentes. Cada marca/tema remapea esta capa.
+   Temas:
+     - Claro por defecto.
+     - Oscuro: automático con prefers-color-scheme, o forzado con <html data-theme="dark">.
+       <html data-theme="light"> fuerza el claro.
+   Marcas:
+     - Cuartico por defecto. Combazo (fase 2) añadirá [data-brand="combazo"] remapeando
+       solo los tokens de marca (--color-brand-*, --color-action-primary-*, --font-family-display).
+   ========================================================================== */
+
+/* -------------------------------------------------------------------------
+   1. CAPA BASE
+   ------------------------------------------------------------------------- */
+:root {
+  /* Neutros (pizarra fría: sobrio, no compite con los badges de estado) */
+  --base-white: #ffffff;
+  --base-slate-50: #f8fafc;
+  --base-slate-100: #f1f5f9;
+  --base-slate-200: #e2e8f0;
+  --base-slate-300: #cbd5e1;
+  --base-slate-400: #94a3b8;
+  --base-slate-500: #64748b;
+  --base-slate-600: #475569;
+  --base-slate-700: #334155;
+  --base-slate-800: #1e293b;
+  --base-slate-900: #0f172a;
+
+  /* Marca Cuartico: verde azulado (teal) */
+  --base-teal-50: #f0fdfa;
+  --base-teal-100: #ccfbf1;
+  --base-teal-300: #5eead4;
+  --base-teal-400: #2dd4bf;
+  --base-teal-700: #0f766e;
+  --base-teal-800: #115e59;
+  --base-teal-900: #134e4a;
+  --base-teal-950: #042f2e;
+
+  /* Estados */
+  --base-green-100: #dcfce7;
+  --base-green-300: #86efac;
+  --base-green-700: #15803d;
+  --base-green-800: #166534;
+  --base-green-950: #052e16;
+
+  --base-amber-100: #fef3c7;
+  --base-amber-300: #fcd34d;
+  --base-amber-800: #92400e;
+  --base-amber-950: #451a03;
+
+  --base-red-100: #fee2e2;
+  --base-red-300: #fca5a5;
+  --base-red-400: #f87171;
+  --base-red-700: #b91c1c;
+  --base-red-800: #991b1b;
+  --base-red-950: #450a0a;
+
+  --base-blue-100: #dbeafe;
+  --base-blue-300: #93c5fd;
+  --base-blue-700: #1d4ed8;
+  --base-blue-800: #1e40af;
+  --base-blue-950: #172554;
+
+  --base-violet-100: #ede9fe;
+  --base-violet-300: #c4b5fd;
+  --base-violet-800: #5b21b6;
+  --base-violet-950: #2e1065;
+
+  /* Escala de espaciado (base 4 px) */
+  --base-size-0: 0;
+  --base-size-1: 0.25rem;  /*  4px */
+  --base-size-2: 0.5rem;   /*  8px */
+  --base-size-3: 0.75rem;  /* 12px */
+  --base-size-4: 1rem;     /* 16px */
+  --base-size-5: 1.25rem;  /* 20px */
+  --base-size-6: 1.5rem;   /* 24px */
+  --base-size-8: 2rem;     /* 32px */
+  --base-size-10: 2.5rem;  /* 40px */
+  --base-size-12: 3rem;    /* 48px */
+  --base-size-16: 4rem;    /* 64px */
+
+  /* Escala tipográfica (1.125 ~ 1.25) */
+  --base-font-12: 0.75rem;
+  --base-font-14: 0.875rem;
+  --base-font-16: 1rem;
+  --base-font-18: 1.125rem;
+  --base-font-20: 1.25rem;
+  --base-font-24: 1.5rem;
+  --base-font-30: 1.875rem;
+}
+
+/* -------------------------------------------------------------------------
+   2. CAPA SEMÁNTICA — independiente del tema
+   ------------------------------------------------------------------------- */
+:root {
+  /* Tipografía: fuentes del sistema (0 KB de descarga) */
+  --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-family-display: var(--font-family-base); /* Combazo podrá cambiarla */
+  --font-family-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --text-xs: var(--base-font-12);   /* metadatos, nunca texto esencial */
+  --text-sm: var(--base-font-14);   /* tablas densas en escritorio, ayudas */
+  --text-md: var(--base-font-16);   /* cuerpo e inputs (evita el zoom de iOS) */
+  --text-lg: var(--base-font-18);
+  --text-xl: var(--base-font-20);   /* título de tarjeta / sección */
+  --text-2xl: var(--base-font-24);  /* título de página */
+  --text-3xl: var(--base-font-30);  /* cifras destacadas */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+
+  /* Espaciado */
+  --space-0: var(--base-size-0);
+  --space-1: var(--base-size-1);
+  --space-2: var(--base-size-2);
+  --space-3: var(--base-size-3);
+  --space-4: var(--base-size-4);
+  --space-5: var(--base-size-5);
+  --space-6: var(--base-size-6);
+  --space-8: var(--base-size-8);
+  --space-10: var(--base-size-10);
+  --space-12: var(--base-size-12);
+  --space-16: var(--base-size-16);
+
+  /* Radios */
+  --radius-sm: 4px;     /* badges, checkboxes */
+  --radius-md: 8px;     /* botones, inputs */
+  --radius-lg: 12px;    /* tarjetas, modales */
+  --radius-full: 9999px;
+
+  /* Tamaños de control */
+  --control-height: 2.75rem;     /* 44px: objetivo táctil mínimo */
+  --control-height-sm: 2rem;     /* 32px: solo escritorio, acciones en tablas */
+  --touch-target-min: 2.75rem;
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* Layout */
+  --layout-sidebar-width: 15rem;     /* 240px */
+  --layout-topbar-height: 3.5rem;    /* 56px */
+  --layout-bottomnav-height: 4rem;   /* 64px */
+  --layout-content-max: 80rem;       /* 1280px */
+  /* Breakpoints (referencia; las media queries no aceptan var()):
+     móvil < 768px · tablet 768–1023px · escritorio ≥ 1024px */
+
+  /* Capas (z-index) */
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* Movimiento */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   3. TEMA CLARO (por defecto) — marca Cuartico
+   Contrastes indicados contra --color-surface (#fff) salvo que se diga otra cosa.
+   ------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Marca */
+  --color-brand: var(--base-teal-700);              /* 5.47:1 */
+  --color-brand-subtle: var(--base-teal-50);
+
+  /* Fondos y superficies */
+  --color-bg: var(--base-slate-50);                 /* fondo de página */
+  --color-surface: var(--base-white);               /* tarjetas, tablas, modales */
+  --color-surface-muted: var(--base-slate-100);     /* cabecera de tabla, skeleton. Encima solo --color-text */
+  --color-surface-hover: var(--base-slate-50);      /* hover de fila: muted sigue en 7.26:1 */
+  --color-surface-inverse: var(--base-slate-900);
+
+  /* Texto */
+  --color-text: var(--base-slate-900);              /* 17.85:1 */
+  --color-text-muted: var(--base-slate-600);        /* 7.58:1 (7.26:1 sobre --color-bg) */
+  --color-text-inverse: var(--base-slate-50);
+  --color-text-disabled: var(--base-slate-500);     /* exento (WCAG 1.4.3), aun así 3.86:1 sobre disabled-bg */
+  --color-link: var(--base-teal-700);               /* 5.47:1, siempre subrayado */
+
+  /* Bordes */
+  --color-border: var(--base-slate-200);            /* divisores decorativos */
+  --color-border-strong: var(--base-slate-500);     /* bordes de inputs: 4.76:1 (≥3:1, WCAG 1.4.11) */
+  --color-focus: var(--base-blue-700);              /* 6.70:1 */
+
+  /* Acciones */
+  --color-action-primary-bg: var(--base-teal-700);
+  --color-action-primary-bg-hover: var(--base-teal-800);
+  --color-action-primary-bg-active: var(--base-teal-900);
+  --color-action-primary-text: var(--base-white);   /* 5.47:1 · hover 7.58:1 */
+
+  --color-action-secondary-bg: var(--base-white);
+  --color-action-secondary-bg-hover: var(--base-slate-100);
+  --color-action-secondary-text: var(--base-slate-700);   /* 10.35:1 · 9.45:1 en hover */
+  --color-action-secondary-border: var(--base-slate-500);
+
+  --color-action-danger-bg: var(--base-red-700);
+  --color-action-danger-bg-hover: var(--base-red-800);
+  --color-action-danger-text: var(--base-white);    /* 6.47:1 · hover 8.31:1 */
+
+  --color-action-disabled-bg: var(--base-slate-200);
+  --color-action-disabled-text: var(--base-slate-500);
+
+  /* Feedback (texto sobre superficie / fondo suave + texto oscuro) */
+  --color-success-text: var(--base-green-700);      /* 5.01:1 */
+  --color-success-bg: var(--base-green-100);
+  --color-success-on-bg: var(--base-green-800);     /* 6.49:1 */
+
+  --color-warning-text: var(--base-amber-800);      /* 7.09:1 */
+  --color-warning-bg: var(--base-amber-100);
+  --color-warning-on-bg: var(--base-amber-800);     /* 6.37:1 */
+
+  --color-danger-text: var(--base-red-700);         /* 6.47:1 */
+  --color-danger-bg: var(--base-red-100);
+  --color-danger-on-bg: var(--base-red-800);        /* 6.80:1 */
+
+  --color-info-text: var(--base-blue-700);          /* 6.70:1 */
+  --color-info-bg: var(--base-blue-100);
+  --color-info-on-bg: var(--base-blue-800);         /* 7.15:1 */
+
+  --color-accent-bg: var(--base-violet-100);        /* estado "en camino" */
+  --color-accent-on-bg: var(--base-violet-800);     /* 7.57:1 */
+
+  --color-neutral-bg: var(--base-slate-100);
+  --color-neutral-on-bg: var(--base-slate-700);     /* 9.45:1 */
+
+  /* Sombras: suaves, solo para separar capas */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 2px 8px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.16), 0 2px 6px rgb(15 23 42 / 0.08);
+  --overlay-bg: rgb(15 23 42 / 0.5);
+}
+
+/* -------------------------------------------------------------------------
+   4. TEMA OSCURO
+   Contrastes contra --color-surface (#1e293b) salvo que se diga otra cosa.
+   Se define dos veces (media query + atributo) porque CSS no permite
+   compartir el bloque; mantener ambos IDÉNTICOS.
+   ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-brand: var(--base-teal-400);
+    --color-brand-subtle: var(--base-teal-950);
+    --color-bg: var(--base-slate-900);
+    --color-surface: var(--base-slate-800);
+    --color-surface-muted: var(--base-slate-700);
+    --color-surface-hover: #243041;
+    --color-surface-inverse: var(--base-slate-100);
+    --color-text: var(--base-slate-100);
+    --color-text-muted: var(--base-slate-400);
+    --color-text-inverse: var(--base-slate-900);
+    --color-text-disabled: var(--base-slate-400);
+    --color-link: var(--base-teal-400);
+    --color-border: var(--base-slate-700);
+    --color-border-strong: var(--base-slate-400);
+    --color-focus: var(--base-blue-300);
+    --color-action-primary-bg: var(--base-teal-400);
+    --color-action-primary-bg-hover: var(--base-teal-300);
+    --color-action-primary-bg-active: var(--base-teal-300);
+    --color-action-primary-text: var(--base-teal-950);
+    --color-action-secondary-bg: var(--base-slate-800);
+    --color-action-secondary-bg-hover: var(--base-slate-700);
+    --color-action-secondary-text: var(--base-slate-100);
+    --color-action-secondary-border: var(--base-slate-400);
+    --color-action-danger-bg: var(--base-red-400);
+    --color-action-danger-bg-hover: var(--base-red-300);
+    --color-action-danger-text: var(--base-red-950);
+    --color-action-disabled-bg: var(--base-slate-700);
+    --color-action-disabled-text: var(--base-slate-400);
+    --color-success-text: var(--base-green-300);
+    --color-success-bg: var(--base-green-950);
+    --color-success-on-bg: var(--base-green-300);
+    --color-warning-text: var(--base-amber-300);
+    --color-warning-bg: var(--base-amber-950);
+    --color-warning-on-bg: var(--base-amber-300);
+    --color-danger-text: var(--base-red-300);
+    --color-danger-bg: var(--base-red-950);
+    --color-danger-on-bg: var(--base-red-300);
+    --color-info-text: var(--base-blue-300);
+    --color-info-bg: var(--base-blue-950);
+    --color-info-on-bg: var(--base-blue-300);
+    --color-accent-bg: var(--base-violet-950);
+    --color-accent-on-bg: var(--base-violet-300);
+    --color-neutral-bg: var(--base-slate-700);
+    --color-neutral-on-bg: var(--base-slate-200);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
+    --overlay-bg: rgb(0 0 0 / 0.65);
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-brand: var(--base-teal-400);              /* 7.87:1 */
+  --color-brand-subtle: var(--base-teal-950);
+  --color-bg: var(--base-slate-900);
+  --color-surface: var(--base-slate-800);
+  --color-surface-muted: var(--base-slate-700);     /* encima solo --color-text (9.45:1); muted daría 4.04:1 */
+  --color-surface-hover: #243041;                   /* muted encima: 5.20:1 */
+  --color-surface-inverse: var(--base-slate-100);
+  --color-text: var(--base-slate-100);              /* 13.37:1 (16.27:1 sobre bg) */
+  --color-text-muted: var(--base-slate-400);        /* 5.71:1 (6.95:1 sobre bg) */
+  --color-text-inverse: var(--base-slate-900);
+  --color-text-disabled: var(--base-slate-400);
+  --color-link: var(--base-teal-400);               /* 7.87:1 */
+  --color-border: var(--base-slate-700);            /* decorativo */
+  --color-border-strong: var(--base-slate-400);     /* 5.71:1 */
+  --color-focus: var(--base-blue-300);              /* 8.12:1 (9.9:1 sobre bg) */
+  --color-action-primary-bg: var(--base-teal-400);
+  --color-action-primary-bg-hover: var(--base-teal-300);
+  --color-action-primary-bg-active: var(--base-teal-300);
+  --color-action-primary-text: var(--base-teal-950); /* 7.77:1 */
+  --color-action-secondary-bg: var(--base-slate-800);
+  --color-action-secondary-bg-hover: var(--base-slate-700);
+  --color-action-secondary-text: var(--base-slate-100);
+  --color-action-secondary-border: var(--base-slate-400);
+  --color-action-danger-bg: var(--base-red-400);
+  --color-action-danger-bg-hover: var(--base-red-300);
+  --color-action-danger-text: var(--base-red-950);  /* 5.84:1 */
+  --color-action-disabled-bg: var(--base-slate-700);
+  --color-action-disabled-text: var(--base-slate-400);
+  --color-success-text: var(--base-green-300);      /* 10.4:1 */
+  --color-success-bg: var(--base-green-950);
+  --color-success-on-bg: var(--base-green-300);     /* 10.6:1 */
+  --color-warning-text: var(--base-amber-300);      /* 10.2:1 */
+  --color-warning-bg: var(--base-amber-950);
+  --color-warning-on-bg: var(--base-amber-300);     /* 10.4:1 */
+  --color-danger-text: var(--base-red-300);         /* 7.7:1 */
+  --color-danger-bg: var(--base-red-950);
+  --color-danger-on-bg: var(--base-red-300);        /* 8.5:1 */
+  --color-info-text: var(--base-blue-300);          /* 8.12:1 */
+  --color-info-bg: var(--base-blue-950);
+  --color-info-on-bg: var(--base-blue-300);         /* 8.15:1 */
+  --color-accent-bg: var(--base-violet-950);
+  --color-accent-on-bg: var(--base-violet-300);     /* 8.26:1 */
+  --color-neutral-bg: var(--base-slate-700);
+  --color-neutral-on-bg: var(--base-slate-200);     /* 8.4:1 */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
+  --overlay-bg: rgb(0 0 0 / 0.65);
+}
+
+/* -------------------------------------------------------------------------
+   5. MARCA COMBAZO (fase 2) — reservado
+   Solo se remapean tokens de marca; el resto del sistema se hereda.
+   Valores pendientes de definir y aprobar por la supervisión.
+   ------------------------------------------------------------------------- */
+/*
+[data-brand="combazo"] {
+  --color-brand: ...;
+  --color-brand-subtle: ...;
+  --color-link: ...;
+  --color-action-primary-bg: ...;
+  --color-action-primary-bg-hover: ...;
+  --color-action-primary-bg-active: ...;
+  --color-action-primary-text: ...;
+  --font-family-display: ...;
+  --radius-md: ...;  (Combazo puede ser más redondeado)
+}
+*/
