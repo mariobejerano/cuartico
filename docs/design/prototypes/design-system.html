@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuartico · Design system v0.1</title>
+<!-- Tokens: misma fuente de verdad que usará cuartico-web. Abrir este archivo desde docs/design/prototypes/. -->
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* ===== Reset mínimo y base ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-family-base); font-size: var(--text-md); line-height: var(--line-height-base);
+}
+h1, h2, h3 { line-height: var(--line-height-tight); margin: 0 0 var(--space-3); }
+h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-bold); }
+h2 { font-size: var(--text-xl); font-weight: var(--font-weight-semibold); }
+h3 { font-size: var(--text-lg); font-weight: var(--font-weight-semibold); }
+p { margin: 0 0 var(--space-3); }
+a { color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: var(--focus-ring-offset); }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--color-text-muted); }
+.small { font-size: var(--text-sm); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.skip-link { position: absolute; left: var(--space-2); top: -100px; z-index: var(--z-toast); background: var(--color-surface); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+.skip-link:focus { top: var(--space-2); }
+
+/* ===== Layout: sidebar (escritorio/tablet), topbar + bottom nav (móvil) ===== */
+.sidebar {
+  display: none; position: fixed; inset: 0 auto 0 0; width: var(--layout-sidebar-width);
+  background: var(--color-surface); border-right: var(--border-width) solid var(--color-border);
+  flex-direction: column; padding: var(--space-4) var(--space-3); z-index: var(--z-nav);
+}
+.brand { font-weight: var(--font-weight-bold); font-size: var(--text-lg); color: var(--color-brand); padding: var(--space-2) var(--space-3) var(--space-5); letter-spacing: 0.02em; }
+.brand small { display: block; font-size: var(--text-xs); font-weight: var(--font-weight-medium); color: var(--color-text-muted); letter-spacing: 0; }
+.nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.nav a {
+  display: flex; align-items: center; gap: var(--space-3); min-height: var(--touch-target-min);
+  padding: 0 var(--space-3); border-radius: var(--radius-md); color: var(--color-text); text-decoration: none;
+  border-left: 3px solid transparent;
+}
+.nav a[aria-current="page"] { background: var(--color-brand-subtle); color: var(--color-brand); border-left-color: var(--color-brand); font-weight: var(--font-weight-semibold); }
+.sidebar-footer { margin-top: auto; border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-4); display: grid; gap: var(--space-3); }
+
+.topbar {
+  position: sticky; top: 0; z-index: var(--z-sticky); height: var(--layout-topbar-height);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 0 var(--space-4); background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border);
+}
+.topbar .brand { padding: 0; }
+
+.bottomnav {
+  position: fixed; inset: auto 0 0 0; z-index: var(--z-nav); background: var(--color-surface);
+  border-top: var(--border-width) solid var(--color-border); box-shadow: var(--shadow-md);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottomnav ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); height: var(--layout-bottomnav-height); }
+.bottomnav a, .bottomnav button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 100%; width: 100%;
+  color: var(--color-text-muted); text-decoration: none; font: inherit; font-size: var(--text-xs); font-weight: var(--font-weight-medium);
+  background: none; border: 0; cursor: pointer; padding: 0 2px; text-align: center;
+}
+.bottomnav [aria-current="page"] { color: var(--color-brand); }
+.bottomnav [aria-current="page"] .icon { stroke-width: 2.5; }
+
+main { padding: var(--space-4); padding-bottom: calc(var(--layout-bottomnav-height) + var(--space-8) + env(safe-area-inset-bottom)); max-width: var(--layout-content-max); }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-6); }
+section { margin-bottom: var(--space-10); scroll-margin-top: calc(var(--layout-topbar-height) + var(--space-4)); }
+.card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-4); }
+.stack { display: grid; gap: var(--space-4); }
+.row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.grid-2 { display: grid; gap: var(--space-4); }
+.note { font-size: var(--text-sm); color: var(--color-text-muted); border-left: 3px solid var(--color-border); padding-left: var(--space-3); margin-top: var(--space-3); }
+
+@media (min-width: 768px) {
+  .topbar, .bottomnav { display: none; }
+  .sidebar { display: flex; width: 4rem; padding-inline: var(--space-2); }
+  .sidebar .label, .brand small, .sidebar-footer .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sidebar .brand { padding-inline: 0; text-align: center; }
+  .sidebar .brand .full { display: none; }
+  .nav a { justify-content: center; padding: 0; }
+  .sidebar-footer .c-field { display: none; } /* en barra contraída no cabe: el tema irá al menú de usuario */
+  main { margin-left: 4rem; padding: var(--space-8); }
+  .card { padding: var(--space-6); }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 1024px) {
+  .sidebar { width: var(--layout-sidebar-width); padding-inline: var(--space-3); }
+  .sidebar .label, .brand small, .sidebar-footer .label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+  .sidebar .brand { text-align: left; padding-inline: var(--space-3); }
+  .sidebar .brand .full { display: inline; }
+  .sidebar .brand .short { display: none; }
+  .nav a { justify-content: flex-start; padding: 0 var(--space-3); }
+  .sidebar-footer .c-field { display: grid; }
+  main { margin-left: var(--layout-sidebar-width); }
+}
+@media (hover: hover) {
+  .nav a:hover { background: var(--color-surface-hover); }
+  .nav a[aria-current="page"]:hover { background: var(--color-brand-subtle); }
+}
+
+/* ===== Paleta ===== */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); }
+.swatch { border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; background: var(--color-surface); }
+.swatch-color { height: 56px; display: flex; align-items: center; justify-content: center; font-weight: var(--font-weight-semibold); }
+.swatch-meta { padding: var(--space-2) var(--space-3); font-size: var(--text-xs); color: var(--color-text-muted); }
+.swatch-meta code { display: block; color: var(--color-text); font-size: var(--text-xs); }
+
+/* ===== Botón ===== */
+.c-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--control-height); padding: 0 var(--space-4); border-radius: var(--radius-md);
+  font: inherit; font-weight: var(--font-weight-semibold); line-height: 1.2; text-decoration: none; cursor: pointer;
+  border: var(--border-width) solid transparent;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+.c-btn--primary { background: var(--color-action-primary-bg); color: var(--color-action-primary-text); }
+.c-btn--secondary { background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); border-color: var(--color-action-secondary-border); }
+.c-btn--danger { background: var(--color-action-danger-bg); color: var(--color-action-danger-text); }
+.c-btn--ghost { background: transparent; color: var(--color-link); }
+.c-btn--sm { min-height: var(--control-height-sm); padding: 0 var(--space-3); font-size: var(--text-sm); }
+.c-btn--icon { width: var(--control-height); padding: 0; }
+@media (hover: hover) {
+  .c-btn--primary:hover { background: var(--color-action-primary-bg-hover); }
+  .c-btn--secondary:hover { background: var(--color-action-secondary-bg-hover); }
+  .c-btn--danger:hover { background: var(--color-action-danger-bg-hover); }
+  .c-btn--ghost:hover { background: var(--color-surface-hover); }
+}
+.c-btn--primary:active { background: var(--color-action-primary-bg-active); }
+.c-btn:disabled, .c-btn[aria-disabled="true"] {
+  background: var(--color-action-disabled-bg); color: var(--color-action-disabled-text); border-color: transparent; cursor: not-allowed;
+}
+.c-btn--ghost:disabled { background: transparent; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.btn-bar { display: flex; flex-direction: column-reverse; gap: var(--space-3); }
+.btn-bar .c-btn { width: 100%; }
+@media (min-width: 768px) {
+  .btn-bar { flex-direction: row; justify-content: flex-end; }
+  .btn-bar .c-btn { width: auto; }
+}
+
+/* ===== Campos ===== */
+.c-field { display: grid; gap: var(--space-1); }
+.c-label { font-weight: var(--font-weight-medium); }
+.c-label .hint { font-weight: var(--font-weight-regular); color: var(--color-text-muted); font-size: var(--text-sm); }
+.c-input, .c-select {
+  width: 100%; min-height: var(--control-height); padding: 0 var(--space-3);
+  font: inherit; color: var(--color-text); background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-md);
+}
+.c-input::placeholder { color: var(--color-text-muted); }
+.c-select {
+  appearance: none; padding-right: var(--space-10);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right var(--space-3) center;
+}
+.c-input:focus-visible, .c-select:focus-visible { outline-offset: 0; border-color: var(--color-focus); }
+.c-input[aria-invalid="true"], .c-select[aria-invalid="true"] { border: 2px solid var(--color-danger-text); padding-left: calc(var(--space-3) - 1px); }
+.c-input:disabled, .c-select:disabled { background-color: var(--color-action-disabled-bg); color: var(--color-action-disabled-text); border-color: transparent; cursor: not-allowed; }
+.c-help { font-size: var(--text-sm); color: var(--color-text-muted); }
+.c-error { font-size: var(--text-sm); color: var(--color-danger-text); display: flex; gap: var(--space-1); align-items: flex-start; }
+.c-error .icon { width: 16px; height: 16px; margin-top: 3px; }
+.c-input-group { position: relative; }
+.c-input-group .c-input { padding-right: 4rem; }
+.c-input-group .suffix { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: var(--text-sm); font-weight: var(--font-weight-medium); pointer-events: none; }
+.c-search { position: relative; }
+.c-search .icon { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+.c-search .c-input { padding-left: var(--space-10); }
+
+/* ===== Badge ===== */
+.c-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--space-2) 2px 6px; border-radius: var(--radius-full);
+  font-size: var(--text-sm); font-weight: var(--font-weight-medium); line-height: 1.4; white-space: nowrap;
+}
+.c-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.c-badge--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-badge--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-badge--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-badge--info    { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
+.c-badge--accent  { background: var(--color-accent-bg);  color: var(--color-accent-on-bg); }
+.c-badge--neutral { background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); }
+
+/* ===== Tabla → tarjetas ===== */
+.toolbar { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+@media (min-width: 768px) { .toolbar { grid-template-columns: minmax(0, 1fr) 12rem auto; align-items: end; } }
+.table-wrap { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.c-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.c-table caption { text-align: left; padding: var(--space-4) var(--space-4) var(--space-2); font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
+.c-table th { text-align: left; background: var(--color-surface-muted); color: var(--color-text); font-weight: var(--font-weight-semibold); padding: var(--space-3) var(--space-4); white-space: nowrap; }
+.c-table td { padding: var(--space-3) var(--space-4); border-top: var(--border-width) solid var(--color-border); vertical-align: middle; }
+.c-table .r { text-align: right; font-variant-numeric: tabular-nums; }
+.c-table .cell-title { font-weight: var(--font-weight-semibold); }
+.c-table .cell-title .muted { display: block; font-weight: var(--font-weight-regular); font-size: var(--text-xs); }
+@media (hover: hover) { .c-table tbody tr:hover td { background: var(--color-surface-hover); } }
+.table-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: var(--border-width) solid var(--color-border); font-size: var(--text-sm); color: var(--color-text-muted); }
+
+@media (max-width: 767.98px) {
+  .table-wrap { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+  .c-table, .c-table tbody, .c-table tr, .c-table td { display: block; }
+  .c-table caption { display: block; padding: 0 0 var(--space-3); }
+  .c-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .c-table tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-3);
+    background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); font-size: var(--text-md);
+  }
+  .c-table td { grid-column: 1 / -1; border: 0; padding: var(--space-1) 0; display: flex; justify-content: space-between; gap: var(--space-3); }
+  .c-table td[data-label]::before { content: attr(data-label); color: var(--color-text-muted); font-weight: var(--font-weight-regular); }
+  .c-table td.cell-title { grid-column: 1; grid-row: 1; display: block; font-size: var(--text-md); }
+  .c-table td.cell-title::before { content: none; }
+  .c-table td.cell-status { grid-column: 2; grid-row: 1; align-self: start; }
+  .c-table td.cell-status::before { content: none; }
+  .c-table td.cell-actions { justify-content: flex-end; border-top: var(--border-width) solid var(--color-border); margin-top: var(--space-2); padding-top: var(--space-2); }
+  .c-table td.cell-actions::before { content: none; }
+  .c-table td.cell-actions .c-btn--sm { min-height: var(--control-height); }
+  .table-foot { border: 0; padding: var(--space-2) 0; }
+}
+
+/* ===== Alertas ===== */
+.c-alert { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border-left: 4px solid currentColor; }
+.c-alert .icon { margin-top: 2px; }
+.c-alert p { margin: 0; }
+.c-alert strong { display: block; }
+.c-alert--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-alert--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-alert--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-alert--info    { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
+
+/* ===== Toast ===== */
+.toast-region {
+  position: fixed; z-index: var(--z-toast); left: var(--space-4); right: var(--space-4);
+  bottom: calc(var(--layout-bottomnav-height) + var(--space-3) + env(safe-area-inset-bottom));
+  display: grid; gap: var(--space-2); pointer-events: none;
+}
+@media (min-width: 768px) { .toast-region { left: auto; right: var(--space-6); bottom: var(--space-6); width: 24rem; } }
+.c-toast {
+  pointer-events: auto; display: flex; align-items: center; gap: var(--space-3);
+  background: var(--color-surface); color: var(--color-text); border: var(--border-width) solid var(--color-border);
+  border-left: 4px solid var(--color-success-text); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+}
+.c-toast .msg { flex: 1; }
+.c-toast--success .icon:first-child { color: var(--color-success-text); }
+.c-toast--danger { border-left-color: var(--color-danger-text); }
+.c-toast--danger .icon:first-child { color: var(--color-danger-text); }
+
+/* ===== Modal / hoja ===== */
+.c-modal {
+  border: 0; padding: 0; width: min(32rem, calc(100% - 2 * var(--space-4))); border-radius: var(--radius-lg);
+  background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg);
+}
+.c-modal::backdrop { background: var(--overlay-bg); }
+.c-modal .body { padding: var(--space-6); }
+.c-modal .actions { padding: 0 var(--space-6) var(--space-6); }
+@media (max-width: 767.98px) {
+  .c-modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+.sheet-list { list-style: none; margin: 0; padding: 0 0 var(--space-4); }
+.sheet-list a { display: flex; align-items: center; gap: var(--space-3); min-height: var(--touch-target-min); padding: 0 var(--space-6); color: var(--color-text); text-decoration: none; }
+
+/* ===== Vacío / carga / error ===== */
+.c-empty { text-align: center; padding: var(--space-10) var(--space-4); display: grid; justify-items: center; gap: var(--space-2); }
+.c-empty .icon { width: 48px; height: 48px; stroke-width: 1.5; color: var(--color-text-muted); }
+.c-empty h3 { margin: var(--space-2) 0 0; }
+.c-empty p { color: var(--color-text-muted); max-width: 28rem; }
+.skeleton { display: grid; gap: var(--space-3); }
+.sk { height: 14px; border-radius: var(--radius-sm); background: var(--color-surface-muted); animation: pulse 1.4s ease-in-out infinite; }
+.sk-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: var(--border-width) solid var(--color-border); }
+@keyframes pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.code { font-family: var(--font-family-mono); font-size: var(--text-xs); color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+<!-- Sprite de iconos (SVG en línea: 0 peticiones extra) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-orders" viewBox="0 0 24 24"><path d="M9 4h6M8 2h8v4H8zM6 4H5a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-1M8 11h8M8 15h5"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="m21 8-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-combo" viewBox="0 0 24 24"><path d="M3 9h18l-2 11H5zM8 9l4-6 4 6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16" cy="10" r="1"/><path d="M12 21a3 3 0 0 1 0-6h2"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></symbol>
+  <symbol id="i-form" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20M7 7a5 5 0 0 0 0 10h10M19.5 16.5A4 4 0 0 0 17 9h-.5A6 6 0 0 0 11 5.1"/></symbol>
+</svg>
+
+<!-- Barra lateral: tablet (iconos) y escritorio (completa) -->
+<aside class="sidebar" aria-label="Navegación principal">
+  <div class="brand"><span class="full">CUARTICO</span><span class="short" aria-hidden="true">C</span><small>Design system v0.1</small></div>
+  <nav>
+    <ul class="nav">
+      <li><a href="#colores" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-palette"/></svg><span class="label">Colores</span></a></li>
+      <li><a href="#tipografia"><svg class="icon" aria-hidden="true"><use href="#i-type"/></svg><span class="label">Tipografía</span></a></li>
+      <li><a href="#botones"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span class="label">Botones</span></a></li>
+      <li><a href="#formularios"><svg class="icon" aria-hidden="true"><use href="#i-form"/></svg><span class="label">Formularios</span></a></li>
+      <li><a href="#listados"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg><span class="label">Listados</span></a></li>
+      <li><a href="#estados"><svg class="icon" aria-hidden="true"><use href="#i-orders"/></svg><span class="label">Estados</span></a></li>
+      <li><a href="#feedback"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="label">Feedback</span></a></li>
+    </ul>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="c-field">
+      <label class="c-label label" for="theme-desktop">Tema</label>
+      <select class="c-select js-theme" id="theme-desktop" aria-label="Tema">
+        <option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option>
+      </select>
+    </div>
+    <a class="c-btn c-btn--ghost" href="#" aria-label="Cerrar sesión"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span class="label">Cerrar sesión</span></a>
+  </div>
+</aside>
+
+<!-- Barra superior: solo móvil -->
+<header class="topbar">
+  <div class="brand">CUARTICO</div>
+  <select class="c-select js-theme" style="width:auto" aria-label="Tema">
+    <option value="auto">Auto</option><option value="light">Claro</option><option value="dark">Oscuro</option>
+  </select>
+</header>
+
+<main id="contenido" tabindex="-1">
+  <div class="page-head">
+    <div>
+      <h1>Design system</h1>
+      <p class="muted" style="margin:0">Componentes base del panel Cuartico. Cambia el tamaño de la ventana para ver móvil (&lt;768 px), tablet y escritorio (≥1024 px).</p>
+    </div>
+  </div>
+
+  <!-- ===== COLORES ===== -->
+  <section id="colores" aria-labelledby="h-colores">
+    <h2 id="h-colores">Colores</h2>
+    <p class="muted">Tokens semánticos: cambian con el tema. Los contrastes están en <code>design-system.md</code> §3.</p>
+    <div class="swatches">
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-action-primary-bg);color:var(--color-action-primary-text)">Aa</div><div class="swatch-meta"><code>--color-action-primary-bg</code>Marca / acción</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-action-danger-bg);color:var(--color-action-danger-text)">Aa</div><div class="swatch-meta"><code>--color-action-danger-bg</code>Destructivo</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-bg);color:var(--color-text)">Aa</div><div class="swatch-meta"><code>--color-bg</code>Fondo de página</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-surface);color:var(--color-text-muted)">Aa</div><div class="swatch-meta"><code>--color-text-muted</code>Texto secundario</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-surface);border-bottom:3px solid var(--color-focus);color:var(--color-focus)">Foco</div><div class="swatch-meta"><code>--color-focus</code>Anillo de foco</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-success-bg);color:var(--color-success-on-bg)">Aa</div><div class="swatch-meta"><code>--color-success-*</code>Éxito</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-warning-bg);color:var(--color-warning-on-bg)">Aa</div><div class="swatch-meta"><code>--color-warning-*</code>Aviso</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-danger-bg);color:var(--color-danger-on-bg)">Aa</div><div class="swatch-meta"><code>--color-danger-*</code>Error</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-info-bg);color:var(--color-info-on-bg)">Aa</div><div class="swatch-meta"><code>--color-info-*</code>Información</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-accent-bg);color:var(--color-accent-on-bg)">Aa</div><div class="swatch-meta"><code>--color-accent-*</code>En camino</div></div>
+      <div class="swatch"><div class="swatch-color" style="background:var(--color-neutral-bg);color:var(--color-neutral-on-bg)">Aa</div><div class="swatch-meta"><code>--color-neutral-*</code>Neutro</div></div>
+    </div>
+  </section>
+
+  <!-- ===== TIPOGRAFÍA ===== -->
+  <section id="tipografia" aria-labelledby="h-tipo">
+    <h2 id="h-tipo">Tipografía</h2>
+    <div class="card stack">
+      <p style="margin:0;font-size:var(--text-3xl);font-weight:700" class="num">48 350,00 CUP</p>
+      <p style="margin:0;font-size:var(--text-2xl);font-weight:700">Título de página · 24 px</p>
+      <p style="margin:0;font-size:var(--text-xl);font-weight:600">Título de sección · 20 px</p>
+      <p style="margin:0;font-size:var(--text-lg);font-weight:600">Subtítulo · 18 px</p>
+      <p style="margin:0">Cuerpo · 16 px. Fuente del sistema: no se descarga nada y se ve nativa en cada teléfono.</p>
+      <p style="margin:0" class="small muted">Ayuda y tablas · 14 px. Actualizado por operador@cuartico el 28/10/2026.</p>
+      <p class="note" style="margin:0">Importes con <code>tabular-nums</code> y siempre con su moneda: <span class="num">1 250,00 CUP</span> · <span class="num">12.50 USD</span>.</p>
+    </div>
+  </section>
+
+  <!-- ===== BOTONES ===== -->
+  <section id="botones" aria-labelledby="h-botones">
+    <h2 id="h-botones">Botones</h2>
+    <div class="card stack">
+      <div class="row">
+        <button class="c-btn c-btn--primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo producto</button>
+        <button class="c-btn c-btn--secondary" type="button">Cancelar</button>
+        <button class="c-btn c-btn--danger" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Eliminar</button>
+        <button class="c-btn c-btn--ghost" type="button">Editar</button>
+      </div>
+      <div class="row">
+        <button class="c-btn c-btn--primary" type="button" disabled>Guardar</button>
+        <button class="c-btn c-btn--primary" type="button" disabled aria-busy="true"><span class="spinner" aria-hidden="true"></span>Guardando…</button>
+        <button class="c-btn c-btn--secondary c-btn--sm" type="button">Pequeño (solo escritorio)</button>
+        <button class="c-btn c-btn--secondary c-btn--icon" type="button" aria-label="Cerrar"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <p class="note">Tab para ver el foco. El hover solo se aplica en dispositivos con puntero. Una sola acción primaria por vista.</p>
+    </div>
+  </section>
+
+  <!-- ===== FORMULARIOS ===== -->
+  <section id="formularios" aria-labelledby="h-form">
+    <h2 id="h-form">Formulario: nuevo producto</h2>
+    <form class="card stack" id="demo-form" novalidate>
+      <div class="c-alert c-alert--danger" role="alert" id="form-alert" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+        <p><strong>Revisa el formulario</strong>Hay 1 campo con error.</p>
+      </div>
+      <div class="grid-2">
+        <div class="c-field">
+          <label class="c-label" for="p-name">Nombre <span class="hint">(obligatorio)</span></label>
+          <input class="c-input" id="p-name" name="name" autocomplete="off" aria-invalid="true" aria-describedby="p-name-error">
+          <p class="c-error" id="p-name-error"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>Este campo es obligatorio.</p>
+        </div>
+        <div class="c-field">
+          <label class="c-label" for="p-cat">Categoría</label>
+          <select class="c-select" id="p-cat">
+            <option>Granos</option><option>Cárnicos</option><option>Aceites y grasas</option><option>Lácteos</option><option>Aseo</option>
+          </select>
+        </div>
+        <div class="c-field">
+          <label class="c-label" for="p-unit">Unidad de medida</label>
+          <select class="c-select" id="p-unit">
+            <option>Paquete de 1 kg</option><option>Botella de 1 L</option><option>Caja de 4 kg</option><option>Unidad</option>
+          </select>
+        </div>
+        <div class="c-field">
+          <label class="c-label" for="p-min">Stock mínimo <span class="hint">(opcional)</span></label>
+          <input class="c-input" id="p-min" inputmode="numeric" value="10" aria-describedby="p-min-help">
+          <p class="c-help" id="p-min-help">Te avisaremos con «Stock bajo» al llegar a esta cantidad.</p>
+        </div>
+        <div class="c-field">
+          <label class="c-label" for="p-cost">Costo promedio</label>
+          <div class="c-input-group">
+            <input class="c-input num" id="p-cost" inputmode="decimal" value="620,00" disabled aria-describedby="p-cost-help">
+            <span class="suffix" aria-hidden="true">CUP</span>
+          </div>
+          <p class="c-help" id="p-cost-help">Se calcula solo con cada compra (deshabilitado).</p>
+        </div>
+      </div>
+      <div class="btn-bar">
+        <button class="c-btn c-btn--secondary" type="reset">Cancelar</button>
+        <button class="c-btn c-btn--primary" type="submit" id="save-btn">Guardar producto</button>
+      </div>
+      <p class="note">Prueba: envía con el nombre vacío (foco al error) y luego con un nombre (estado «Guardando…» + toast).</p>
+    </form>
+  </section>
+
+  <!-- ===== LISTADOS ===== -->
+  <section id="listados" aria-labelledby="h-list">
+    <h2 id="h-list">Listado: productos</h2>
+    <div class="toolbar">
+      <div class="c-field">
+        <label class="c-label" for="q">Buscar</label>
+        <div class="c-search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input class="c-input" id="q" type="search" placeholder="Nombre o categoría">
+        </div>
+      </div>
+      <div class="c-field">
+        <label class="c-label" for="f-state">Estado</label>
+        <select class="c-select" id="f-state"><option>Todos</option><option>Activos</option><option>Inactivos</option></select>
+      </div>
+      <button class="c-btn c-btn--primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo producto</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="c-table">
+        <caption class="sr-only">Productos</caption>
+        <thead>
+          <tr><th scope="col">Producto</th><th scope="col">Categoría</th><th scope="col" class="r">Disponible</th><th scope="col" class="r">Costo prom.</th><th scope="col">Estado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-title">Arroz blanco<span class="muted">Paquete de 1 kg</span></td>
+            <td data-label="Categoría">Granos</td>
+            <td data-label="Disponible" class="r">84</td>
+            <td data-label="Costo prom." class="r">620,00 CUP</td>
+            <td class="cell-status"><span class="c-badge c-badge--success">Activo</span></td>
+            <td class="cell-actions"><button class="c-btn c-btn--ghost c-btn--sm" type="button">Editar<span class="sr-only"> Arroz blanco</span></button></td>
+          </tr>
+          <tr>
+            <td class="cell-title">Pollo troceado<span class="muted">Caja de 4 kg</span></td>
+            <td data-label="Categoría">Cárnicos</td>
+            <td data-label="Disponible" class="r">6</td>
+            <td data-label="Costo prom." class="r">6 800,00 CUP</td>
+            <td class="cell-status"><span class="c-badge c-badge--warning">Stock bajo</span></td>
+            <td class="cell-actions"><button class="c-btn c-btn--ghost c-btn--sm" type="button">Editar<span class="sr-only"> Pollo troceado</span></button></td>
+          </tr>
+          <tr>
+            <td class="cell-title">Aceite vegetal<span class="muted">Botella de 1 L</span></td>
+            <td data-label="Categoría">Aceites y grasas</td>
+            <td data-label="Disponible" class="r">0</td>
+            <td data-label="Costo prom." class="r">1 150,00 CUP</td>
+            <td class="cell-status"><span class="c-badge c-badge--danger">Sin stock</span></td>
+            <td class="cell-actions"><button class="c-btn c-btn--ghost c-btn--sm" type="button">Editar<span class="sr-only"> Aceite vegetal</span></button></td>
+          </tr>
+          <tr>
+            <td class="cell-title">Café Cubita<span class="muted">Paquete de 250 g</span></td>
+            <td data-label="Categoría">Café</td>
+            <td data-label="Disponible" class="r">37</td>
+            <td data-label="Costo prom." class="r">980,00 CUP</td>
+            <td class="cell-status"><span class="c-badge c-badge--success">Activo</span></td>
+            <td class="cell-actions"><button class="c-btn c-btn--ghost c-btn--sm" type="button">Editar<span class="sr-only"> Café Cubita</span></button></td>
+          </tr>
+          <tr>
+            <td class="cell-title">Leche en polvo<span class="muted">Bolsa de 1 kg</span></td>
+            <td data-label="Categoría">Lácteos</td>
+            <td data-label="Disponible" class="r">12</td>
+            <td data-label="Costo prom." class="r">2 400,00 CUP</td>
+            <td class="cell-status"><span class="c-badge c-badge--neutral">Inactivo</span></td>
+            <td class="cell-actions"><button class="c-btn c-btn--ghost c-btn--sm" type="button">Editar<span class="sr-only"> Leche en polvo</span></button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-foot">
+        <span>Mostrando 1–5 de 23</span>
+        <div class="row"><button class="c-btn c-btn--secondary c-btn--sm" type="button" disabled>Anterior</button><button class="c-btn c-btn--secondary c-btn--sm" type="button">Siguiente</button></div>
+      </div>
+    </div>
+    <p class="note">En móvil cada fila se convierte en tarjeta (mismo HTML, <code>data-label</code> en cada celda).</p>
+  </section>
+
+  <!-- ===== ESTADOS (badges de pedido y pago) ===== -->
+  <section id="estados" aria-labelledby="h-estados">
+    <h2 id="h-estados">Estados de pedido y pago</h2>
+    <div class="card stack">
+      <div>
+        <h3>Pedido</h3>
+        <div class="row">
+          <span class="c-badge c-badge--warning">Pendiente</span>
+          <span class="c-badge c-badge--info">Confirmado</span>
+          <span class="c-badge c-badge--accent">En camino</span>
+          <span class="c-badge c-badge--success">Entregado</span>
+          <span class="c-badge c-badge--neutral">Cancelado</span>
+        </div>
+      </div>
+      <div>
+        <h3>Pago</h3>
+        <div class="row">
+          <span class="c-badge c-badge--danger">Sin pagar</span>
+          <span class="c-badge c-badge--warning">Pago parcial</span>
+          <span class="c-badge c-badge--success">Pagado</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:var(--space-4)">
+      <table class="c-table">
+        <caption>Pedidos recientes (ejemplo)</caption>
+        <thead>
+          <tr><th scope="col">Pedido</th><th scope="col">Combo</th><th scope="col" class="r">Total</th><th scope="col">Pago</th><th scope="col">Estado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-title">#1042 · Yanelis Pérez<span class="muted">Centro Habana · 29/10/2026</span></td>
+            <td data-label="Combo">Combo Familiar</td>
+            <td data-label="Total" class="r">58.00 USD</td>
+            <td data-label="Pago"><span class="c-badge c-badge--warning">Pago parcial</span></td>
+            <td class="cell-status"><span class="c-badge c-badge--accent">En camino</span></td>
+          </tr>
+          <tr>
+            <td class="cell-title">#1041 · Osmany Rodríguez<span class="muted">Playa · 29/10/2026</span></td>
+            <td data-label="Combo">Combo Aseo Básico</td>
+            <td data-label="Total" class="r">7 200,00 CUP</td>
+            <td data-label="Pago"><span class="c-badge c-badge--success">Pagado</span></td>
+            <td class="cell-status"><span class="c-badge c-badge--success">Entregado</span></td>
+          </tr>
+          <tr>
+            <td class="cell-title">#1040 · Daymí Fernández<span class="muted">Marianao · 28/10/2026</span></td>
+            <td data-label="Combo">Combo Desayuno</td>
+            <td data-label="Total" class="r">24.50 USD</td>
+            <td data-label="Pago"><span class="c-badge c-badge--danger">Sin pagar</span></td>
+            <td class="cell-status"><span class="c-badge c-badge--warning">Pendiente</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== FEEDBACK ===== -->
+  <section id="feedback" aria-labelledby="h-feedback">
+    <h2 id="h-feedback">Alertas, toast, modal y estados de pantalla</h2>
+    <div class="stack">
+      <div class="c-alert c-alert--warning" role="status">
+        <svg class="icon" aria-hidden="true"><use href="#i-cloud-off"/></svg>
+        <p><strong>Sin conexión</strong>Los cambios no se guardarán hasta que vuelvas a tener internet.</p>
+      </div>
+      <div class="c-alert c-alert--danger" role="alert">
+        <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+        <p><strong>No se pudo guardar</strong>Ya existe un producto con el nombre «Arroz blanco».</p>
+      </div>
+      <div class="c-alert c-alert--success" role="status">
+        <svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>
+        <p>Compra registrada. El stock de 3 productos se actualizó.</p>
+      </div>
+      <div class="c-alert c-alert--info" role="status">
+        <svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>
+        <p>Tasa del día: 1 USD = 330,00 CUP. Puedes cambiarla al registrar el pago.</p>
+      </div>
+
+      <div class="row">
+        <button class="c-btn c-btn--secondary" type="button" id="toast-ok">Mostrar toast de éxito</button>
+        <button class="c-btn c-btn--secondary" type="button" id="toast-err">Mostrar toast de error</button>
+        <button class="c-btn c-btn--danger" type="button" id="open-confirm"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Eliminar producto</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Vacío</h3>
+          <div class="c-empty">
+            <svg class="icon" aria-hidden="true"><use href="#i-box"/></svg>
+            <h3>Todavía no hay productos</h3>
+            <p>Crea el primero para poder armar combos.</p>
+            <button class="c-btn c-btn--primary" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Nuevo producto</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Sin resultados</h3>
+          <div class="c-empty">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <h3>No hay productos que coincidan con «frijoles»</h3>
+            <p>Revisa cómo está escrito o busca por categoría.</p>
+            <button class="c-btn c-btn--secondary" type="button">Limpiar búsqueda</button>
+          </div>
+        </div>
+        <div class="card" aria-busy="true">
+          <h3>Cargando</h3>
+          <div class="skeleton" role="status">
+            <span class="sr-only">Cargando…</span>
+            <div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+            <div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+            <div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+            <div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+          </div>
+          <p class="small muted" style="margin-top:var(--space-3)">Si pasa de 10 s: «Está tardando más de lo normal. Revisa tu conexión.»</p>
+        </div>
+        <div class="card">
+          <h3>Error al cargar</h3>
+          <div class="c-empty">
+            <svg class="icon" aria-hidden="true" style="color:var(--color-danger-text)"><use href="#i-warn"/></svg>
+            <h3>No se pudieron cargar los productos</h3>
+            <p>El servidor no respondió a tiempo.</p>
+            <button class="c-btn c-btn--primary" type="button">Reintentar</button>
+            <span class="code">Código: server.timeout</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Barra inferior: solo móvil -->
+<nav class="bottomnav" aria-label="Navegación principal">
+  <ul>
+    <li><a href="#colores" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg>Inicio</a></li>
+    <li><a href="#estados"><svg class="icon" aria-hidden="true"><use href="#i-orders"/></svg>Pedidos</a></li>
+    <li><a href="#listados"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg>Productos</a></li>
+    <li><a href="#botones"><svg class="icon" aria-hidden="true"><use href="#i-combo"/></svg>Combos</a></li>
+    <li><button type="button" id="open-more" aria-haspopup="dialog"><svg class="icon" aria-hidden="true"><use href="#i-more"/></svg>Más</button></li>
+  </ul>
+</nav>
+
+<!-- Hoja "Más" (móvil) -->
+<dialog class="c-modal" id="more-sheet" aria-labelledby="more-title">
+  <div class="body" style="padding-bottom:var(--space-2)"><h2 id="more-title" style="font-size:var(--text-lg)">Más secciones</h2></div>
+  <ul class="sheet-list">
+    <li><a href="#tipografia" data-close>Tipografía (Clientes)</a></li>
+    <li><a href="#formularios" data-close>Formularios (Compras)</a></li>
+    <li><a href="#feedback" data-close>Feedback (Gastos)</a></li>
+    <li><a href="#" data-close><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>Cerrar sesión</a></li>
+  </ul>
+  <div class="actions"><button class="c-btn c-btn--secondary" type="button" data-close style="width:100%">Cerrar</button></div>
+</dialog>
+
+<!-- Modal de confirmación -->
+<dialog class="c-modal" id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+  <div class="body">
+    <h2 id="confirm-title" style="font-size:var(--text-lg)">¿Eliminar «Pollo troceado»?</h2>
+    <p id="confirm-desc" class="muted" style="margin:0">Esta acción no se puede deshacer. Los combos que lo usan dejarán de estar disponibles.</p>
+  </div>
+  <div class="actions btn-bar">
+    <button class="c-btn c-btn--secondary" type="button" data-close autofocus>Cancelar</button>
+    <button class="c-btn c-btn--danger" type="button" id="confirm-delete">Eliminar</button>
+  </div>
+</dialog>
+
+<div class="toast-region" id="toasts" aria-live="polite"></div>
+
+<script>
+/* Solo para el muestrario: en la app esto lo harán componentes React. */
+(function () {
+  var root = document.documentElement;
+  var themeSelects = document.querySelectorAll('.js-theme');
+  function applyTheme(v) {
+    if (v === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', v);
+    themeSelects.forEach(function (s) { s.value = v; });
+    try { localStorage.setItem('cq-theme', v); } catch (e) {}
+  }
+  var saved = 'auto'; try { saved = localStorage.getItem('cq-theme') || 'auto'; } catch (e) {}
+  applyTheme(saved);
+  themeSelects.forEach(function (s) { s.addEventListener('change', function () { applyTheme(s.value); }); });
+
+  // Toasts
+  var region = document.getElementById('toasts');
+  function toast(kind, text) {
+    var t = document.createElement('div');
+    t.className = 'c-toast c-toast--' + kind;
+    if (kind === 'danger') t.setAttribute('role', 'alert');
+    t.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-' + (kind === 'danger' ? 'alert' : 'check') + '"/></svg>' +
+      '<span class="msg"></span><button class="c-btn c-btn--ghost c-btn--icon" type="button" aria-label="Cerrar"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>';
+    t.querySelector('.msg').textContent = text;
+    t.querySelector('button').onclick = function () { t.remove(); };
+    region.appendChild(t);
+    while (region.children.length > 3) region.firstChild.remove();
+    if (kind !== 'danger') {
+      var timer = setTimeout(function () { t.remove(); }, 5000);
+      t.addEventListener('mouseenter', function () { clearTimeout(timer); });
+      t.addEventListener('focusin', function () { clearTimeout(timer); });
+    }
+  }
+  document.getElementById('toast-ok').onclick = function () { toast('success', 'Producto guardado'); };
+  document.getElementById('toast-err').onclick = function () { toast('danger', 'No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'); };
+
+  // Diálogos (retorno de foco nativo de <dialog>)
+  var confirmDlg = document.getElementById('confirm');
+  var moreDlg = document.getElementById('more-sheet');
+  document.getElementById('open-confirm').onclick = function () { confirmDlg.showModal(); };
+  document.getElementById('open-more').onclick = function () { moreDlg.showModal(); };
+  document.querySelectorAll('[data-close]').forEach(function (el) {
+    el.addEventListener('click', function () { el.closest('dialog').close(); });
+  });
+  document.getElementById('confirm-delete').onclick = function () { confirmDlg.close(); toast('success', 'Producto eliminado'); };
+
+  // Formulario
+  var form = document.getElementById('demo-form');
+  var name = document.getElementById('p-name');
+  var err = document.getElementById('p-name-error');
+  var alertBox = document.getElementById('form-alert');
+  var save = document.getElementById('save-btn');
+  function validate() {
+    var ok = name.value.trim() !== '';
+    name.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    err.hidden = ok;
+    return ok;
+  }
+  name.addEventListener('blur', validate);
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!validate()) { alertBox.hidden = false; name.focus(); return; }
+    alertBox.hidden = true;
+    var label = save.textContent;
+    save.disabled = true; save.setAttribute('aria-busy', 'true');
+    save.innerHTML = '<span class="spinner" aria-hidden="true"></span>Guardando…';
+    setTimeout(function () {
+      save.disabled = false; save.removeAttribute('aria-busy'); save.textContent = label;
+      toast('success', 'Producto «' + name.value.trim() + '» guardado');
+    }, 1500);
+  });
+  form.addEventListener('reset', function () { setTimeout(validate, 0); alertBox.hidden = true; });
+
+  // Navegación: marcar activo
+  var links = document.querySelectorAll('.nav a, .bottomnav a');
+  links.forEach(function (a) {
+    a.addEventListener('click', function () {
+      links.forEach(function (l) { l.removeAttribute('aria-current'); });
+      document.querySelectorAll('a[href="' + a.getAttribute('href') + '"]').forEach(function (l) {
+        if (l.closest('.nav, .bottomnav')) l.setAttribute('aria-current', 'page');
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

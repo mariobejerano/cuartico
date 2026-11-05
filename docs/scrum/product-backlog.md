@@ -50,7 +50,7 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-08 | 8 | Esqueleto de `cuartico-web` (Vite + React + TypeScript, react-i18next, PWA) | En curso | Prerrequisito de HU-01. Lo implementa Forja-Front. |
 | TT-09 | 9 | Medir memoria de la JVM en staging y revisar los topes del `Dockerfile` | Pendiente | El propio `Dockerfile` pide medir en staging antes de producción. |
 | TT-10 | 10 | Sustituir `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend en Vercel | Pendiente | Antes de abrir producción a usuarios. |
-| TT-11 | 1 | **Bug:** `UpdateUserRequest.active` es `boolean` primitivo: si el cliente lo omite llega `false`, desactiva al usuario y revoca sus sesiones. Cambiar a `@NotNull Boolean` | En curso | Detectado por Lupa en la revisión del PR #6 (`UserDtos.java`). |
+| TT-11 | 1 | **Bug:** `UpdateUserRequest.active` es `boolean` primitivo: si el cliente lo omite llega `false`, desactiva al usuario y revoca sus sesiones. Cambiar a `@NotNull Boolean` | Hecho | Detectado por Lupa en la revisión del PR #6 (`UserDtos.java`). |
 
 ## Hecho
 
