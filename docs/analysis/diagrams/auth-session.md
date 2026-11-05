@@ -25,7 +25,26 @@ sequenceDiagram
     C->>API: repite GET una vez
     API-->>C: 200
     C-->>UI: datos
-    Note over S,API: si /auth/refresh da 401: borrar sesión local y volver al login (sin reintentar)
+    Note over S,API: 401 en /auth/refresh: borrar sesión local y volver al login (sin reintentar)<br/>timeout (90 s) o red: conservar el refresh, liberar el lock y ofrecer «Reintentar»
+```
+
+El mismo bloqueo `cuartico-refresh` envuelve el **refresh inicial** (al cargar) y el **logout**; dentro siempre se relee
+`localStorage` y, si ya no hay refresh (otra pestaña cerró sesión), no se llama a la API.
+
+## Ventana de gracia en el backend (ADR-001, HU-01 CA-28)
+
+```mermaid
+sequenceDiagram
+    participant S as auth/session
+    participant API as API
+
+    S->>API: POST /auth/refresh {R1}
+    Note over API: R1 → ROTATED, emite R2 (replaced_by_id = R2)
+    API--xS: respuesta perdida (red)
+    Note over S: corte a los 90 s: conserva R1, «Reintentar»
+    S->>API: POST /auth/refresh {R1} (≤ 120 s después de rotar)
+    Note over API: R1 ROTATED hace ≤ 120 s y R2 sin usar<br/>→ R2 SUPERSEDED, emite R3, sin revocación global
+    API-->>S: 200 {R3}
 ```
 
 ## Estados de la sesión en el frontend
@@ -39,5 +58,8 @@ stateDiagram-v2
     Autenticado --> Renovando: 401 en una petición
     Renovando --> Autenticado: /refresh 200
     Renovando --> Anonimo: /refresh 401
-    Autenticado --> Anonimo: logout, cambio de contraseña o logout en otra pestaña
+    Renovando --> SinConexion: timeout 90 s o error de red
+    Comprobando --> SinConexion: timeout 90 s o error de red
+    SinConexion --> Renovando: Reintentar (refresh conservado)
+    Autenticado --> Anonimo: logout, cambio de contraseña (HU-14) o logout en otra pestaña
 ```

@@ -39,14 +39,19 @@ y `lowStock` = `active && minStock > 0 && available <= minStock`.
 - **CA-1 Alta correcta.** Dado un usuario autorizado, cuando envía un producto válido, entonces se responde **201** con el
   producto, `active = true`, `version = 0`, stock en 0 y `averageCost = null`, y existe su fila en `product_stock`.
 - **CA-2 Normalización.** Dado `name = "  Arroz 1 kg  "`, `sku = " arr-001 "`, `category = "  "`, entonces se guarda
-  `"Arroz 1 kg"`, `"ARR-001"` y `category = null`.
+  `"Arroz 1 kg"`, `"ARR-001"` y `category = null`. La normalización ocurre **antes** de la validación: un `sku` con
+  espacios alrededor cumple el patrón, un `name` de 120 caracteres más espacios alrededor es válido y `name = "   "` da
+  **400** `validation.failed` con `errors.name`. Igual en `PUT`.
 - **CA-3 SKU duplicado.** Dado un producto (activo **o inactivo**) con SKU `ARR-001`, cuando se crea otro con `arr-001`,
   entonces **409** `product.sku_conflict`. Varios productos sin SKU están permitidos.
 - **CA-4 SKU duplicado en carrera.** Dadas dos altas simultáneas con el mismo SKU, entonces una responde 201 y la otra
   **409** `product.sku_conflict` (no 500): la restricción única de la base de datos es la garantía final.
 - **CA-5 Validación.** Dado `name` vacío, `unit` ausente o desconocido, `minStock` negativo, `salePrice` negativo o con 3
   decimales, o `sku` con caracteres no permitidos, entonces **400** `validation.failed` con `errors` por campo, traducido
-  según `Accept-Language`.
+  según `Accept-Language`. Los **errores de tipo** también: `unit = "BOX"`, `minStock = "abc"` o `salePrice = true`
+  → **400** `validation.failed` con `errors.unit` / `errors.minStock` / `errors.salePrice` = `validation.invalid_value`
+  traducido (hoy darían `request.malformed` sin `errors`: requiere el cambio de backend descrito en el diseño).
+  Un JSON mal formado (sintaxis) sigue siendo **400** `request.malformed`.
 - **CA-6 Precio y moneda.** Dado `salePrice` sin `salePriceCurrency` (o moneda sin precio), entonces **400**
   `product.price_currency_mismatch`. Dada una moneda fuera de `app.currencies.supported` (p. ej. `EUR` o `usd`), entonces
   **400** `product.currency_unsupported`.
@@ -87,7 +92,9 @@ y `lowStock` = `active && minStock > 0 && available <= minStock`.
   `active=false` o nada) y un selector de categoría con las de CA-22.
 - **CA-20 Paginación.** `page` (desde 0) y `size` (1–100, por defecto 20). Respuesta con `content`, `page`, `size`,
   `totalElements`, `totalPages`. Una página más allá del final devuelve `content` vacío (no error).
-  `size` > 100 o negativo, o `page` negativo → **400** `validation.failed`. El frontend, ante una página vacía que no es
+  `size` < 1 o > 100, o `page` < 0 → **400** `validation.failed` con `errors.size` / `errors.page` (**nunca** se recorta
+  en silencio). Tipos inválidos (`page=abc`, `active=quizas`) → **400** `validation.failed` con `errors.<parámetro>` =
+  `validation.invalid_value`. El frontend, ante una página vacía que no es
   la primera (enlace antiguo), redirige a la última página con datos.
 - **CA-21 Orden.** `sort` admite `name`, `sku`, `category`, `createdAt`, con `,asc` o `,desc`. Otro campo → **400**
   `request.invalid_sort`. El orden es estable (desempate por `id`). El frontend solo ofrece ordenar por nombre (asc/desc).
@@ -150,8 +157,10 @@ CREATE TABLE products (
     CONSTRAINT ck_products_min_stock CHECK (min_stock >= 0)
 );
 
-CREATE INDEX idx_products_name ON products (name);
-CREATE INDEX idx_products_category ON products (category);
+-- Sin índices de búsqueda en V2: la búsqueda es LIKE '%…%' sobre LOWER(name)/LOWER(sku) y el filtro de categoría
+-- compara LOWER(category); un índice B-tree sobre la columna no se usaría en ninguno de los dos casos. Con el volumen
+-- esperado (cientos de productos) el recorrido completo es inmediato. Si crece: pg_trgm (solo PostgreSQL) en otra migración.
+-- El SKU ya tiene índice por la restricción UNIQUE.
 
 -- Caché de stock y costo (ADR-002). Solo la modifica el servicio de inventario (HU-04).
 CREATE TABLE product_stock (
@@ -170,7 +179,7 @@ varios `NULL` en PostgreSQL y H2. Las cantidades son `NUMERIC(…,3)` para permi
 ### Endpoints
 | Método | Ruta | Rol | OK | Errores |
 |---|---|---|---|---|
-| GET | `/api/v1/products?q=&active=&category=&page=0&size=20&sort=name,asc` | ADMIN, OPERATOR | 200 `PageResponse<ProductResponse>` | 400 `validation.failed`, `request.invalid_sort` |
+| GET | `/api/v1/products?q=&active=&category=&page=0&size=20&sort=name,asc` | ADMIN, OPERATOR | 200 `PageResponse<ProductResponse>` | 400 `validation.failed` (con `errors`), `request.invalid_sort` |
 | GET | `/api/v1/products/{id}` | ADMIN, OPERATOR | 200 `ProductResponse` | 404 `product.not_found` |
 | GET | `/api/v1/products/categories` | ADMIN, OPERATOR | 200 `List<String>` | — |
 | POST | `/api/v1/products` | ADMIN, OPERATOR | 201 `ProductResponse` + `Location` | 400 `validation.failed`, `product.price_currency_mismatch`, `product.currency_unsupported`; 409 `product.sku_conflict` |
@@ -187,9 +196,30 @@ record CreateProductRequest(
     @Size(max = 50) String category,
     @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal salePrice,
     String salePriceCurrency,
-    @NotNull @DecimalMin("0") @Digits(integer = 9, fraction = 3) BigDecimal minStock) {}
+    @NotNull @DecimalMin("0") @Digits(integer = 9, fraction = 3) BigDecimal minStock) {
 
-record UpdateProductRequest(/* mismos campos */ ..., @NotNull Long version) {}
+    // Normalización en el constructor compacto: Jackson construye el record con estos valores ya
+    // normalizados y Bean Validation (@Valid) valida DESPUÉS, sobre ellos (CA-2).
+    CreateProductRequest {
+        name = name == null ? null : name.strip();
+        sku = Normalize.blankToNull(sku);          // strip + vacío → null
+        if (sku != null) sku = sku.toUpperCase(Locale.ROOT);
+        category = Normalize.blankToNull(category);
+        // salePriceCurrency NO se normaliza: "usd" debe dar product.currency_unsupported (CA-6)
+    }
+}
+
+record UpdateProductRequest(/* mismos campos y misma normalización */ ..., @NotNull Long version) {}
+
+// Parámetros del listado como record con @Valid @ModelAttribute (no Pageable: recortaría size en silencio).
+// Los errores (incluidos los de conversión de tipo) llegan como MethodArgumentNotValidException → validation.failed + errors.
+record ProductQuery(
+    @Size(max = 100) String q,
+    Boolean active,
+    @Size(max = 50) String category,
+    @Min(0) Integer page,                // null → 0
+    @Min(1) @Max(100) Integer size,      // null → 20
+    String sort) {}                      // null → "name,asc"; whitelist en el Service → request.invalid_sort
 
 record StockSummary(BigDecimal onHand, BigDecimal reserved, BigDecimal available,
                     BigDecimal averageCost, String costCurrency) {}
@@ -203,9 +233,21 @@ record PageResponse<T>(List<T> content, int page, int size, long totalElements, 
 ```
 `minStock` es obligatorio en el DTO; el formulario lo inicializa a 0. Los decimales viajan como número JSON; el frontend no hace aritmética con ellos.
 
+### Cambios transversales en `common/GlobalExceptionHandler` (los exigen CA-5, CA-9 y CA-20)
+1. `HttpMessageNotReadableException` cuya causa es un error de tipo de Jackson (`InvalidFormatException` /
+   `MismatchedInputException`; en Spring Boot 4 es Jackson 3, paquete `tools.jackson.databind.exc`) → **400**
+   `validation.failed` con `errors.<campo>` = mensaje de `validation.invalid_value` (el campo sale de la ruta de la
+   excepción; para anidados, ruta con puntos). Cualquier otro `HttpMessageNotReadableException` sigue en `request.malformed`.
+2. En `handleMethodArgumentNotValid`, los `FieldError` con `isBindingFailure()` (p. ej. `page=abc`) usan el mensaje de
+   `validation.invalid_value` en vez del texto técnico de Spring.
+3. `ObjectOptimisticLockingFailureException` → **409** `resource.version_conflict` (ver reglas abajo).
+Cada uno con su test de integración. Afectan a toda la API, no solo a productos: documentarlo en `errors.md` (Forja-Back/Pluto).
+
 ### Reglas en `ProductService` (`@Transactional`)
-- Normalización (CA-2) antes de validar unicidad. Comprobación previa `existsBySkuAndIdNot` para un 409 claro, y
+- La normalización ya viene hecha en el DTO (CA-2). Comprobación previa `existsBySkuAndIdNot` para un 409 claro, y
   `saveAndFlush` capturando `DataIntegrityViolationException` de `uk_products_sku` → `product.sku_conflict` (CA-4).
+  El nombre de la restricción se reconoce **sin distinguir mayúsculas** (PostgreSQL informa `uk_products_sku`, H2
+  `UK_PRODUCTS_SKU`); cualquier otra violación se relanza.
 - Monedas en `application.yml`: `app.currencies.supported: [CUP, USD]` y `app.currencies.reference: USD` (la usará
   HU-04 para `cost_currency` y HU-10 para la utilidad). Se compara exacto (mayúsculas). Añadir una moneda = cambiar la
   configuración. Si más adelante hacen falta datos por moneda (nombre, decimales, activa), se pasa a una tabla `currencies`.
@@ -218,8 +260,8 @@ record PageResponse<T>(List<T> content, int page, int size, long totalElements, 
 ### i18n (nuevos códigos en `messages_es` y `messages_en`)
 `product.not_found` (con `{0}` = id), `product.sku_conflict` (con `{0}` = SKU), `product.price_currency_mismatch`,
 `product.currency_unsupported` (con `{0}` = moneda), `product.sku.pattern` (Bean Validation),
-`resource.version_conflict`, `request.invalid_sort` (con `{0}` = campo). Reservado para HU-04/06/07: `product.inactive`.
-Mensajes Bean Validation nuevos si no existen: `DecimalMin`, `Digits`.
+`resource.version_conflict`, `request.invalid_sort` (con `{0}` = campo), `validation.invalid_value` («valor no válido»). Reservado para HU-04/06/07: `product.inactive`.
+Mensajes Bean Validation nuevos si no existen: `DecimalMin`, `Digits`, `Min`, `Max`.
 
 ### Impacto futuro
 - **HU-04**: escribe en `product_stock` con bloqueo pesimista; valida `product.inactive`; fija `cost_currency` = `USD` (moneda de referencia).

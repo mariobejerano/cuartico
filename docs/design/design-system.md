@@ -257,7 +257,7 @@ Escritorio ≥1024px                    Móvil <768px
 │ Pedidos  │  (máx. 1280px)       │   │                       │
 │ Productos│                      │   │                       │
 │ Combos   │                      │   ├───────────────────────┤
-│ …        │                      │   │ Ini Ped Prod Comb Más │ ← barra inferior 64px
+│ …        │                      │   │ Ini Ped Prod Comb Más │ ← barra inferior 64px (objetivo; Sprint 1: Ini Prod Cuenta)
 │ Usuario  │                      │   └───────────────────────┘
 └──────────┴──────────────────────┘
 ```
@@ -274,7 +274,9 @@ Escritorio ≥1024px                    Móvil <768px
 | C. Híbrido: barra inferior + "Más" abre una hoja con el resto | A + escalable a todos los módulos | Hay que elegir bien los 4 principales |
 
 **Recomendación: C.** Operar pedidos y productos es diario y debe estar a un toque; los módulos ocasionales (gastos, usuarios, reportes) viven en "Más".
-Propuesta inicial: **Inicio · Pedidos · Productos · Combos · Más**. En el Sprint 1 solo existe "Productos": el resto se mostrará cuando exista (no se ponen enlaces muertos).
+**Sprint 1 (HU-01 CA-24): Inicio · Productos · Cuenta.** Son los únicos destinos que existen (no se ponen enlaces muertos); «Cuenta» abre una hoja inferior con nombre, rol, idioma y «Cerrar sesión».
+**Cómo crecerá:** cada módulo se añade cuando exista su historia, hasta un máximo de 4 destinos + 1. Cuando haya más de lo que cabe o llegue el primer módulo ocasional (p. ej. «Usuarios», HU-14), «Cuenta» pasa a ser **«Más»**: abre la misma hoja con la zona de cuenta y debajo los módulos ocasionales.
+Objetivo final: **Inicio · Pedidos · Productos · Combos · Más**.
 Los elementos de la barra inferior llevan icono **y** texto (12–14 px): los iconos solos son ambiguos.
 
 Otras reglas de layout: área segura de iOS (`env(safe-area-inset-bottom)`) en la barra inferior; el contenido reserva su altura para que nada quede tapado; enlace "Saltar al contenido" como primer elemento enfocable.
@@ -376,3 +378,4 @@ Estados de pedido y pago: ver §7.5. Tono: tuteo, frases cortas, verbos concreto
 |---|---|---|
 | 0.1 | 2026-10-30 | Primera propuesta (Sprint 1) |
 | 0.1.1 | 2026-10-30 | Aclarada la posición de los botones en móvil (§7.1); enlace a `copy.md` (§9) |
+| 0.1.2 | 2026-11-05 | Barra inferior móvil del Sprint 1 (Inicio · Productos · Cuenta) y cómo crece hasta «Más» (§7.8), alineado con HU-01 CA-24 |

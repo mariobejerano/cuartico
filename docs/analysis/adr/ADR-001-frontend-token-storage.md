@@ -30,25 +30,56 @@ La decisión es dónde vive el **refresh token**.
 | Móvil (fase 4) | Mismo contrato | Hay que mantener los dos contratos (cookie y cuerpo). | Igual que B. |
 
 ## Decisión
-**Opción A ahora**: access token en memoria y refresh token en `localStorage`, **sin cambios en el backend**.
+**Opción A ahora**: access token en memoria y refresh token en `localStorage`, sin cambiar el contrato de la API
+(el único cambio de backend es la ventana de gracia del complemento de abajo).
 Revisar la decisión (nuevo ADR, probablemente opción C con dominio propio) **antes de abrir Combazo al público**
 o en cuanto haya dominio propio.
 
 Condiciones obligatorias para el frontend (son criterios de HU-01):
 1. **Una sola renovación a la vez**: si varias peticiones reciben 401 juntas, se hace un único `/refresh` y las demás esperan.
-2. **Coordinación entre pestañas** con la Web Locks API (`navigator.locks.request('cuartico-refresh', …)`): las
-   renovaciones de todas las pestañas van en serie y el refresh se lee de `localStorage` **dentro** del bloqueo, nunca de
-   una copia en memoria; así cada pestaña usa el token más reciente (el access token no se comparte: cada pestaña obtiene el suyo).
+2. **Coordinación entre pestañas** con la Web Locks API (`navigator.locks.request('cuartico-refresh', …)`).
+   El bloqueo cubre **toda** operación que lee o cambia el refresh: el **refresh inicial** al cargar la app, la **renovación
+   ante 401** y el **logout**. Dentro del bloqueo el refresh se lee de `localStorage` (nunca de una copia en memoria) y, si
+   ya no está, la pestaña pasa a anónima sin llamar a la API. El access token no se comparte: cada pestaña obtiene el suyo.
+   Casos que cubre: dos pestañas que caducan a la vez; el navegador que **restaura varias pestañas** de golpe (todas hacen
+   su refresh inicial: en serie); una pestaña esperando el bloqueo mientras otra hace **logout** (encuentra `localStorage`
+   vacío y no llama a `/refresh`); dos logouts a la vez (solo uno llama a `/logout`).
    Sin esto, dos pestañas enviarían el mismo refresh y la segunda dispararía la detección de reutilización (cierre de todas las sesiones).
-3. Evento `storage`: si otra pestaña cierra sesión (borra el refresh), esta también vuelve al login.
-4. Ningún token en logs, en la URL ni en mensajes de error. Nada de `dangerouslySetInnerHTML` con datos del usuario.
-5. **Content-Security-Policy** estricta en Vercel (`script-src 'self'`, `connect-src` limitado a la API). Tarea para Forja-Front/Timon.
+   La Web Locks API está en todos los navegadores actuales (Safari ≥ 15.4); no se implementa alternativa.
+3. Evento `storage`: si otra pestaña cierra sesión (borra el refresh), esta pasa a anónima y vuelve al login de inmediato.
+4. **Timeout o error de red en `/refresh`** (corte de 90 s): no se borra la sesión ni el refresh guardado; se libera el
+   bloqueo y se ofrece «Reintentar». Solo un **401** de `/refresh` borra la sesión local.
+5. Ningún token en logs, en la URL ni en mensajes de error. Nada de `dangerouslySetInnerHTML` con datos del usuario.
+6. **Content-Security-Policy** estricta en Vercel (`script-src 'self'`, `connect-src` limitado a la API,
+   `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`). Tarea para Forja-Front/Timon.
 
 ## Consecuencias
-- (+) Se entrega HU-01 sin tocar el backend; el mismo contrato servirá para la app móvil.
+- (+) El contrato de tokens no cambia (siguen en el cuerpo JSON); el mismo servirá para la app móvil. El único cambio de
+  backend es la ventana de gracia (abajo).
 - (−) Un XSS puede robar el refresh. El daño queda acotado: en cuanto el atacante o el usuario lo use, el otro
   presentará un token revocado y se cerrarán todas las sesiones. La CSP es la defensa principal.
-- (−) Caso límite aceptado: si la respuesta de `/refresh` se pierde por la red (el servidor ya rotó), el siguiente intento usa
-  un token revocado y se cierran todas las sesiones: el usuario vuelve a iniciar sesión. Si molesta en la práctica, se puede
-  añadir en el backend un periodo de gracia de unos segundos para el token recién rotado (fuera de alcance ahora).
 - La API sigue siendo *stateless*, sin cookies y sin CSRF.
+
+## Complemento (2026-11-05): ventana de gracia del refresh en el backend
+**Problema** (pregunta de Lupa en el PR #8): con la red móvil de Cuba es frecuente que el servidor rote el refresh y la
+respuesta se pierda. El cliente conserva el token anterior (correcto: no sabe si se rotó), reintenta y el backend lo toma
+por robo: **cierra todas las sesiones** del usuario. Con este uso, sería un cierre de sesión casi diario.
+
+**Opciones**
+1. Sin gracia (como hoy): máxima detección, mala experiencia con red inestable.
+2. Gracia que **devuelve el mismo par** ya emitido: imposible sin guardar el refresh en claro (hoy solo se guarda su hash).
+   Guardarlo cifrado añade gestión de claves. Descartada.
+3. **Gracia que emite un par nuevo** y revoca el sucesor no entregado. Requiere enlazar cada token con su sucesor
+   (`replaced_by_id`) y saber por qué se revocó (`revoked_reason`).
+
+**Decisión: opción 3, 120 s** (`app.jwt.refresh-reuse-grace`; mayor que el corte de 90 s del cliente más un reintento).
+Se aplica solo si el token presentado se revocó **por rotación** hace ≤ 120 s y su sucesor **no se ha usado**: se emite un
+par nuevo y el sucesor pasa a `SUPERSEDED`. Fuera de esas condiciones, sigue la detección de reutilización. Presentar
+un token `SUPERSEDED` también es reutilización. Requisitos y CA: HU-01 CA-28 a CA-33 (Forja-Back).
+
+**Consecuencias**
+- (+) Un reintento tras perder la respuesta ya no cierra las sesiones.
+- (−) Si un atacante usa un refresh robado dentro de los 120 s posteriores a una rotación legítima, obtiene un par válido
+  y la detección se **retrasa** hasta el siguiente refresh del usuario legítimo (≤ 15 min, el TTL del access), que presenta
+  el sucesor `SUPERSEDED` y provoca la revocación total. Aceptado: la ventana es corta y la detección no se pierde.
+- (−) Dos columnas más en `refresh_tokens` y bloqueo pesimista de la fila en `consume`.

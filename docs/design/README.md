@@ -4,7 +4,7 @@ Responsable: Lienzo (diseñador web y de marca).
 
 | Archivo / carpeta | Qué es | Estado |
 |---|---|---|
-| [`design-system.md`](design-system.md) | Design system de Cuartico: principios, paleta con contraste AA verificado (claro y oscuro), tipografía, espaciado, radios, sombras, estados y componentes base. | v0.1.1 · **Aprobado (2026-11-05)** |
+| [`design-system.md`](design-system.md) | Design system de Cuartico: principios, paleta con contraste AA verificado (claro y oscuro), tipografía, espaciado, radios, sombras, estados y componentes base. | v0.1.2 · **Aprobado (2026-11-05)** |
 | [`tokens.css`](tokens.css) | Tokens como CSS custom properties (capa base + capa semántica, temas claro/oscuro, hueco reservado para la marca Combazo). Forja-Front lo copia a `cuartico-web` y lo importa en `main.tsx`. | v0.1 · **Aprobado (2026-11-05)** |
 | [`prototypes/`](prototypes/) | Prototipos HTML, aprobados por la supervisión antes de implementarlos. | — |
 | [`prototypes/design-system.html`](prototypes/design-system.html) | Muestrario navegable de todos los componentes (usa `../tokens.css`; ábrelo en el navegador y cambia el ancho de la ventana para ver móvil/tablet/escritorio). | v0.1 |
