@@ -50,6 +50,10 @@ contraseña, y que cada persona vea solo lo que su rol le permite.
   guardado se conserva tal cual (puede que el servidor ya lo rotara: lo cubre la ventana de gracia, CA-28), se libera el
   bloqueo y se muestra el error de conexión con «Reintentar», que repite la renovación con el refresh **más reciente de
   `localStorage`**. Las peticiones que esperaban la renovación fallan con el mismo error de conexión (no con «sesión terminada»).
+  Antes de mostrar el botón, el cliente **reintenta automáticamente una vez** la renovación (dentro del mismo bloqueo, en
+  cuanto se produce el corte o el error de red), para que el reintento llegue dentro de la ventana de gracia de 120 s.
+  Si el usuario pulsa «Reintentar» más de 120 s después de la rotación, el backend lo tomará como reutilización y habrá
+  que volver a iniciar sesión (caso aceptado, ADR-001).
 - **CA-10 Error inesperado.** Dada una respuesta 5xx con ProblemDetail, se muestra su `detail`; si no hay cuerpo legible,
   un texto genérico del frontend. Nunca se muestra un stack trace ni JSON crudo.
 
@@ -122,28 +126,67 @@ Motivo: con red móvil inestable, el servidor puede rotar el refresh y la respue
 anterior se trata como robo y cierra **todas** las sesiones del usuario.
 Parámetro `app.jwt.refresh-reuse-grace` (por defecto **120 s**: mayor que el corte de 90 s del cliente más un reintento).
 
-- **CA-28 Reintento dentro de la gracia.** Dado un refresh `R1` rotado a `R2` hace menos de 120 s (`revoked_reason = ROTATED`)
-  y `R2` todavía **sin usar**, cuando llega `R1` a `/auth/refresh`, entonces **200** con un par nuevo (`R3`), `R2` queda
-  revocado (`SUPERSEDED`) y **no** se revocan las demás sesiones del usuario.
-- **CA-29 Fuera de la gracia.** Dado `R1` rotado hace más de 120 s, cuando llega `R1`, entonces **401** `auth.refresh_invalid`
-  y se revocan todas las sesiones del usuario (comportamiento actual).
-- **CA-30 Sucesor ya usado.** Dado `R1` rotado a `R2` y `R2` ya rotado a su vez, cuando llega `R1` (aun dentro de los
-  120 s), entonces **401** `auth.refresh_invalid` y se revocan todas las sesiones (reutilización real).
-- **CA-31 Sucesor reemplazado.** Dado `R2` revocado como `SUPERSEDED` por CA-28, cuando llega `R2`, entonces **401**
-  `auth.refresh_invalid` y se revocan todas las sesiones (alguien más tenía `R1`: es la señal de robo).
-- **CA-32 Sin gracia para otras revocaciones.** Dado un refresh revocado por logout, cambio o reseteo de contraseña,
-  desactivación del usuario o revocación masiva, cuando llega, entonces **401** sin gracia (se mantiene la regla actual
-  para los revocados: revocación de todas las sesiones).
-- **CA-33 Concurrencia.** Dadas dos peticiones simultáneas a `/auth/refresh` con el mismo token válido, entonces se
-  procesan en serie (bloqueo pesimista de la fila del token): la primera rota y la segunda cae en CA-28. Nunca dos
-  sucesores válidos del mismo token.
+#### Reglas normativas (`RefreshTokenService.consume`, una transacción)
+Notación: `T` = token presentado; `S` = token al que apunta `T.replaced_by_id` (su sucesor vigente); `G` = 120 s.
+1. **Bloqueos, siempre en este orden:** primero `T` (`PESSIMISTIC_WRITE`, buscado por hash); después, solo si hace falta, `S`
+   (`PESSIMISTIC_WRITE`, por id). Las decisiones se toman con los datos leídos **después** de obtener cada bloqueo.
+   El orden es siempre «presentado → sucesor», así que no hay ciclos ni interbloqueos.
+2. `T` no existe → 401 `auth.refresh_invalid`.
+3. **`T` no revocado** (camino normal, sin cambios de comportamiento): caducado → 401 `auth.refresh_expired`; usuario
+   inactivo → 401 `auth.user_disabled`; si no, `T.revoked_at = now`, `T.revoked_reason = ROTATED`, se emite `N` y
+   `T.replaced_by_id = N`.
+4. **`T` revocado**: se aplica la gracia **solo si se cumplen todas**:
+   a) `T.revoked_reason = ROTATED`; b) `now − T.revoked_at ≤ G` (límite inclusivo); c) `T.expires_at > now`;
+   d) `T.user.active`; e) `T.replaced_by_id` no es nulo y `S`, **leído con su bloqueo**, tiene `revoked_at IS NULL`.
+   Si se cumplen: `S.revoked_at = now`, `S.revoked_reason = SUPERSEDED`; se emite `N`; `T.replaced_by_id = N`;
+   `T.revoked_at` y `T.revoked_reason` **no cambian** (la ventana cuenta desde la primera rotación, no se alarga con
+   reintentos). Resultado: 200 con el par de `N`.
+5. **`T` revocado sin gracia** (falla cualquiera de a–e): detección de reutilización como hoy: `revokeAll(user, REUSE_DETECTED)`
+   y 401 `auth.refresh_invalid`.
+6. **Toda revocación registra su motivo.** `revokeAll(user, reason)` solo actualiza las filas con `revoked_at IS NULL`
+   (como hoy) y les pone `reason`; las ya revocadas **conservan** su motivo (`ROTATED` incluido). Motivos:
+   `ROTATED`, `SUPERSEDED`, `LOGOUT`, `PASSWORD_CHANGE`, `PASSWORD_RESET`, `USER_DISABLED`, `REUSE_DETECTED`.
+   Las revocaciones masivas (contraseña, reseteo, desactivación, reutilización) revocan siempre el sucesor vigente, así que
+   la condición (e) bloquea la gracia después de cualquiera de ellas; (d) lo refuerza en la desactivación.
+7. Invariante: en cada cadena de rotación hay **como mucho un token sin revocar**.
 
-Diseño: migración nueva (siguiente número libre: V2 o V3 según se mergee antes o después de productos) que añade a
-`refresh_tokens` las columnas `replaced_by_id BIGINT NULL REFERENCES refresh_tokens (id) ON DELETE SET NULL` y
-`revoked_reason VARCHAR(20) NULL` (`ROTATED`, `SUPERSEDED`, `LOGOUT`, `PASSWORD_CHANGE`, `USER_DISABLED`, `REUSE_DETECTED`;
-los revocados antes de la migración quedan con `NULL` y no tienen gracia). `RefreshTokenRepository.findByTokenHash` con
-`@Lock(PESSIMISTIC_WRITE)` en `consume`. Lógica en `RefreshTokenService.consume`; log `warn` en inglés cuando se aplica la
-gracia (sin el token). Tests de integración con `Clock` fijo para los límites de 120 s.
+#### Criterios de aceptación (tests con `Clock` fijo)
+- **CA-28 Reintento dentro de la gracia.** Dado `R1` rotado a `R2` hace 60 s y `R2` sin revocar, cuando llega `R1`,
+  entonces **200** con `R3`; `R2` queda `SUPERSEDED`; `R1.replaced_by_id = R3`; `R1.revoked_at` no cambia; ninguna otra
+  sesión del usuario se revoca. Límite: a los **120 s** exactos aplica; a los **121 s**, no (CA-29).
+- **CA-29 Fuera de la gracia.** Dado `R1` rotado hace 121 s, cuando llega `R1`, entonces **401** `auth.refresh_invalid`
+  y se revocan todas las sesiones del usuario.
+- **CA-30 Reintento doble.** Dado CA-28 (`R1` → `R3`) y la respuesta perdida otra vez, cuando llega `R1` de nuevo dentro de
+  los 120 s **contados desde la primera rotación**, entonces **200** con `R4`, `R3` queda `SUPERSEDED`,
+  `R1.replaced_by_id = R4`, y de la cadena solo `R4` está sin revocar. Un tercer envío después de los 120 s → CA-29.
+- **CA-31 Sucesor ya usado o reemplazado.** a) Dado `R1` → `R2` y `R2` ya rotado a `R3`, cuando llega `R1` (dentro de
+  los 120 s) → **401** `auth.refresh_invalid` y revocación de todas las sesiones. b) Dado `R2` `SUPERSEDED` por CA-28,
+  cuando llega `R2` → igual: 401 y revocación de todas (es la señal de robo).
+- **CA-32 Revocación posterior a la rotación.** Dado `R1` rotado a `R2` hace 30 s y, después, **cualquiera** de: el usuario
+  es desactivado, cambia su contraseña, un ADMIN se la restablece, o `R2` se cierra con logout; cuando llega `R1`, entonces
+  **401** `auth.refresh_invalid`, **no** se emite par nuevo, se aplica la regla 5 (revocación de las sesiones que
+  quedaran sin revocar) y `R2` conserva su motivo (`USER_DISABLED`, `PASSWORD_CHANGE`, `PASSWORD_RESET` o `LOGOUT`).
+  Ídem si `R1` está caducado (condición c).
+- **CA-33 Concurrencia.** a) Dos peticiones simultáneas con el mismo `R1` válido: se serializan; la primera rota (`R2`) y la
+  segunda entra por la gracia (`R3`, `R2` `SUPERSEDED`); solo `R3` queda sin revocar. b) **`R1` (dentro de la gracia) y `R2`
+  a la vez** (escenario de robo): como mucho **una** cadena válida. Si gana `R2`, la petición de `R1` encuentra `R2` ya
+  rotado → CA-31a (401 y revocación total). Si gana `R1`, la petición de `R2` encuentra `R2` `SUPERSEDED` → CA-31b (401 y
+  revocación total, que incluye `R3`). En ningún caso quedan dos tokens sin revocar en la cadena. (Test con dos hilos y un
+  punto de sincronización, o verificando el invariante 7 tras ejecutar ambos órdenes.)
+
+#### Migración y piezas
+Migración nueva (siguiente número libre: V2 o V3 según se mergee antes o después de productos):
+```sql
+ALTER TABLE refresh_tokens ADD COLUMN revoked_reason VARCHAR(20);
+ALTER TABLE refresh_tokens ADD COLUMN replaced_by_id BIGINT REFERENCES refresh_tokens (id) ON DELETE SET NULL;
+-- Para el ON DELETE SET NULL del RefreshTokenCleanupJob: PostgreSQL no indexa las FK automáticamente
+CREATE INDEX idx_refresh_tokens_replaced_by ON refresh_tokens (replaced_by_id);
+```
+Los revocados antes de la migración quedan con `revoked_reason = NULL`: no cumplen (a) y nunca tienen gracia.
+`RefreshTokenRepository`: `findByTokenHash` y `findById` con `@Lock(PESSIMISTIC_WRITE)` para `consume`;
+`revokeAllByUser(user, now, reason)`. `UserService` pasa el motivo correcto en cambio de contraseña, reseteo y
+desactivación; `logout` usa `LOGOUT`. Log `warn` en inglés al aplicar la gracia y al detectar reutilización (con el
+usuario, nunca el token).
 
 ## Fuera de alcance
 - Recuperar contraseña por correo o SMS (no hay envío de correos); la restablece un `ADMIN`.

@@ -58,4 +58,4 @@ erDiagram
 ```
 
 Notas: `refresh_tokens` y `product_stock` no extienden `AuditableEntity` (no las edita un usuario). Índices: los `UK`
-(`username`, `token_hash`, `sku`) e `idx_refresh_tokens_user`; productos no lleva índices de búsqueda (ver HU-02, migración).
+(`username`, `token_hash`, `sku`), `idx_refresh_tokens_user` e `idx_refresh_tokens_replaced_by` (nuevo); productos no lleva índices de búsqueda (ver HU-02, migración).

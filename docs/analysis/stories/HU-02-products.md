@@ -237,7 +237,9 @@ record PageResponse<T>(List<T> content, int page, int size, long totalElements, 
 1. `HttpMessageNotReadableException` cuya causa es un error de tipo de Jackson (`InvalidFormatException` /
    `MismatchedInputException`; en Spring Boot 4 es Jackson 3, paquete `tools.jackson.databind.exc`) → **400**
    `validation.failed` con `errors.<campo>` = mensaje de `validation.invalid_value` (el campo sale de la ruta de la
-   excepción; para anidados, ruta con puntos). Cualquier otro `HttpMessageNotReadableException` sigue en `request.malformed`.
+   excepción; para anidados, ruta con puntos). Si la ruta está **vacía** (p. ej. cuerpo `[]` o `"texto"` en lugar de un
+   objeto) no hay campo al que asignarlo: sigue siendo `request.malformed`. Cualquier otro `HttpMessageNotReadableException`
+   (JSON con sintaxis inválida, cuerpo vacío) sigue en `request.malformed`.
 2. En `handleMethodArgumentNotValid`, los `FieldError` con `isBindingFailure()` (p. ej. `page=abc`) usan el mensaje de
    `validation.invalid_value` en vez del texto técnico de Spring.
 3. `ObjectOptimisticLockingFailureException` → **409** `resource.version_conflict` (ver reglas abajo).

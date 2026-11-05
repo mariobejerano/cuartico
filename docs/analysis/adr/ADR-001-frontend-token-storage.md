@@ -73,13 +73,28 @@ por robo: **cierra todas las sesiones** del usuario. Con este uso, sería un cie
    (`replaced_by_id`) y saber por qué se revocó (`revoked_reason`).
 
 **Decisión: opción 3, 120 s** (`app.jwt.refresh-reuse-grace`; mayor que el corte de 90 s del cliente más un reintento).
-Se aplica solo si el token presentado se revocó **por rotación** hace ≤ 120 s y su sucesor **no se ha usado**: se emite un
-par nuevo y el sucesor pasa a `SUPERSEDED`. Fuera de esas condiciones, sigue la detección de reutilización. Presentar
-un token `SUPERSEDED` también es reutilización. Requisitos y CA: HU-01 CA-28 a CA-33 (Forja-Back).
+La gracia se aplica **solo si se cumplen todas** estas condiciones, comprobadas con el token presentado y su sucesor
+bloqueados (`PESSIMISTIC_WRITE`, siempre primero el presentado y después el sucesor):
+- el token presentado tiene `revoked_reason = ROTATED`;
+- `now − revoked_at ≤ 120 s`;
+- no ha caducado;
+- el usuario está activo;
+- su sucesor vigente (`replaced_by_id`) sigue sin revocar.
+Si se aplica, el sucesor pasa a `SUPERSEDED`, se emite un par nuevo y `replaced_by_id` apunta al nuevo; el `revoked_at` del
+presentado no cambia, así que los reintentos encadenados no alargan la ventana y la cadena nunca tiene más de un token
+válido. Toda revocación guarda su motivo y las ya revocadas lo conservan. Por eso una desactivación, un cambio o
+reseteo de contraseña o un logout posteriores a la rotación revocan el sucesor e impiden la gracia. Fuera de esas condiciones,
+sigue la detección de reutilización; presentar un token `SUPERSEDED` también es reutilización.
+**Las reglas normativas y los CA están en HU-01 (CA-28 a CA-33, Forja-Back).**
 
 **Consecuencias**
 - (+) Un reintento tras perder la respuesta ya no cierra las sesiones.
 - (−) Si un atacante usa un refresh robado dentro de los 120 s posteriores a una rotación legítima, obtiene un par válido
   y la detección se **retrasa** hasta el siguiente refresh del usuario legítimo (≤ 15 min, el TTL del access), que presenta
   el sucesor `SUPERSEDED` y provoca la revocación total. Aceptado: la ventana es corta y la detección no se pierde.
-- (−) Dos columnas más en `refresh_tokens` y bloqueo pesimista de la fila en `consume`.
+- (−) Si llegan a la vez el token antiguo (dentro de la gracia) y su sucesor (escenario de robo), los bloqueos los serializan
+  y el segundo en llegar dispara la revocación total: nunca quedan dos cadenas válidas.
+- (−) Dos columnas y un índice más en `refresh_tokens`, y bloqueo pesimista de dos filas en `consume`.
+- (−) Caso aceptado: el cliente reintenta automáticamente una vez tras el corte de 90 s (llega dentro de la ventana); si
+  después el usuario pulsa «Reintentar» pasados más de 120 s desde la rotación, se trata como reutilización: se cierran
+  todas las sesiones y hay que volver a iniciar sesión.
