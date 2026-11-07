@@ -30,6 +30,35 @@ services:
         sync: false
       - key: SPRINGDOC_ENABLED   # Swagger UI y /v3/api-docs solo en staging (en producción quedan desactivados)
         value: "true"
-      - key: APP_CORS_ORIGINS   # se actualizará con la URL del frontend en Vercel
-        value: http://localhost:5173
+      - key: APP_CORS_ORIGINS   # frontend de staging (Render static site) y Vite en local
+        value: https://cuartico-web-staging.onrender.com,http://localhost:5173
 
+
+  # Panel cuartico-web de staging: sitio estático (gratis) ← develop.
+  - type: web
+    name: cuartico-web-staging
+    runtime: static
+    branch: develop
+    rootDir: cuartico-web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_VERSION       # misma versión que el CI de frontend
+        value: "24"
+      - key: VITE_API_BASE_URL
+        value: https://cuartico-api-staging.onrender.com
+    routes:
+      - type: rewrite        # SPA: toda ruta sirve index.html
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Content-Security-Policy   # ADR-001, condición 6
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cuartico-api-staging.onrender.com; manifest-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

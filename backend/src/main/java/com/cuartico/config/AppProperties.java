@@ -21,7 +21,17 @@ public record AppProperties(@Valid Jwt jwt, Cors cors, Admin admin) {
 			@NotBlank String issuer,
 			@NotBlank String secret,
 			@NotNull Duration accessTokenTtl,
-			@NotNull Duration refreshTokenTtl) {
+			@NotNull Duration refreshTokenTtl,
+			Duration refreshReuseGrace) {
+
+		/** Ventana de gracia por defecto del refresh token (ADR-001). */
+		public static final Duration DEFAULT_REFRESH_REUSE_GRACE = Duration.ofSeconds(120);
+
+		public Jwt {
+			if (refreshReuseGrace == null) {
+				refreshReuseGrace = DEFAULT_REFRESH_REUSE_GRACE;
+			}
+		}
 	}
 
 	public record Cors(List<String> allowedOrigins) {

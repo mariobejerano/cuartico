@@ -1,7 +1,7 @@
 # Render Blueprint de PRODUCCIÓN (enlazado a la rama main, archivo render/production.yaml).
 # Servicio cuartico-api ← main, base de datos: rama "production" de Neon.
 # Al estar enlazado a main, cualquier cambio de este archivo solo se aplica tras un release (certificación de Vera + OK de la supervisión).
-# APP_CORS_ORIGINS: sustituir por la URL del frontend en Vercel antes de abrir producción a usuarios.
+# APP_CORS_ORIGINS: sustituir por la URL del frontend de producción (sitio estático de Render) antes de abrir producción a usuarios.
 
 services:
   - type: web

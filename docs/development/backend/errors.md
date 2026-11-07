@@ -31,7 +31,7 @@ Los textos son los de `backend/src/main/resources/messages_es.properties` (es) y
 | Código | HTTP | es | en | Cuándo |
 |---|---|---|---|---|
 | `auth.invalid_credentials` | 401 | Usuario o contraseña incorrectos | Invalid username or password | Login con usuario inexistente, contraseña errónea o usuario desactivado (los tres responden igual). |
-| `auth.refresh_invalid` | 401 | Refresh token inválido | Invalid refresh token | Refresh token desconocido o ya usado (reutilización). |
+| `auth.refresh_invalid` | 401 | Refresh token inválido | Invalid refresh token | Refresh token desconocido o reutilizado fuera de la ventana de gracia (o con el sucesor ya usado/sustituido): se revocan todas las sesiones. Ver "Ventana de gracia" en README.md. |
 | `auth.refresh_expired` | 401 | Refresh token expirado | Refresh token expired | Refresh token caducado. |
 | `auth.user_disabled` | 401 | Usuario desactivado | User is disabled | Refresh con un token vigente de un usuario desactivado. Caso raro: al desactivar se revocan sus sesiones, así que normalmente responde antes `auth.refresh_invalid`. En login se usa `auth.invalid_credentials`. |
 | `auth.unauthorized` | 401 | Autenticación requerida o token inválido | Authentication required or invalid token | Sin token, token inválido o caducado. |

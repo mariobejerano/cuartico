@@ -8,6 +8,8 @@ Responsable: Vera. Registro de certificaciones: [certifications.md](certificatio
 |---|---|---|
 | **Integración con MockMvc y H2** | Local (`./mvnw test`) y CI (`Tests (h2)`) | Controladores, seguridad, validación, errores y lógica de negocio, con el perfil `test` (H2 en memoria, modo PostgreSQL). |
 | **Integración con PostgreSQL real** | CI (`Tests (postgres)`) | Las migraciones Flyway y las consultas contra PostgreSQL 18, la misma versión mayor que Neon. Es la variante que detecta diferencias de dialecto que H2 no muestra. |
+| **Unitarias y de componente (frontend)** | Local (`cd cuartico-web && npm test`) y CI (`Frontend CI`, `.github/workflows/frontend-ci.yml`: lint, tests, build) | Vitest + Testing Library en jsdom, con `fetch` y `navigator.locks` falsos (`src/test/fakeApi.ts`). Sesión, renovación de tokens, rutas de retorno, i18n, login y layout. No cubre pestañas reales, red real ni diseño visual. |
+| **Pruebas manuales en staging (frontend)** | Vera, sobre `https://cuartico-web-staging.onrender.com` | Lo que jsdom no puede: pestañas reales (Web Locks, evento `storage`), servidor dormido, móvil a 360 px y accesibilidad. Los pasos están en la matriz de cada historia (p. ej. M-1..M-3 en [HU-01](stories/HU-01.md)). Nunca contra producción. |
 | **Verificación por historia** | Vera, sobre el PR de cada historia | Cada criterio de aceptación (CA-n) de la historia tiene al menos un test que lo cubra. Resultado: **APTO** o **NO APTO**. |
 | **Certificación en staging** | Vera, sobre `cuartico-api-staging` | Antes de cada release (`develop` → `main`), el SHA desplegado en staging se prueba y recibe **LISTO PARA PRODUCCIÓN** o **NO LISTO**. |
 | **Verificación de hotfix** | Vera | Los hotfix (`hotfix/*` → `main`) se verifican sobre el SHA exacto antes del merge. |
@@ -43,6 +45,6 @@ Staging usa una base de datos real (rama `staging` de Neon), no una base de prue
 
 ## Qué no cubre (hoy)
 
-- No hay tests de frontend (todavía no existe `cuartico-web`).
+- No hay tests end-to-end con navegador real (Playwright/Cypress): hoy se cubren con las pruebas manuales en staging.
 - No hay pruebas de carga ni de rendimiento. En el plan gratuito de Render, la primera petición tras el "sueño" del servicio tarda cerca de un minuto.
 - No hay tests contra pasarelas de pago (los pagos son manuales).

@@ -38,7 +38,9 @@ public class AuthService {
 
 	@Transactional(noRollbackFor = com.cuartico.common.ApiException.class)
 	public TokenResponse refresh(String refreshToken) {
-		return issueTokens(refreshTokens.consume(refreshToken));
+		RefreshTokenService.Rotation rotation = refreshTokens.consume(refreshToken);
+		return TokenResponse.bearer(accessTokens.issue(rotation.user()), accessTokens.ttlSeconds(), rotation.refreshToken(),
+				UserResponse.from(rotation.user()));
 	}
 
 	public void logout(String refreshToken) {

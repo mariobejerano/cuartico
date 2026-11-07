@@ -6,6 +6,8 @@ import com.cuartico.user.User;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -38,6 +40,13 @@ public class RefreshToken {
 
 	private Instant revokedAt;
 
+	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
+	private RevocationReason revokedReason;
+
+	/** Sucesor vigente (el token emitido al rotar este); es un id simple para no cargarlo sin querer. */
+	private Long replacedById;
+
 	@Column(nullable = false, updatable = false)
 	private Instant createdAt;
 
@@ -52,6 +61,30 @@ public class RefreshToken {
 		this.createdAt = now;
 	}
 
+	public Long getId() {
+		return id;
+	}
+
+	public Instant getRevokedAt() {
+		return revokedAt;
+	}
+
+	public RevocationReason getRevokedReason() {
+		return revokedReason;
+	}
+
+	public Long getReplacedById() {
+		return replacedById;
+	}
+
+	public void setReplacedById(Long replacedById) {
+		this.replacedById = replacedById;
+	}
+
+	public Instant getExpiresAt() {
+		return expiresAt;
+	}
+
 	public User getUser() {
 		return user;
 	}
@@ -64,9 +97,11 @@ public class RefreshToken {
 		return !now.isBefore(expiresAt);
 	}
 
-	public void revoke(Instant now) {
+	/** Revoca con su motivo; si ya estaba revocado no cambia nada (conserva fecha y motivo). */
+	public void revoke(Instant now, RevocationReason reason) {
 		if (revokedAt == null) {
 			revokedAt = now;
+			revokedReason = reason;
 		}
 	}
 

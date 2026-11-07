@@ -1,6 +1,6 @@
 # HU-01: Acceso al panel de gestión
 
-- **Sprint:** 1 · **Estado:** análisis listo; prototipos aprobados ([`login.html`](../../design/prototypes/login.html),
+- **Sprint:** 1 · **Estado:** Implementada, QA APTO, en revisión (2026-11-07). Prototipos aprobados ([`login.html`](../../design/prototypes/login.html),
   [`products.html`](../../design/prototypes/products.html) para el layout; [notas UX](../../design/ux-notes/))
 - **Alcance:** frontend `cuartico-web` y un cambio acotado en el backend: **ventana de gracia del refresh** (CA-28,
   Forja-Back). El resto del backend ya existe (ver [API](../../development/backend/api.md) y
@@ -198,7 +198,7 @@ usuario, nunca el token).
 ## Diseño técnico (frontend)
 | Pieza | Responsabilidad |
 |---|---|
-| `api/client.ts` | `fetch` con base URL (`VITE_API_URL`), `Accept-Language`, `Authorization`, timeouts (5 s aviso, 90 s corte con `AbortController`), parseo de ProblemDetail a un error tipado `{ status, code, detail, errors }`. |
+| `api/client.ts` | `fetch` con base URL (`VITE_API_BASE_URL`), `Accept-Language`, `Authorization`, timeouts (5 s aviso, 90 s corte con `AbortController`), parseo de ProblemDetail a un error tipado `{ status, code, detail, errors }`. |
 | `auth/session.ts` | Access token en memoria; refresh en `localStorage` (clave `cuartico.refreshToken`). Refresh inicial, renovación (*single-flight* en la pestaña) y logout dentro de `navigator.locks.request('cuartico-refresh')`, releyendo `localStorage` dentro del bloqueo; escucha `storage`. |
 | `auth/AuthProvider` | Estado `loading` / `authenticated(user)` / `anonymous`; arranque con `/refresh` (CA-11). |
 | `auth/RequireAuth`, `auth/RequireRole` | Guardas de rutas (CA-6, CA-25). |
@@ -211,7 +211,7 @@ Endpoints que se usan: `POST /api/v1/auth/login|refresh|logout`.
 `auth.refresh_expired`, `auth.user_disabled`, `auth.unauthorized`, `auth.forbidden`, `validation.failed`.
 El resto se muestra con su `detail`.
 
-**Backend:** solo la ventana de gracia (CA-28 a CA-33). Comprobar que `APP_CORS_ORIGINS` de staging incluye la URL de Vercel del panel (Timon).
+**Backend:** solo la ventana de gracia (CA-28 a CA-33). Comprobar que `APP_CORS_ORIGINS` de staging incluye la URL del panel, `https://cuartico-web-staging.onrender.com` (sitio estático de Render; ver el addendum de ADR-001) (Timon).
 
 ## Fuera de alcance (movido)
 - Gestión de usuarios y cambio de contraseña propia: [HU-14](HU-14-user-management.md).

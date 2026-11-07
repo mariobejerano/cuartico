@@ -3,6 +3,7 @@
 - **Estado:** Aceptado (2026-10-30). Se revisa cuando haya dominio propio (y en todo caso antes de abrir Combazo al público).
 - **Fecha:** 2026-10-30
 - **Historia:** [HU-01](../stories/HU-01-panel-access.md)
+- **Addendum 2026-11-07:** el frontend se publica en Render, no en Vercel (ver al final). La decisión no cambia.
 
 ## Contexto
 - El backend emite un **access token** JWT (15 min) y un **refresh token** opaco (7 días), ambos **en el cuerpo JSON**
@@ -98,3 +99,27 @@ sigue la detección de reutilización; presentar un token `SUPERSEDED` también 
 - (−) Caso aceptado: el cliente reintenta automáticamente una vez tras el corte de 90 s (llega dentro de la ventana); si
   después el usuario pulsa «Reintentar» pasados más de 120 s desde la rotación, se trata como reutilización: se cierran
   todas las sesiones y hay que volver a iniciar sesión.
+
+## Addendum (2026-11-07): el frontend se publica en Render, no en Vercel
+**Cambio de contexto.** La supervisión decidió publicar `cuartico-web` como **sitio estático de Render**, porque el plan
+gratuito de Vercel es solo para uso no comercial. Staging: panel en `https://cuartico-web-staging.onrender.com` y API en
+`https://cuartico-api-staging.onrender.com`. Lo aceptado arriba no se reescribe; donde dice Vercel, léase Render.
+
+**¿Cambia alguna conclusión?** No.
+- **Siguen siendo sitios distintos.** `onrender.com` está en la *Public Suffix List* (sección privada, «Render»), igual
+  que `vercel.app`. Por eso cada subdominio es un sitio propio: el panel y la API comparten sufijo pero **no** sitio. Una
+  cookie de la API seguiría siendo de terceros (`SameSite=None`), bloqueada por Safari. La opción B sigue descartada por lo mismo.
+- **Opción C:** la variante «proxy de Vercel» queda **descartada** (ya no hay Vercel). Queda la variante con **dominio
+  propio** (`app.` y `api.` bajo un mismo dominio), que es la que se evaluará en la revisión prevista. Si para entonces se
+  quiere un proxy en el sitio estático de Render (reglas de *rewrite* hacia la API), habrá que comprobar que admite destinos
+  externos y que su límite de espera aguanta el arranque en frío (~1 min); no está verificado.
+- **Opción A** (refresh en `localStorage`, access en memoria, ventana de gracia) se mantiene sin cambios. Al estar el panel
+  y la API en orígenes distintos, CORS sigue siendo necesario: `APP_CORS_ORIGINS` de staging debe incluir
+  `https://cuartico-web-staging.onrender.com` (y la de producción, su URL equivalente; TT-10).
+- **Condición 6 (CSP):** se aplica como **cabeceras del sitio estático** en `render/staging.yaml` (y en el *blueprint* de
+  producción cuando exista), no en Vercel. Contenido mínimo: `default-src 'self'; script-src 'self';
+  connect-src 'self' https://cuartico-api-staging.onrender.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`
+  (el `connect-src` cambia por entorno). El ping de despertar (`/actuator/health`, HU-01 CA-7) también es un `fetch`
+  hacia la API, así que lo cubre el mismo `connect-src`.
+- **Arranque en frío:** el sitio estático de Render se sirve desde CDN y no se duerme; solo duerme la API, así que HU-01
+  CA-7 a CA-9 siguen igual.

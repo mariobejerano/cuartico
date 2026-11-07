@@ -3,6 +3,7 @@ package com.cuartico.user;
 import java.util.List;
 
 import com.cuartico.auth.RefreshTokenService;
+import com.cuartico.auth.RevocationReason;
 import com.cuartico.common.ApiException;
 import com.cuartico.user.dto.UserDtos.ChangePasswordRequest;
 import com.cuartico.user.dto.UserDtos.CreateUserRequest;
@@ -61,7 +62,7 @@ public class UserService {
 		user.update(req.fullName(), req.role(), req.active());
 		if (!req.active()) {
 			// Un usuario desactivado pierde sus sesiones al instante
-			refreshTokens.revokeAll(user);
+			refreshTokens.revokeAll(user, RevocationReason.USER_DISABLED);
 		}
 		return UserResponse.from(user);
 	}
@@ -74,7 +75,7 @@ public class UserService {
 			throw ApiException.badRequest("user.wrong_current_password");
 		}
 		user.changePassword(passwordEncoder.encode(req.newPassword()));
-		refreshTokens.revokeAll(user);
+		refreshTokens.revokeAll(user, RevocationReason.PASSWORD_CHANGE);
 	}
 
 	/** Un administrador restablece la contraseña de otro usuario. */
@@ -82,7 +83,7 @@ public class UserService {
 	public void resetPassword(Long id, String newPassword) {
 		User user = get(id);
 		user.changePassword(passwordEncoder.encode(newPassword));
-		refreshTokens.revokeAll(user);
+		refreshTokens.revokeAll(user, RevocationReason.PASSWORD_RESET);
 	}
 
 	private User get(Long id) {

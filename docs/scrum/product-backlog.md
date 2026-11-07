@@ -15,7 +15,7 @@ ambos y su QA deben estar terminados (vertical slice).
 
 | ID | Prioridad | Historia | Estado | Notas |
 |---|---|---|---|---|
-| HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | En curso | Sprint 1. Backend hecho (JWT, refresh rotativo, usuarios). Falta el frontend `cuartico-web`. |
+| HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | En curso | Sprint 1. Backend (JWT, refresh rotativo con ventana de gracia) y frontend `cuartico-web` (login, sesión, layout) implementados; Vera APTO. En revisión. |
 | HU-02 | 2 | Catálogo de productos | En curso | Sprint 1. Los productos son lo que se compra suelto; aquí vive el stock. |
 | HU-03 | 3 | Proveedores | Pendiente | Necesario para las compras. |
 | HU-04 | 4 | Compras y movimientos de inventario | Pendiente | Entrada de stock, promedio ponderado, movimientos inmutables. |
@@ -47,10 +47,12 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-05 | 5 | ProblemDetail también para errores que pasan por `/error` | Pendiente | Lupa, PR #5. Hoy esos errores usan el formato por defecto de Spring Boot. |
 | TT-06 | 6 | Fijar las GitHub Actions a SHA de commit y activar Dependabot | Pendiente | Hoy `backend-ci.yml` usa tags (`actions/checkout@v7`, etc.). |
 | TT-07 | 7 | Acceso de solo lectura a Neon (MCP) para Vera y Faro, limitado a la rama `staging` | Pendiente | Antes de crear las tablas de negocio. |
-| TT-08 | 8 | Esqueleto de `cuartico-web` (Vite + React + TypeScript, react-i18next, PWA) | En curso | Prerrequisito de HU-01. Lo implementa Forja-Front. |
+| TT-08 | 8 | Esqueleto de `cuartico-web` (Vite + React + TypeScript, react-i18next, PWA) | Hecho | Prerrequisito de HU-01. Lo implementa Forja-Front. |
 | TT-09 | 9 | Medir memoria de la JVM en staging y revisar los topes del `Dockerfile` | Pendiente | El propio `Dockerfile` pide medir en staging antes de producción. |
-| TT-10 | 10 | Sustituir `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend en Vercel | Pendiente | Antes de abrir producción a usuarios. |
+| TT-10 | 10 | Sustituir `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend de producción (sitio estático de Render) | Pendiente | Antes de abrir producción a usuarios. |
 | TT-11 | 1 | **Bug:** `UpdateUserRequest.active` es `boolean` primitivo: si el cliente lo omite llega `false`, desactiva al usuario y revoca sus sesiones. Cambiar a `@NotNull Boolean` | Hecho | Detectado por Lupa en la revisión del PR #6 (`UserDtos.java`). |
+| TT-12 | 2 | Carrera previa: un refresh reutilizado fuera de la gracia mientras otra petición rota el sucesor deja vivo el token nuevo tras la revocación masiva. Serializar por usuario o documentarlo en ADR-001 | Pendiente | Lupa, PR #9 (MENOR, ya existía antes). |
+| TT-13 | 3 | Añadir el check `Web (lint, tests, build)` a la protección de `main` y `develop` | Pendiente | Requiere OK de la supervisión. |
 
 ## Hecho
 
