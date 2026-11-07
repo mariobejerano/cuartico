@@ -5,11 +5,7 @@
  * (`/login?redirect=https://evil.com`), el clásico truco de phishing.
  */
 export function safeRedirect(value: string | null | undefined): string | null {
-  if (!value || !value.startsWith('/')) return null
-  if (value.startsWith('//') || value.startsWith('/\\')) return null
-  if (value.includes('\\')) return null
-  // eslint-disable-next-line no-control-regex -- justamente buscamos caracteres de control (\t, \n…)
-  if (/[\u0000-\u001f\u007f]/.test(value)) return null
+  if (!passesBasicRules(value)) return null
 
   // Segunda red de seguridad: el navegador debe resolverla en nuestro mismo origen.
   const base = 'https://cuartico.invalid'
@@ -20,8 +16,23 @@ export function safeRedirect(value: string | null | undefined): string | null {
     return null
   }
   if (url.origin !== base) return null
+  const normalized = url.pathname + url.search + url.hash
+  // `new URL` resuelve `/.`, `/a/..` y `%2e`: `/.//evil.com` acabaría en `//evil.com`, que el navegador
+  // trataría como OTRO origen. Por eso las reglas se vuelven a aplicar sobre el resultado normalizado.
+  if (!passesBasicRules(normalized)) return null
   if (url.pathname === '/login' || url.pathname.startsWith('/login/')) return null
-  return url.pathname + url.search + url.hash
+  return normalized
+}
+
+function passesBasicRules(value: string | null | undefined): value is string {
+  if (!value || !value.startsWith('/')) return false
+  if (value.startsWith('//') || value.startsWith('/\\')) return false
+  if (value.includes('\\')) return false
+  // Barras codificadas (`%2f`, `%5c`): no las necesita ninguna ruta del panel y abren variantes raras.
+  if (/%(2f|5c)/i.test(value)) return false
+  // eslint-disable-next-line no-control-regex -- justamente buscamos caracteres de control (\t, \n…)
+  if (/[\u0000-\u001f\u007f]/.test(value)) return false
+  return true
 }
 
 /** Construye `/login?redirect=…` para volver luego a `path` (ya incluye la búsqueda, p. ej. `?q=arroz`). */

@@ -223,3 +223,59 @@ describe('session: login y logout', () => {
     stop()
   })
 })
+
+describe('session: varias pestañas y carreras (CA-14b, CA-20)', () => {
+  it('CA-14b: N arranques simultáneos (pestañas restauradas) renuevan en serie y nunca repiten el mismo refresh', async () => {
+    localStorage.setItem(REFRESH_KEY, 'refresh-0')
+    let n = 0
+    const api = installFakeApi().on('POST /api/v1/auth/refresh', (req) => {
+      const sent = (req.body as { refreshToken: string }).refreshToken
+      // El servidor real solo acepta el refresh vigente: cualquier otro sería reutilización.
+      if (sent !== `refresh-${n}`) return problem(401, 'auth.refresh_invalid', 'reuse')
+      n += 1
+      return json(200, tokenPair(n))
+    })
+
+    // Cinco «pestañas» llaman a la vez al arranque sobre el mismo localStorage y el mismo bloqueo.
+    await Promise.all([1, 2, 3, 4, 5].map(() => session.bootstrap()))
+
+    const sent = api.calls('POST /api/v1/auth/refresh').map((r) => (r.body as { refreshToken: string }).refreshToken)
+    expect(sent).toEqual(['refresh-0', 'refresh-1', 'refresh-2', 'refresh-3', 'refresh-4'])
+    expect(new Set(sent).size).toBe(sent.length)
+    expect(localStorage.getItem(REFRESH_KEY)).toBe('refresh-5')
+    expect(session.getState().status).toBe('authenticated')
+  })
+
+  it('logout con una renovación en curso: el logout espera y revoca el refresh MÁS reciente', async () => {
+    localStorage.setItem(REFRESH_KEY, 'refresh-1')
+    tokens.setAccess('access-old')
+    const api = installFakeApi()
+      .on('GET /x', () => problem(401, 'auth.unauthorized', 'x'), () => json(200, {}))
+      .on('POST /api/v1/auth/refresh', () => json(200, tokenPair(2)))
+      .on('POST /api/v1/auth/logout', () => json(204))
+
+    const pending = request('/x')
+    await new Promise((r) => setTimeout(r, 0)) // deja que la petición reciba el 401 y la renovación tome el turno
+    await session.logout()
+    await pending.catch(() => undefined)
+
+    expect(api.calls('POST /api/v1/auth/logout')[0].body).toEqual({ refreshToken: 'refresh-2' })
+    expect(localStorage.getItem(REFRESH_KEY)).toBeNull()
+    expect(session.getState()).toEqual({ status: 'anonymous', reason: 'logout' })
+  })
+
+  it('renovación en cola detrás de un logout: no llama a /refresh y la petición falla con sesión terminada', async () => {
+    localStorage.setItem(REFRESH_KEY, 'refresh-1')
+    tokens.setAccess('access-old')
+    const api = installFakeApi()
+      .on('GET /x', () => problem(401, 'auth.unauthorized', 'x'))
+      .on('POST /api/v1/auth/logout', () => json(204))
+
+    const logout = session.logout()
+    await expect(request('/x')).rejects.toMatchObject({ kind: 'session_ended' })
+    await logout
+
+    expect(api.calls('POST /api/v1/auth/refresh')).toHaveLength(0)
+    expect(session.getState()).toEqual({ status: 'anonymous', reason: 'logout' })
+  })
+})

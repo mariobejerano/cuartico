@@ -55,12 +55,13 @@
     "page_title": "Cuartico · Inicio",
     "title": "Inicio",
     "greeting": "Hola, {{name}}",
-    "empty": "Aquí verás el resumen del negocio. Próximamente."
+    "empty": "Aquí verás el resumen del negocio. Mientras tanto, empieza por el catálogo de productos.",
+    "go_to_products": "Ir a productos"
   },
   "products": {
     "page_title": "Cuartico · Productos",
     "title": "Productos",
-    "coming_soon": "Esta sección llega muy pronto."
+    "coming_soon": "Esta sección llegará pronto."
   },
   "not_found": {
     "page_title": "Cuartico · Página no encontrada",

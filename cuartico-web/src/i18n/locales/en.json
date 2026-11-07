@@ -55,7 +55,8 @@
     "page_title": "Cuartico · Home",
     "title": "Home",
     "greeting": "Hi, {{name}}",
-    "empty": "The business summary will appear here. Coming soon."
+    "empty": "The business summary will appear here. Meanwhile, start with the product catalog.",
+    "go_to_products": "Go to products"
   },
   "products": {
     "page_title": "Cuartico · Products",
@@ -66,6 +67,6 @@
     "page_title": "Cuartico · Page not found",
     "title": "This page doesn't exist",
     "body": "The link may be mistyped.",
-    "home_link": "Go to home"
+    "home_link": "Go to Home"
   }
 }

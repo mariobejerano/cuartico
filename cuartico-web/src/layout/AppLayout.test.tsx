@@ -37,9 +37,18 @@ describe('Layout del panel (HU-01 CA-24)', () => {
     const nav = screen.getAllByRole('navigation', { name: 'Navegación principal' })[0]
     await userEvent.setup().click(within(nav).getByRole('link', { name: 'Productos' }))
 
-    expect(await screen.findByText('Esta sección llega muy pronto.')).toBeInTheDocument()
+    expect(await screen.findByText('Esta sección llegará pronto.')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/products')
     expect(within(nav).getByRole('link', { name: 'Productos' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('Inicio vacío ofrece ir a productos', async () => {
+    loggedIn()
+    const { router } = renderApp('/')
+    await screen.findByText('Aquí verás el resumen del negocio. Mientras tanto, empieza por el catálogo de productos.')
+    await userEvent.setup().click(screen.getByRole('link', { name: 'Ir a productos' }))
+    await screen.findByText('Esta sección llegará pronto.')
+    expect(router.state.location.pathname).toBe('/products')
   })
 
   it('«Cuenta» abre la hoja con nombre, rol, idioma y cerrar sesión', async () => {
@@ -69,7 +78,7 @@ describe('Layout del panel (HU-01 CA-24)', () => {
   it('cerrar sesión: llama a /logout y vuelve al login sin ruta de retorno (CA-19)', async () => {
     const api = loggedIn().on('POST /api/v1/auth/logout', () => json(204))
     const { router } = renderApp('/products')
-    await screen.findByText('Esta sección llega muy pronto.')
+    await screen.findByText('Esta sección llegará pronto.')
     const u = userEvent.setup()
     await u.click(screen.getByRole('button', { name: 'Cuenta' }))
     await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cerrar sesión' }))

@@ -184,7 +184,30 @@ El selector de idioma muestra **«Español» / «English»** escritos en su prop
 
 Claves: `unit.<CÓDIGO>` y `unit_short.<CÓDIGO>`. La corta va tras las cantidades con espacio duro: `36 u`, `12,5 kg`.
 
-## 6. Mensajes de la API que propongo (para Forja-Back)
+## 6. Añadidos en implementación (aprobados 2026-11-07)
+
+> Textos que Forja-Front añadió en `cuartico-web/src/i18n/locales/{es,en}.json` (revisados por Lienzo el 2026-11-07).
+> **Estado: aprobados por la supervisión (2026-11-07), con los cambios propuestos.** La columna «Implementado» refleja el valor actual de los
+> archivos de traducción cuando difiere de la propuesta; **Forja-Front aplica el cambio** (Lienzo solo escribe en `docs/design/`).
+
+| Clave | es (propuesto) | en (propuesto) | Implementado (si difiere) | Por qué del cambio |
+|---|---|---|---|---|
+| `language.es` | Español | Español | — | Nombre del idioma en su propio idioma (igual en ambos archivos), como en el login. |
+| `language.en` | English | English | — | ídem. |
+| `home.page_title` | Cuartico · Inicio | Cuartico · Home | — | — |
+| `home.title` | Inicio | Home | — | — |
+| `home.greeting` | Hola, {{name}} | Hi, {{name}} | — | — |
+| `home.empty` | Aquí verás el resumen del negocio. Mientras tanto, empieza por el catálogo de productos. | The business summary will appear here. Meanwhile, start with the product catalog. | es: «Aquí verás el resumen del negocio. Próximamente.» · en: «The business summary will appear here. Coming soon.» | Un vacío debe decir qué hacer (§7.9); «Próximamente» no da salida. |
+| `home.go_to_products` *(nueva)* | Ir a productos | Go to products | — (no existe) | Acción del estado vacío; botón secundario bajo el texto. Opcional si Forja-Front prefiere no añadir clave. |
+| `products.page_title` | Cuartico · Productos | Cuartico · Products | — | — |
+| `products.title` | Productos | Products | — | — |
+| `products.coming_soon` | Esta sección llegará pronto. | This section is coming soon. | es: «Esta sección llega muy pronto.» | Sin intensificador ni promesa de plazo. Texto temporal: desaparece al implementar HU-02. |
+| `not_found.page_title` | Cuartico · Página no encontrada | Cuartico · Page not found | — | — |
+| `not_found.title` | Esta página no existe | This page doesn't exist | — | Coherente con `products.not_found_title`. |
+| `not_found.body` | Puede que el enlace esté mal escrito. | The link may be mistyped. | — | — |
+| `not_found.home_link` | Ir al inicio | Go to Home | en: «Go to home» | «Home» es el nombre de la sección (como en la navegación): con mayúscula. |
+
+## 7. Mensajes de la API que propongo (para Forja-Back)
 
 Viven en `messages_es/en.properties` (los decide Forja-Back); aquí la redacción sugerida, coherente con el tono:
 

@@ -97,7 +97,7 @@ describe('Login (HU-01)', () => {
 
     await fillAndSubmit('mario', 'secret')
 
-    await screen.findByText('Esta sección llega muy pronto.')
+    await screen.findByText('Esta sección llegará pronto.')
     expect(router.state.location.pathname).toBe('/products')
     expect(router.state.location.search).toBe('?q=arroz')
   })
