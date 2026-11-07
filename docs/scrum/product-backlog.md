@@ -51,6 +51,8 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-09 | 9 | Medir memoria de la JVM en staging y revisar los topes del `Dockerfile` | Pendiente | El propio `Dockerfile` pide medir en staging antes de producción. |
 | TT-10 | 10 | Sustituir `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend de producción (sitio estático de Render) | Pendiente | Antes de abrir producción a usuarios. |
 | TT-11 | 1 | **Bug:** `UpdateUserRequest.active` es `boolean` primitivo: si el cliente lo omite llega `false`, desactiva al usuario y revoca sus sesiones. Cambiar a `@NotNull Boolean` | Hecho | Detectado por Lupa en la revisión del PR #6 (`UserDtos.java`). |
+| TT-12 | 2 | Carrera previa: un refresh reutilizado fuera de la gracia mientras otra petición rota el sucesor deja vivo el token nuevo tras la revocación masiva. Serializar por usuario o documentarlo en ADR-001 | Pendiente | Lupa, PR #9 (MENOR, ya existía antes). |
+| TT-13 | 3 | Añadir el check `Web (lint, tests, build)` a la protección de `main` y `develop` | Pendiente | Requiere OK de la supervisión. |
 
 ## Hecho
 
