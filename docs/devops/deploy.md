@@ -41,4 +41,21 @@
 | `password authentication failed` | `DB_USERNAME` / `DB_PASSWORD` incorrectos |
 | El proceso se reinicia sin logs de la JVM | Memoria: revisar `/actuator/metrics/jvm.memory.used` y los flags del Dockerfile |
 
-> Antes de abrir producción a usuarios: cambiar `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend en Vercel.
+> Antes de abrir producción a usuarios: cambiar `APP_CORS_ORIGINS` en `render/production.yaml` por la URL del frontend de producción (sitio estático de Render).
+
+## Frontend `cuartico-web` (sitio estático de Render)
+
+| Entorno | Rama Git | Servicio Render | URL |
+|---|---|---|---|
+| Staging | `develop` | `cuartico-web-staging` | https://cuartico-web-staging.onrender.com |
+| Producción | `main` | pendiente (se añade a `render/production.yaml` con el primer release del frontend) | |
+
+- Definido en el mismo Blueprint de staging ([`render/staging.yaml`](../../render/staging.yaml)): `runtime: static`, `rootDir: cuartico-web`,
+  build `npm ci && npm run build`, publica `dist/`, despliega solo con los checks en verde.
+- `VITE_API_BASE_URL` (sin barra final) se fija en el Blueprint; el build falla si falta, a propósito.
+- Rewrite `/* → /index.html` para las rutas del SPA.
+- Cabeceras: `Content-Security-Policy` (ADR-001 §6: `script-src 'self'`, `connect-src` limitado a la API, `frame-ancestors 'none'`,
+  `object-src 'none'`, `base-uri 'self'`), `X-Content-Type-Options` y `Referrer-Policy`.
+- La URL del sitio debe estar en `APP_CORS_ORIGINS` del backend del mismo entorno.
+- Los sitios estáticos de Render no duermen; el backend sí (la pantalla de login avisa a los 5 s).
+- Alta: al sincronizar el Blueprint de staging tras el merge, Render crea el servicio nuevo (puede pedir confirmación en el panel).

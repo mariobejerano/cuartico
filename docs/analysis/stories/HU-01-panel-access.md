@@ -1,6 +1,6 @@
 # HU-01: Acceso al panel de gestión
 
-- **Sprint:** 1 · **Estado:** análisis listo; prototipos aprobados ([`login.html`](../../design/prototypes/login.html),
+- **Sprint:** 1 · **Estado:** Implementada, QA APTO, en revisión (2026-11-07). Prototipos aprobados ([`login.html`](../../design/prototypes/login.html),
   [`products.html`](../../design/prototypes/products.html) para el layout; [notas UX](../../design/ux-notes/))
 - **Alcance:** frontend `cuartico-web` y un cambio acotado en el backend: **ventana de gracia del refresh** (CA-28,
   Forja-Back). El resto del backend ya existe (ver [API](../../development/backend/api.md) y
@@ -211,7 +211,7 @@ Endpoints que se usan: `POST /api/v1/auth/login|refresh|logout`.
 `auth.refresh_expired`, `auth.user_disabled`, `auth.unauthorized`, `auth.forbidden`, `validation.failed`.
 El resto se muestra con su `detail`.
 
-**Backend:** solo la ventana de gracia (CA-28 a CA-33). Comprobar que `APP_CORS_ORIGINS` de staging incluye la URL de Vercel del panel (Timon).
+**Backend:** solo la ventana de gracia (CA-28 a CA-33). Comprobar que `APP_CORS_ORIGINS` de staging incluye la URL del panel, `https://cuartico-web-staging.onrender.com` (sitio estático de Render; ver el addendum de ADR-001) (Timon).
 
 ## Fuera de alcance (movido)
 - Gestión de usuarios y cambio de contraseña propia: [HU-14](HU-14-user-management.md).

@@ -53,7 +53,7 @@ services:
     headers:
       - path: /*
         name: Content-Security-Policy   # ADR-001, condición 6
-        value: "default-src self; script-src self; style-src self unsafe-inline; img-src self data:; font-src self; connect-src self https://cuartico-api-staging.onrender.com; manifest-src self; frame-ancestors none; object-src none; base-uri self; form-action self"
+        value: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://cuartico-api-staging.onrender.com; manifest-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
       - path: /*
         name: X-Content-Type-Options
         value: nosniff

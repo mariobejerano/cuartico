@@ -22,7 +22,7 @@ cuartico/
 ├── docs/           documentación por rol (ver "Documentación" más abajo)
 └── .claude/agents/ definición del equipo de agentes
 ```
-Infraestructura (todo en planes gratuitos): GitHub (repo público) + GitHub Actions · backend en Render (Docker) · PostgreSQL en Neon (solo como base de datos: no usamos Neon Auth ni Functions) · frontends en Vercel.
+Infraestructura (todo en planes gratuitos): GitHub (repo público) + GitHub Actions · backend en Render (Docker) · PostgreSQL en Neon (solo como base de datos: no usamos Neon Auth ni Functions) · frontends en Render como sitios estáticos (decisión de la supervisión, 2026-11-07: el plan gratis de Vercel es solo para uso no comercial).
 
 ## Comandos
 ```bash
@@ -86,7 +86,7 @@ cd backend
 
 ## Credenciales y seguridad
 - **Nunca** escribir secretos en el código, en el repositorio, en logs ni en el chat. Nunca pedir a la supervisión que pegue un secreto.
-- La supervisión inicia sesión personalmente en GitHub, Render, Neon y Vercel (OAuth vía GitHub), como mucho una vez al día por plataforma.
+- La supervisión inicia sesión personalmente en GitHub, Render y Neon (OAuth vía GitHub), como mucho una vez al día por plataforma.
   Al empezar la jornada, Timon avisa qué plataformas harán falta; al terminar, se cierran las sesiones de las CLI.
 - Los secretos de la app (`DB_*`, `APP_JWT_SECRET`, `APP_ADMIN_*`) viven solo en las variables de entorno de Render (uno distinto por entorno).
 - Los valores de `application-dev.yml` y `application-test.yml` son solo para desarrollo local y tests.
@@ -111,7 +111,7 @@ cd backend
 | `docs/design/` | Design system y prototipos | Lienzo |
 | `docs/development/backend/` | Arquitectura, convenciones, API, códigos de error | Forja-Back |
 | `docs/development/frontend/` | Estructura, convenciones, guías de aprendizaje | Forja-Front |
-| `docs/devops/` | Despliegue, entornos, CI/CD, configuración de Render/Neon/Vercel | Timon |
+| `docs/devops/` | Despliegue, entornos, CI/CD, configuración de Render y Neon | Timon |
 | `docs/qa/` | Estrategia de pruebas, matrices CA → tests, certificaciones de staging | Vera |
 
 Si más adelante hace falta otra carpeta, se añade aquí primero.
@@ -119,7 +119,7 @@ Si más adelante hace falta otra carpeta, se añade aquí primero.
 ## El equipo
 | Agente | Rol |
 |---|---|
-| **Timon** (sesión principal) | Orquesta, mantiene el backlog, DevOps (Docker, Actions, Render, Neon, Vercel), abre PRs y pide los OK a la supervisión |
+| **Timon** (sesión principal) | Orquesta, mantiene el backlog, DevOps (Docker, Actions, Render, Neon), abre PRs y pide los OK a la supervisión |
 | **Faro** (`faro`) | Analista y arquitecto: historias de usuario, criterios de aceptación, diseño técnico, ADR |
 | **Lienzo** (`lienzo`) | Diseñador web y de marca: design system, prototipos HTML, UX móvil, textos de interfaz |
 | **Forja-Back** (`forja-back`) | Implementa el backend Spring Boot |

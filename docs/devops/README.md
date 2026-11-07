@@ -8,6 +8,7 @@ Responsable: Timon. Guía paso a paso del alta en Render y Neon: [deploy.md](dep
 |---|---|---|---|---|---|---|
 | Local | — | — | — (H2 en `backend/data/`) | — | http://localhost:8080 | Sí (`dev`) |
 | Staging | `develop` | `cuartico-api-staging` | `staging` | `render/staging.yaml` | https://cuartico-api-staging.onrender.com | Sí (`SPRINGDOC_ENABLED=true`) |
+| Staging (panel) | `develop` | `cuartico-web-staging` (sitio estático) | — | `render/staging.yaml` | https://cuartico-web-staging.onrender.com | — |
 | Producción | `main` | `cuartico-api` | `production` | `render/production.yaml` | https://cuartico-api.onrender.com | No |
 
 - Infraestructura como código: los dos Blueprints de `render/`. Un cambio en `production.yaml` solo se aplica tras un release, porque el servicio está enlazado a `main`.
@@ -30,8 +31,9 @@ Solo nombres y finalidad. Los valores reales no se documentan aquí: viven en Re
 | `APP_JWT_SECRET` | Secreto HMAC-SHA256 para firmar los JWT. Base64 de al menos 32 bytes. Distinto en cada entorno | En `application-dev.yml` | En `application-test.yml` | Lo genera Render (`generateValue`) |
 | `APP_ADMIN_USERNAME` | Usuario del administrador inicial (solo si la tabla `users` está vacía) | En `application-dev.yml` | En `application-test.yml` | Fijado en el Blueprint |
 | `APP_ADMIN_PASSWORD` | Contraseña del administrador inicial. Cambiarla tras el primer login | En `application-dev.yml` | En `application-test.yml` | Introducida a mano en Render (`sync: false`) |
-| `APP_CORS_ORIGINS` | Orígenes permitidos por CORS para `/api/**` (por defecto `http://localhost:5173`) | Por defecto | Por defecto | Fijada en el Blueprint; sustituir por la URL del frontend en Vercel antes de abrir producción |
+| `APP_CORS_ORIGINS` | Orígenes permitidos por CORS para `/api/**` (por defecto `http://localhost:5173`) | Por defecto | Por defecto | Fijada en el Blueprint; en staging incluye `https://cuartico-web-staging.onrender.com`; en producción, sustituir por la URL del frontend de producción antes de abrir a usuarios |
 | `SPRINGDOC_ENABLED` | Activa Swagger UI y `/v3/api-docs` en `prod` (por defecto `false`) | Activo (en el yml) | Activo (en el yml) | Staging: `true`. Producción: sin definir (`false`) |
+| `VITE_API_BASE_URL` | URL de la API para el build de `cuartico-web`, sin barra final (el build falla si falta) | `.env.local` (ver `.env.example`) | Ficticia en el CI | Fijada en el Blueprint del sitio estático |
 | `PORT` | Puerto HTTP | 8080 | 8080 | Lo inyecta Render |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | Sobrescriben la base de datos de tests | No se usa | Solo en el CI, variante `postgres` | No se usa |
 
@@ -62,6 +64,10 @@ falso si la variante PostgreSQL acabara usando H2. Si falla un test, sube `backe
 > **Advertencia.** Los checks `Tests (h2)`, `Tests (postgres)` y `Docker build` son **obligatorios** en la protección de `main` y `develop`.
 > No renombrar los jobs ni la clave `db` de la matriz sin actualizar la protección. No añadir filtros `paths:` al workflow: el check
 > no se reportaría y los PRs quedarían bloqueados esperando.
+
+**Frontend:** `.github/workflows/frontend-ci.yml`, mismos disparadores. Job `Web (lint, tests, build)` en `cuartico-web/`:
+`npm ci`, `npm run lint`, `npm test -- --run` y `npm run build` (con una `VITE_API_BASE_URL` ficticia). Todavía **no** es check
+obligatorio: añadirlo a la protección de `main` y `develop` requiere el OK de la supervisión.
 
 Pendiente: fijar las actions a SHA de commit y activar Dependabot (TT-06 en el [backlog](../scrum/product-backlog.md)).
 

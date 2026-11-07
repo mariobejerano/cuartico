@@ -15,14 +15,14 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 ## Historias
 | ID | Historia | Sprint | Estado |
 |---|---|---|---|
-| HU-01 | [Acceso al panel](stories/HU-01-panel-access.md) | 1 | Análisis listo |
+| HU-01 | [Acceso al panel](stories/HU-01-panel-access.md) | 1 | Implementada, QA APTO, en revisión |
 | HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Análisis listo |
 | HU-14 | [Gestión de usuarios](stories/HU-14-user-management.md) | — | Ficha breve |
 
 ## ADR
 | ID | Decisión | Estado |
 |---|---|---|
-| ADR-001 | [Almacenamiento de tokens en el frontend](adr/ADR-001-frontend-token-storage.md) | Aceptado (2026-10-30) |
+| ADR-001 | [Almacenamiento de tokens en el frontend](adr/ADR-001-frontend-token-storage.md) | Aceptado (2026-10-30); addendum 2026-11-07 (Render) |
 | ADR-002 | [Stock y costo del producto: caché en `product_stock`](adr/ADR-002-product-stock-cache.md) | Aceptado (2026-10-30) |
 
 ## Diagramas
