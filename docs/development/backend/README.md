@@ -41,11 +41,28 @@ Ver también la [API](api.md) para el detalle de cada endpoint.
 **Refresh token**
 - Valor aleatorio opaco de 32 bytes (no es JWT). Caduca a los 7 días (`app.jwt.refresh-token-ttl`).
 - En la tabla `refresh_tokens` solo se guarda el **hash SHA-256**.
-- **Rotación**: cada `/refresh` revoca el token usado y entrega uno nuevo.
-- **Detección de reutilización**: si llega un token ya revocado, se revocan todas las sesiones del usuario
-  (la revocación se guarda aunque luego se responda 401: `noRollbackFor`).
+- **Rotación**: cada `/refresh` revoca el token usado (`revoked_reason = ROTATED`), entrega uno nuevo y enlaza `replaced_by_id`.
+- **Detección de reutilización**: si llega un token ya revocado sin derecho a gracia, se revocan todas las sesiones del usuario
+  (`REUSE_DETECTED`; la revocación se guarda aunque luego se responda 401: `noRollbackFor`).
+- **Ventana de gracia**: ver la sección siguiente.
 - Cambiar la contraseña (propia o restablecida por un admin) y desactivar un usuario revocan sus sesiones.
 - Limpieza: `RefreshTokenCleanupJob` borra cada noche (03:00) los tokens expirados.
+
+**Ventana de gracia del refresh (HU-01 CA-28..33, ADR-001)**
+- Problema: con red inestable el servidor rota el refresh y la respuesta se pierde; el reintento con el token anterior se tomaba por robo.
+- `app.jwt.refresh-reuse-grace` (por defecto 120 s). Se aplica solo si el token presentado `T` está `ROTATED`, `now - T.revoked_at <= 120 s`
+  (inclusivo), no ha caducado, el usuario está activo y su sucesor `S` (`replaced_by_id`) sigue sin revocar. Entonces `S` pasa a `SUPERSEDED`,
+  se emite un par nuevo `N` y `T.replaced_by_id = N`; `T.revoked_at` no cambia (la ventana no se alarga con reintentos) y la cadena
+  tiene siempre un único token vivo. Si no, es reutilización.
+- Motivos (`RevocationReason`, columna `revoked_reason`): `ROTATED`, `SUPERSEDED`, `LOGOUT`, `PASSWORD_CHANGE`, `PASSWORD_RESET`,
+  `USER_DISABLED`, `REUSE_DETECTED`. `revokeAll` solo toca filas sin revocar, así que las ya revocadas conservan su motivo (clave para que
+  una desactivación, cambio de contraseña o logout posteriores a la rotación impidan la gracia). Revocados antes de V2: motivo `NULL`, sin gracia.
+- **Concurrencia (decisión)**: bloqueo *pesimista* (`PESSIMISTIC_WRITE`, `SELECT ... FOR UPDATE`) y no optimista: aquí un conflicto no se
+  resuelve reintentando, sino serializando, y la segunda petición debe ver el resultado de la primera para decidir (gracia o robo). Orden fijo
+  presentado -> sucesor, así no hay ciclos. `logout` (`revoke`) usa la misma búsqueda con bloqueo para no pisar `ROTATED`/`replaced_by_id`.
+  Las decisiones se toman con los datos leídos tras cada bloqueo. Con dos peticiones simultáneas (mismo token, o token viejo y sucesor) queda
+  como mucho un token vivo; los tests lo verifican con dos hilos.
+- Log `warn` (en inglés, con el usuario, nunca el token) al aplicar la gracia y al detectar reutilización.
 
 **Cadenas de filtros** (`SecurityConfig`)
 - `@Order(1)`, solo perfil `dev`: consola H2 (`/h2-console/**`), sin JWT.
@@ -78,6 +95,7 @@ Ver también la [API](api.md) para el detalle de cada endpoint.
 - Nunca modificar una migración ya mergeada: se crea una nueva.
 - Migraciones actuales:
   - `V1__users_and_refresh_tokens.sql`: tablas `users` (con auditoría) y `refresh_tokens` (con índice por usuario).
+  - `V2__refresh_token_grace.sql`: `refresh_tokens.revoked_reason`, `replaced_by_id` (FK a sí misma, `ON DELETE SET NULL`) e índice `idx_refresh_tokens_replaced_by`.
 - Al arrancar con la tabla `users` vacía, `AdminInitializer` crea el administrador inicial con `APP_ADMIN_USERNAME` /
   `APP_ADMIN_PASSWORD`. Si faltan, avisa en el log y no se crea nadie: como crear usuarios exige ser ADMIN, sin
 administrador inicial no hay forma de entrar por la API.

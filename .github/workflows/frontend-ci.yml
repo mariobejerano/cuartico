@@ -1,0 +1,40 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# Un push nuevo a la misma rama cancela la ejecución anterior
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: cuartico-web
+
+jobs:
+  # El nombre "Web (lint, tests, build)" puede añadirse a los checks obligatorios de main y develop.
+  # Sin filtros "paths:" por la misma razón que en backend-ci.yml.
+  web:
+    name: Web (lint, tests, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cuartico-web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --run
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: https://api.example.invalid

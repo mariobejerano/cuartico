@@ -11,7 +11,7 @@ Responsable: Lienzo (diseñador web y de marca).
 | [`prototypes/login.html`](prototypes/login.html) | Login (HU-01): es/en, validación, credenciales inválidas, «servidor despertando» a los 5 s, error de red, comprobación de sesión. | Sprint 1 · **Aprobado (2026-11-05)** |
 | [`prototypes/products.html`](prototypes/products.html) | Layout del panel (HU-01) + productos (HU-02): listado con búsqueda, filtros, paginación, tabla/tarjetas, estados vacío/carga/error; formulario de alta/edición; desactivar solo ADMIN. Moneda por defecto USD; etiquetas de stock ocultas hasta HU-04. | Sprint 1 · **Aprobado (2026-11-05)** |
 | [`ux-notes/`](ux-notes/) | Notas de UX por pantalla: flujo, decisiones justificadas, estados, accesibilidad y puntos abiertos ([login](ux-notes/login.md), [productos](ux-notes/products.md)). | Sprint 1 |
-| [`copy.md`](copy.md) | Textos de interfaz es/en por pantalla (claves para react-i18next) y redacción propuesta para los mensajes de error nuevos de la API. | Sprint 1 · **pendiente de aprobación** |
+| [`copy.md`](copy.md) | Textos de interfaz es/en por pantalla (claves para react-i18next) y redacción propuesta para los mensajes de error nuevos de la API. | Sprint 1 · **Aprobado (2026-11-07)** |
 
 **Cómo ver los prototipos**: abre el `.html` en el navegador desde `docs/design/prototypes/` (necesita `../tokens.css`).
 Cambia el ancho de la ventana para ver móvil (< 768 px), tablet y escritorio (≥ 1024 px). El botón **⚙ Prototipo**

@@ -1,6 +1,6 @@
 # Textos de interfaz (es / en) — Sprint 1
 
-> Responsable: Lienzo · **Estado: propuesta, pendiente de aprobación de la supervisión.**
+> Responsable: Lienzo · **Estado: aprobado por la supervisión (2026-11-07).**
 > Complementa el [§9 del design system](design-system.md#9-textos-de-interfaz-comunes-es--en) (textos comunes).
 > Las claves son orientativas para `react-i18next` (Forja-Front fija la estructura); **el texto sí es el propuesto**.
 > Los prototipos usan exactamente estas claves: [`login.html`](prototypes/login.html) y [`products.html`](prototypes/products.html).

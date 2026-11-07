@@ -82,13 +82,17 @@ class AuthFlowIntegrationTests {
 			.andReturn();
 		String refresh2 = refreshToken(second);
 
-		// Reutilizar el viejo: 401 y se revocan todas las sesiones...
+		// Reintento del viejo dentro de la ventana de gracia (ver RefreshGraceIntegrationTests): 200 y refresh2 queda inutilizado
 		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh1)))
+			.andExpect(status().isOk());
+
+		// Presentar el sucesor sustituido es reutilización: 401 y se revocan todas las sesiones...
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh2)))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.code").value("auth.refresh_invalid"));
 
-		// ...incluido el refresh token nuevo
-		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh2)))
+		// ...incluido el que se emitió en la gracia
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content(refreshJson(refresh1)))
 			.andExpect(status().isUnauthorized());
 	}
 

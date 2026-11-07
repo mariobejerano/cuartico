@@ -11,7 +11,7 @@ Los errores siguen el formato de [errors.md](errors.md). Las peticiones de ejemp
 | Método | Ruta | Acceso | Código OK | Descripción |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/login` | público | 200 | Valida usuario y contraseña. Devuelve `accessToken`, `refreshToken`, `tokenType` (`Bearer`), `expiresIn` (segundos) y `user`. |
-| POST | `/api/v1/auth/refresh` | público (refresh token en el cuerpo) | 200 | Rota el refresh token: revoca el usado y devuelve un par de tokens nuevo. Reutilizar un token revocado cierra todas las sesiones del usuario. |
+| POST | `/api/v1/auth/refresh` | público (refresh token en el cuerpo) | 200 | Rota el refresh token: revoca el usado y devuelve un par de tokens nuevo. Si el token ya rotado se reenvía dentro de `app.jwt.refresh-reuse-grace` (120 s desde la primera rotación, límite inclusivo) y su sucesor no se usó, responde 200 con un par nuevo y deja el sucesor inutilizado (`SUPERSEDED`). Fuera de la gracia, o con el sucesor usado/sustituido, o tras desactivación, cambio/reseteo de contraseña o logout, es reutilización: 401 `auth.refresh_invalid` y se cierran todas las sesiones del usuario. |
 | POST | `/api/v1/auth/logout` | público (refresh token en el cuerpo) | 204 | Revoca el refresh token indicado. |
 | GET | `/api/v1/auth/me` | autenticado (cualquier rol) | 200 | Datos del usuario del access token. |
 | POST | `/api/v1/auth/change-password` | autenticado (cualquier rol) | 204 | Cambia la contraseña propia (exige la actual) y cierra todas sus sesiones. |

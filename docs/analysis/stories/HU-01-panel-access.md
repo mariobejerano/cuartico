@@ -198,7 +198,7 @@ usuario, nunca el token).
 ## Diseño técnico (frontend)
 | Pieza | Responsabilidad |
 |---|---|
-| `api/client.ts` | `fetch` con base URL (`VITE_API_URL`), `Accept-Language`, `Authorization`, timeouts (5 s aviso, 90 s corte con `AbortController`), parseo de ProblemDetail a un error tipado `{ status, code, detail, errors }`. |
+| `api/client.ts` | `fetch` con base URL (`VITE_API_BASE_URL`), `Accept-Language`, `Authorization`, timeouts (5 s aviso, 90 s corte con `AbortController`), parseo de ProblemDetail a un error tipado `{ status, code, detail, errors }`. |
 | `auth/session.ts` | Access token en memoria; refresh en `localStorage` (clave `cuartico.refreshToken`). Refresh inicial, renovación (*single-flight* en la pestaña) y logout dentro de `navigator.locks.request('cuartico-refresh')`, releyendo `localStorage` dentro del bloqueo; escucha `storage`. |
 | `auth/AuthProvider` | Estado `loading` / `authenticated(user)` / `anonymous`; arranque con `/refresh` (CA-11). |
 | `auth/RequireAuth`, `auth/RequireRole` | Guardas de rutas (CA-6, CA-25). |

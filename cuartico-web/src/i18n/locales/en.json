@@ -1,0 +1,71 @@
+{
+  "app": {
+    "name": "Cuartico"
+  },
+  "language": {
+    "es": "Español",
+    "en": "English"
+  },
+  "common": {
+    "language": "Language",
+    "retry": "Try again",
+    "close": "Close",
+    "loading": "Loading…",
+    "skip_to_content": "Skip to content"
+  },
+  "net": {
+    "waking_title": "The server is waking up",
+    "waking_body": "It can take up to a minute. Please keep this screen open.",
+    "unreachable_title": "We couldn't reach the server",
+    "unreachable_body": "Check your internet connection and try again.",
+    "unexpected_generic": "Something went wrong on the server. Please try again in a few minutes."
+  },
+  "login": {
+    "page_title": "Cuartico · Log in",
+    "checking_session": "Checking your session…",
+    "title": "Log in",
+    "subtitle": "Business management panel",
+    "username": "Username",
+    "password": "Password",
+    "show_password": "Show",
+    "hide_password": "Hide",
+    "submit": "Log in",
+    "submitting": "Logging in…",
+    "username_required": "Enter your username.",
+    "password_required": "Enter your password.",
+    "forgot_help": "Forgot your password? Ask an administrator to reset it."
+  },
+  "session": {
+    "ended": "Your session has ended. Please log in again.",
+    "password_changed": "Password changed. Please log in again."
+  },
+  "nav": {
+    "main": "Main navigation",
+    "home": "Home",
+    "products": "Products",
+    "account": "{{name}}'s account",
+    "account_short": "Account",
+    "logout": "Log out"
+  },
+  "role": {
+    "ADMIN": "Administrator",
+    "OPERATOR": "Operator"
+  },
+  "home": {
+    "page_title": "Cuartico · Home",
+    "title": "Home",
+    "greeting": "Hi, {{name}}",
+    "empty": "The business summary will appear here. Coming soon."
+  },
+  "products": {
+    "page_title": "Cuartico · Products",
+    "title": "Products",
+    "coming_soon": "This section is coming soon."
+  },
+  "not_found": {
+    "page_title": "Cuartico · Page not found",
+    "title": "This page doesn't exist",
+    "body": "The link may be mistyped.",
+    "home_link": "Go to home"
+  }
+}

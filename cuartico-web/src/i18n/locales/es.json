@@ -1,0 +1,71 @@
+{
+  "app": {
+    "name": "Cuartico"
+  },
+  "language": {
+    "es": "Español",
+    "en": "English"
+  },
+  "common": {
+    "language": "Idioma",
+    "retry": "Reintentar",
+    "close": "Cerrar",
+    "loading": "Cargando…",
+    "skip_to_content": "Saltar al contenido"
+  },
+  "net": {
+    "waking_title": "El servidor se está despertando",
+    "waking_body": "Puede tardar hasta un minuto. No cierres esta pantalla.",
+    "unreachable_title": "No pudimos conectar con el servidor",
+    "unreachable_body": "Revisa tu conexión a internet e inténtalo de nuevo.",
+    "unexpected_generic": "Algo salió mal en el servidor. Inténtalo de nuevo en unos minutos."
+  },
+  "login": {
+    "page_title": "Cuartico · Iniciar sesión",
+    "checking_session": "Comprobando tu sesión…",
+    "title": "Inicia sesión",
+    "subtitle": "Panel de gestión del negocio",
+    "username": "Usuario",
+    "password": "Contraseña",
+    "show_password": "Mostrar",
+    "hide_password": "Ocultar",
+    "submit": "Entrar",
+    "submitting": "Entrando…",
+    "username_required": "Escribe tu usuario.",
+    "password_required": "Escribe tu contraseña.",
+    "forgot_help": "¿Olvidaste tu contraseña? Pide a un administrador que te la restablezca."
+  },
+  "session": {
+    "ended": "Tu sesión ha terminado, vuelve a iniciar sesión.",
+    "password_changed": "Contraseña cambiada, inicia sesión de nuevo."
+  },
+  "nav": {
+    "main": "Navegación principal",
+    "home": "Inicio",
+    "products": "Productos",
+    "account": "Cuenta de {{name}}",
+    "account_short": "Cuenta",
+    "logout": "Cerrar sesión"
+  },
+  "role": {
+    "ADMIN": "Administrador",
+    "OPERATOR": "Operador"
+  },
+  "home": {
+    "page_title": "Cuartico · Inicio",
+    "title": "Inicio",
+    "greeting": "Hola, {{name}}",
+    "empty": "Aquí verás el resumen del negocio. Próximamente."
+  },
+  "products": {
+    "page_title": "Cuartico · Productos",
+    "title": "Productos",
+    "coming_soon": "Esta sección llega muy pronto."
+  },
+  "not_found": {
+    "page_title": "Cuartico · Página no encontrada",
+    "title": "Esta página no existe",
+    "body": "Puede que el enlace esté mal escrito.",
+    "home_link": "Ir al inicio"
+  }
+}
