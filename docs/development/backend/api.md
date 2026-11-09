@@ -20,6 +20,13 @@ Los errores siguen el formato de [errors.md](errors.md). Las peticiones de ejemp
 | GET | `/api/v1/users/{id}` | `ADMIN` | 200 | Detalle de un usuario. |
 | PUT | `/api/v1/users/{id}` | `ADMIN` | 200 | Cambia nombre completo, rol y estado (`active`). Desactivar un usuario cierra sus sesiones. Un admin no puede desactivarse ni quitarse el rol `ADMIN`. |
 | POST | `/api/v1/users/{id}/reset-password` | `ADMIN` | 204 | Restablece la contraseña de otro usuario y cierra sus sesiones. |
+| GET | `/api/v1/products` | `ADMIN`, `OPERATOR` | 200 | Listado paginado `PageResponse<ProductResponse>`. Parámetros: `q` (nombre o SKU, sin distinguir mayúsculas, `%` y `_` literales), `active`, `category` (exacta, sin distinguir mayúsculas), `page` (desde 0), `size` (1-100, 20 por defecto), `sort` (`name`, `sku`, `category`, `createdAt` + `,asc`/`,desc`; por defecto `name,asc`). `size`/`page` fuera de rango o de tipo inválido: 400 `validation.failed` con `errors`; `sort` no permitido: 400 `request.invalid_sort`. |
+| GET | `/api/v1/products/categories` | `ADMIN`, `OPERATOR` | 200 | `List<String>` con las categorías distintas no nulas, ordenadas sin distinguir mayúsculas. |
+| GET | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Detalle. 404 `product.not_found`. |
+| POST | `/api/v1/products` | `ADMIN`, `OPERATOR` | 201 | Crea el producto (y su fila `product_stock` en ceros). Cabecera `Location`. 400 `validation.failed`, `product.price_currency_mismatch`, `product.currency_unsupported`; 409 `product.sku_conflict`. |
+| PUT | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Edita (también inactivos). Exige `version`; si no coincide, 409 `resource.version_conflict`. Además los errores del alta y 404. |
+| POST | `/api/v1/products/{id}/deactivate` | `ADMIN` | 200 | `active = false`. Idempotente (sin nueva versión si ya estaba inactivo). 403 para `OPERATOR`. |
+| POST | `/api/v1/products/{id}/activate` | `ADMIN` | 200 | `active = true`. Idempotente. |
 | GET | `/actuator/health` | público | 200 | Estado de la aplicación. Lo usa Render como health check. |
 | GET | `/actuator/info` | autenticado | 200 | Información de la aplicación. |
 | GET | `/v3/api-docs`, `/swagger-ui.html` | público solo si springdoc está activo | 200 | OpenAPI JSON y Swagger UI. Activos en `dev`/`test` y en staging (`SPRINGDOC_ENABLED=true`). En producción: anónimo → 401; autenticado → 404. |
@@ -51,3 +58,29 @@ Consola H2 (`/h2-console`): solo perfil `dev`, no forma parte de la API.
 
 En Swagger UI (staging o local) el paso 2 se hace con el botón «Authorize» tras el login.
 El primer administrador se crea solo al arrancar con la base vacía (ver [backend](README.md#base-de-datos-y-flyway)).
+
+## Productos (HU-02)
+
+Monedas admitidas desde configuración: `app.currencies.supported` (`CUP`, `USD`) y `app.currencies.reference` (`USD`); añadir una moneda no requiere migración.
+Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`.
+
+**`CreateProductRequest`** (POST): `name` (obligatorio, 1-120), `sku` (opcional, 1-50, `[A-Za-z0-9._-]`; se guarda recortado y en mayúsculas, vacío → `null`, único entre activos e inactivos),
+`unit` (`UNIT|KG|LB|G|L|ML`, obligatorio), `category` (opcional, 1-50, vacío → `null`), `salePrice` (opcional, >= 0, máx. 10 enteros y 2 decimales),
+`salePriceCurrency` (obligatoria si hay `salePrice`, y nula si no lo hay), `minStock` (obligatorio, >= 0, máx. 9 enteros y 3 decimales).
+**`UpdateProductRequest`** (PUT): los mismos campos más `version` (obligatorio). La normalización (recortar, SKU en mayúsculas) ocurre en el constructor compacto del record, antes de validar.
+`active`, `stock` y cualquier otro campo del cuerpo se ignoran.
+
+**`ProductResponse`** (los decimales viajan como número JSON con escala fija: precio 2, cantidades 3, costo 4):
+```json
+{
+  "id": 1, "name": "Arroz", "sku": "ARR-001", "unit": "KG", "category": "Granos",
+  "salePrice": 2.50, "salePriceCurrency": "USD", "minStock": 5.000, "active": true,
+  "stock": { "onHand": 0.000, "reserved": 0.000, "available": 0.000, "averageCost": null, "costCurrency": null },
+  "lowStock": true, "version": 0,
+  "createdAt": "2026-11-07T16:41:31.739103Z", "createdBy": "admin",
+  "updatedAt": "2026-11-07T16:41:31.739103Z", "updatedBy": "admin"
+}
+```
+`salePrice`, `salePriceCurrency`, `sku` y `category` son `null` si no hay valor. `lowStock = active && minStock > 0 && available <= minStock`.
+
+**`PageResponse<T>`**: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0, "totalPages": 0 }`. Una página más allá del final devuelve `content` vacío.

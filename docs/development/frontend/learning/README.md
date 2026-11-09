@@ -18,6 +18,11 @@ Se amplía con cada historia. Orden recomendado de lectura: de arriba abajo.
 | 11 | [La sesión: tokens, 401 y varias pestañas](#11-la-sesión-tokens-401-y-varias-pestañas) | 1 |
 | 12 | [Tests (Vitest + Testing Library)](#12-tests-vitest--testing-library) | 1 |
 | 13 | [Build y despliegue](#13-build-y-despliegue) | 1 |
+| 14 | [Leer datos con caché (`useQuery`)](#14-leer-datos-con-caché-usequery) | 1 (HU-02) |
+| 15 | [Mutaciones e invalidación de la caché](#15-mutaciones-e-invalidación-de-la-caché) | 1 (HU-02) |
+| 16 | [Estado en la URL (búsqueda, filtros, página)](#16-estado-en-la-url-búsqueda-filtros-página) | 1 (HU-02) |
+| 17 | [Formularios de verdad: validación, errores del servidor y «¿descartar?»](#17-formularios-de-verdad-validación-errores-del-servidor-y-descartar) | 1 (HU-02) |
+| 18 | [Contexto: los avisos (toasts)](#18-contexto-los-avisos-toasts) | 1 (HU-02) |
 
 ---
 
@@ -163,7 +168,7 @@ const login = useMutation({ mutationFn: (f) => session.login(f.username, f.passw
 login.mutate(form)        // lanza la llamada
 login.isPending           // true mientras espera → botón deshabilitado y «Entrando…»
 ```
-Para leer datos (HU-02) usaremos `useQuery`. Analogía: un `@Cacheable` con estado de carga incorporado.
+Para leer datos usamos `useQuery`: ver el [tema 14](#14-leer-datos-con-caché-usequery).
 
 ## 9. Formularios (React Hook Form + Zod)
 **Zod** define las reglas, como un DTO con Bean Validation, y de ahí sale el tipo TypeScript:
@@ -233,9 +238,120 @@ un `index.html`, JS y CSS con un *hash* en el nombre (caché eterna segura: si c
 Las variables `VITE_*` se **incrustan** en el JavaScript al compilar: son públicas, nunca secretos. `dist/` se publica
 como sitio estático en Render con el *rewrite* del SPA.
 
+## 14. Leer datos con caché (`useQuery`)
+**Qué es.** `useQuery` pide datos a la API y te da su estado: `isPending` (aún no hay datos), `isError`/`error`, `data`
+y `refetch()` («Reintentar»). Guarda la respuesta en una **caché** con una **clave**.
+
+```tsx
+const list = useQuery({
+  queryKey: ['products', 'list', params],               // clave: una entrada de caché por combinación de filtros
+  queryFn: ({ signal }) => productsApi.list(params, signal),
+})
+if (list.isPending) return <Skeleton />
+if (list.isError) return <Error onRetry={() => list.refetch()} />
+return <Table rows={list.data.content} />
+```
+
+**Analogía.** Un método con `@Cacheable(key = "#params")`, pero que además te dice si está cargando o falló, y que
+**vuelve a pintar** el componente cuando llega la respuesta. Si vuelves a una página ya vista, sale al instante de la caché.
+
+**Por qué no un `useEffect` + `fetch` a mano.** Habría que gestionar a mano carga, error, cancelación (si cambias de
+filtro antes de que llegue la respuesta anterior, esa respuesta vieja **no** debe pintarse) y caché. TanStack Query lo
+hace por nosotros: cuando la clave cambia, cancela la petición vieja con el `signal`.
+
+**Las claves son jerárquicas**, como rutas: `['products']` agrupa `['products','list',…]`, `['products','detail',7]` y
+`['products','categories']`. En el código, todas salen de `productKeys` (`features/products/queries.ts`): un único sitio.
+
+**Dónde se separa la lógica (pensando en React Native).** `api/products.ts` no sabe nada de React (≈ un cliente Feign);
+`queries.ts` lo envuelve en hooks; los componentes solo llaman a los hooks y pintan.
+
+## 15. Mutaciones e invalidación de la caché
+**Qué es.** Una *mutación* cambia algo en el servidor (crear, guardar, desactivar). `useMutation` da `mutate()` y
+`isPending` (para deshabilitar el botón y evitar el doble clic).
+
+```tsx
+const save = useMutation({
+  mutationFn: (body) => productsApi.create(body),
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products'] }),   // ≈ @CacheEvict(allEntries = true)
+})
+save.mutate(body, { onSuccess: () => navigate('/products'), onError: showError })
+```
+
+**Invalidar** marca esas entradas como obsoletas: las que se están viendo se vuelven a pedir y las demás, cuando se
+vuelvan a usar. Así, al volver al listado tras crear un producto, aparece sin recargar la página.
+
+**Matiz que hemos cuidado.** Al desactivar desde el formulario, **no** invalidamos el detalle (se repintaría el formulario
+y perderías lo escrito): escribimos en la caché la respuesta (`setQueryData`) y guardamos la nueva `version` para el
+próximo «Guardar». Si no, nuestro propio cambio provocaría un 409 de bloqueo optimista (el `@Version` de JPA).
+
+## 16. Estado en la URL (búsqueda, filtros, página)
+**Qué es.** En vez de guardar la búsqueda y la página en `useState`, las guardamos en la URL:
+`/products?q=arroz&cat=Granos&status=all&page=2`. La URL es la **fuente de verdad**; el componente la lee y la escribe.
+
+```tsx
+const [params, setParams] = useSearchParams()          // ≈ los @RequestParam del GET, pero en el navegador
+const query = parseListQuery(params)                    // texto de la URL → objeto tipado (valores raros → por defecto)
+setParams(toSearchParams({ ...query, page: 2 }))        // cambia la URL → React Router repinta → nueva petición
+```
+
+**Por qué.** Recargar, compartir el enlace o volver con «atrás» reproduce exactamente la misma vista (CA-26). Con
+`useState` se perdería todo al recargar.
+
+**Detalles.**
+- La `page` de la URL empieza en **1** (para personas) y la de la API en **0**: la conversión vive en un solo sitio (`toApiParams`).
+- Solo se escriben los valores que no son por defecto: `/products` a secas = activos, página 1, por nombre.
+- **Debounce (espera de 300 ms)** en la búsqueda: un `useEffect` arranca un temporizador en cada tecla y su función de
+  limpieza lo cancela si llega otra tecla antes. Solo cuando dejas de escribir se cambia la URL, y con `replace` (no llena
+  el historial: «atrás» no recorre letra a letra). Analogía: un `ScheduledFuture` que se cancela y se reprograma.
+- «Volver a productos» desde el formulario: el listado pasa su `?…` actual en el `state` del enlace y el formulario vuelve a él.
+
+## 17. Formularios de verdad: validación, errores del servidor y «¿descartar?»
+Sobre lo visto en el [tema 9](#9-formularios-react-hook-form--zod), el formulario de producto añade:
+
+- **Cuándo validar.** `useForm({ mode: 'onTouched' })`: valida al **salir** de un campo y, desde ese momento, a cada
+  cambio (el error desaparece en cuanto el valor es válido). Al guardar valida todo y pone el foco en el primer error.
+- **Valores = texto.** Los `<input>` siempre dan texto («12,5»). El esquema Zod valida ese texto con las **mismas reglas que
+  la API** (≈ los `@Size`/`@Pattern`/`@Digits` del DTO) y `toRequest()` lo convierte al cuerpo JSON (número `12.5`,
+  vacío → `null`, SKU en mayúsculas). Es nuestro "mapper" DTO ⇄ formulario.
+- **Errores del servidor en su campo.** La API manda: si responde 409 `product.sku_conflict`, hacemos
+  `setError('sku', { type: 'server', message: detail })` y el error aparece bajo el SKU. Con `validation.failed`, cada
+  `errors.<campo>` va a su campo. Decidimos por `code`, nunca por el texto (igual que en el backend).
+- **Bloqueo optimista (409 `resource.version_conflict`).** El `PUT` lleva la `version` que editaste; si otro guardó antes,
+  avisamos y ofrecemos «Recargar producto». Nunca se pisa un cambio en silencio.
+- **«¿Descartar los cambios?»** `formState.isDirty` dice si hay cambios sin guardar. `useBlocker` (React Router)
+  intercepta **cualquier** navegación dentro de la app (Cancelar, el menú, el botón atrás) y nos deja preguntar con un
+  `<dialog>`: `blocker.proceed()` sale, `blocker.reset()` se queda. Analogía: un `HandlerInterceptor.preHandle` que puede
+  devolver `false`. Para cerrar o recargar la pestaña se usa el evento nativo `beforeunload`.
+
+## 18. Contexto: los avisos (toasts)
+**Qué es.** `createContext` + `useContext` comparten un valor con **todos** los componentes de debajo de un *Provider*,
+sin pasarlo por props nivel a nivel.
+
+```tsx
+<ToastProvider>          {/* en AppLayout: envuelve todas las páginas del panel */}
+  <Outlet />
+</ToastProvider>
+
+const toast = useToast()                       // en cualquier página: "inyectar el bean"
+toast({ text: t('products.saved') })
+toast({ text: t('products.deactivated', { name }), action: { label: t('common.undo'), run: reactivar } })
+```
+
+**Analogía.** Un bean singleton del `ApplicationContext`: quien lo necesita lo pide y recibe siempre el mismo. Como el
+proveedor vive en el layout (no en la página), el aviso «Cambios guardados.» lanzado desde el formulario sigue visible
+después de volver al listado.
+
+**Cuándo NO usar contexto.** Para datos de la API (eso es TanStack Query) ni para estado que solo usa un componente
+(`useState`). El contexto es para cosas transversales: sesión, idioma, avisos.
+
 ---
 
 ## Mini-ejercicios opcionales
 1. En `src/i18n/locales/es.json` cambia `login.subtitle`, arranca `npm run dev` y mira cómo cambia sin tocar componentes.
 2. En `LoginPage.test.tsx` duplica el test de CA-2 y cambia el mensaje esperado: comprueba que falla y lee el error.
 3. Abre dos pestañas del panel con sesión, cierra sesión en una y mira cómo la otra va sola al login (evento `storage`).
+4. En `src/features/products/features.ts` pon `SHOW_STOCK_BADGES = true`, abre Productos y mira aparecer «Sin stock» (todo
+   el stock es 0 hasta HU-04). Vuelve a ponerlo a `false`.
+5. Busca algo en Productos, pasa a la página 2, entra a editar un producto y pulsa «Volver a productos»: fíjate en la URL.
+   Después recarga la página: la vista se conserva (tema 16).
+6. Abre el mismo producto en dos pestañas, guarda en una y luego en la otra: verás el aviso de conflicto de versión (tema 17).

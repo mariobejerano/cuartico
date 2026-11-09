@@ -7,6 +7,11 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.MismatchedInputException;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -80,19 +85,74 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		Map<String, String> errors = new LinkedHashMap<>();
+		Locale locale = localeOf(request);
 		for (FieldError e : ex.getBindingResult().getFieldErrors()) {
-			// El mensaje de Bean Validation ya viene interpolado y traducido (ver messages_*.properties)
-			errors.putIfAbsent(e.getField(), e.getDefaultMessage());
+			// El mensaje de Bean Validation ya viene interpolado y traducido (ver messages_*.properties).
+			// Un fallo de conversión de tipo (p. ej. page=abc) trae un texto técnico de Spring: se reemplaza.
+			String message = e.isBindingFailure() ? invalidValue(locale) : e.getDefaultMessage();
+			errors.putIfAbsent(e.getField(), message);
 		}
-		ProblemDetail problem = problems.create(HttpStatus.BAD_REQUEST, "validation.failed", localeOf(request));
-		problem.setProperty("errors", errors);
-		return ResponseEntity.badRequest().body(problem);
+		return validationFailed(errors, locale);
+	}
+
+	/** Parámetro de ruta o de consulta con un tipo que no se puede convertir (p. ej. /products/abc). */
+	@Override
+	protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		Locale locale = localeOf(request);
+		String field = ex.getPropertyName() != null ? ex.getPropertyName() : "value";
+		if (ex instanceof MethodArgumentTypeMismatchException mismatch) {
+			field = mismatch.getName();
+		}
+		return validationFailed(Map.of(field, invalidValue(locale)), locale);
 	}
 
 	@Override
 	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		// Error de tipo de Jackson con campo conocido (unit="BOX", minStock="abc"): es un error de validación
+		if (ex.getCause() instanceof MismatchedInputException mismatch && !mismatch.getPath().isEmpty()) {
+			Locale locale = localeOf(request);
+			return validationFailed(Map.of(fieldPath(mismatch), invalidValue(locale)), locale);
+		}
+		// Sintaxis inválida, cuerpo vacío o cuerpo que no es un objeto (sin campo al que asignar el error)
 		return respond(HttpStatus.BAD_REQUEST, "request.malformed", headers, request);
+	}
+
+	/** Dos ediciones simultáneas del mismo registro: la residual que no atrapa la comprobación de versión. */
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	ResponseEntity<ProblemDetail> handleOptimisticLock(ObjectOptimisticLockingFailureException ex,
+			HttpServletRequest request) {
+		log.warn("Optimistic locking conflict on {} {}", request.getMethod(), request.getRequestURI());
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(problems.create(HttpStatus.CONFLICT, "resource.version_conflict", request));
+	}
+
+	private ResponseEntity<Object> validationFailed(Map<String, String> errors, Locale locale) {
+		ProblemDetail problem = problems.create(HttpStatus.BAD_REQUEST, "validation.failed", locale);
+		problem.setProperty("errors", errors);
+		return ResponseEntity.badRequest().body(problem);
+	}
+
+	private String invalidValue(Locale locale) {
+		return problems.message("validation.invalid_value", locale);
+	}
+
+	/** Ruta del campo con puntos para anidados; los índices de lista se escriben entre corchetes. */
+	private static String fieldPath(MismatchedInputException ex) {
+		StringBuilder path = new StringBuilder();
+		for (JacksonException.Reference ref : ex.getPath()) {
+			if (ref.getPropertyName() != null) {
+				if (!path.isEmpty()) {
+					path.append('.');
+				}
+				path.append(ref.getPropertyName());
+			}
+			else if (ref.getIndex() >= 0) {
+				path.append('[').append(ref.getIndex()).append(']');
+			}
+		}
+		return path.toString();
 	}
 
 	@Override

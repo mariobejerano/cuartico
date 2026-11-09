@@ -41,3 +41,72 @@ export interface ProblemDetail {
   code?: string
   errors?: Record<string, string>
 }
+
+// ===== Productos (HU-02) — equivalen a los `record` de `product/dto/ProductDtos.java` =====
+
+/** Unidades de medida (`UnitOfMeasure`). El texto visible sale de `unit.<CÓDIGO>` en los archivos de traducción. */
+export const UNITS = ['UNIT', 'KG', 'LB', 'G', 'L', 'ML'] as const
+export type UnitOfMeasure = (typeof UNITS)[number]
+
+/** Stock y costo de solo lectura (tabla `product_stock`, ADR-002). En HU-02 siempre 0 / `null`. */
+export interface StockSummary {
+  onHand: number
+  reserved: number
+  available: number
+  averageCost: number | null
+  costCurrency: string | null
+}
+
+export interface ProductResponse {
+  id: number
+  name: string
+  sku: string | null
+  unit: UnitOfMeasure
+  category: string | null
+  salePrice: number | null
+  salePriceCurrency: string | null
+  minStock: number
+  active: boolean
+  stock: StockSummary
+  lowStock: boolean
+  version: number
+  createdAt: string
+  createdBy: string | null
+  updatedAt: string
+  updatedBy: string | null
+}
+
+/** Cuerpo de `POST /products`. Los decimales viajan como número JSON. */
+export interface CreateProductRequest {
+  name: string
+  sku: string | null
+  unit: UnitOfMeasure
+  category: string | null
+  salePrice: number | null
+  salePriceCurrency: string | null
+  minStock: number
+}
+
+/** Cuerpo de `PUT /products/{id}`: lo mismo + la versión que se editó (bloqueo optimista, CA-9). */
+export interface UpdateProductRequest extends CreateProductRequest {
+  version: number
+}
+
+/** Parámetros de `GET /products` (CA-17 a CA-21). `page` empieza en 0, como en la API. */
+export interface ProductListParams {
+  q?: string
+  active?: boolean
+  category?: string
+  page: number
+  size: number
+  sort: 'name,asc' | 'name,desc'
+}
+
+/** Página genérica (`common/dto/PageResponse`). */
+export interface PageResponse<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}

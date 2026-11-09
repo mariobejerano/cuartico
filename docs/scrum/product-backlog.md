@@ -15,7 +15,7 @@ ambos y su QA deben estar terminados (vertical slice).
 
 | ID | Prioridad | Historia | Estado | Notas |
 |---|---|---|---|---|
-| HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | En curso | Sprint 1. Backend (JWT, refresh rotativo con ventana de gracia) y frontend `cuartico-web` (login, sesión, layout) implementados; Vera APTO. En revisión. |
+| HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | Hecho | Sprint 1. PR #9 (`0446197`). Backend con ventana de gracia y panel `cuartico-web`. Pendientes manuales en staging: M-1..M-3 de `docs/qa/stories/HU-01.md`. |
 | HU-02 | 2 | Catálogo de productos | En curso | Sprint 1. Los productos son lo que se compra suelto; aquí vive el stock. |
 | HU-03 | 3 | Proveedores | Pendiente | Necesario para las compras. |
 | HU-04 | 4 | Compras y movimientos de inventario | Pendiente | Entrada de stock, promedio ponderado, movimientos inmutables. |

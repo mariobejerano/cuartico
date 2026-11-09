@@ -13,6 +13,7 @@ Paquetes por módulo, no por capa. Lo transversal va en `config/` y `common/`.
 |---|---|
 | `com.cuartico.auth` | Login, refresh tokens (rotación), emisión de JWT de acceso, limpieza nocturna. DTOs en `auth/dto/AuthDtos.java`. |
 | `com.cuartico.user` | Usuarios y roles (`Role`: `ADMIN`, `OPERATOR`), administración de usuarios, admin inicial. DTOs en `user/dto/UserDtos.java`. |
+| `com.cuartico.product` | Catálogo de productos (HU-02): `Product`, `ProductStock` (caché 1:1 de stock y costo, ADR-002), `UnitOfMeasure`, `ProductService`, `ProductController`. DTOs en `product/dto/ProductDtos.java`. |
 | `com.cuartico.common` | `ApiException` (y fábricas), `GlobalExceptionHandler`, `ProblemFactory`, `AuditableEntity`. |
 | `com.cuartico.config` | Seguridad, JWT, CORS, i18n de mensajes, OpenAPI, propiedades `app.*` (`AppProperties`), `Clock`, auditoría JPA. |
 
@@ -85,7 +86,7 @@ Ver también la [API](api.md) para el detalle de cada endpoint.
 
 - `AuditableEntity` (`@MappedSuperclass`) añade `createdAt`, `updatedAt`, `createdBy`, `updatedBy`.
 - `JpaAuditingConfig` rellena `createdBy`/`updatedBy` con el usuario del JWT. Sin usuario autenticado escribe `system`.
-- Entidades que la usan: `User`. (`RefreshToken` no extiende la clase: solo guarda `createdAt`.)
+- Entidades que la usan: `User`, `Product`. (`RefreshToken` no extiende la clase: solo guarda `createdAt`.)
 
 ## Base de datos y Flyway
 
@@ -96,6 +97,7 @@ Ver también la [API](api.md) para el detalle de cada endpoint.
 - Migraciones actuales:
   - `V1__users_and_refresh_tokens.sql`: tablas `users` (con auditoría) y `refresh_tokens` (con índice por usuario).
   - `V2__refresh_token_grace.sql`: `refresh_tokens.revoked_reason`, `replaced_by_id` (FK a sí misma, `ON DELETE SET NULL`) e índice `idx_refresh_tokens_replaced_by`.
+  - `V3__products.sql`: `products` (SKU único `uk_products_sku`, checks de precio/moneda y cantidades, `version` para bloqueo optimista) y `product_stock` (1:1, PK = `product_id`, creada con ceros; ver ADR-002). Moneda como `VARCHAR(3)`.
 - Al arrancar con la tabla `users` vacía, `AdminInitializer` crea el administrador inicial con `APP_ADMIN_USERNAME` /
   `APP_ADMIN_PASSWORD`. Si faltan, avisa en el log y no se crea nadie: como crear usuarios exige ser ADMIN, sin
 administrador inicial no hay forma de entrar por la API.
@@ -131,8 +133,20 @@ Detalle completo en [errors.md](errors.md).
 - Clases actuales (en `backend/src/test/java/com/cuartico/`):
   - `auth/AuthFlowIntegrationTests`: login, `/me`, rotación y detección de reutilización, logout, gestión de usuarios por roles.
   - `common/ErrorHandlingIntegrationTests`: códigos y traducción de errores, 400/401/403/404/405/415/500.
+  - `product/ProductIntegrationTests`: HU-02 completa (alta, normalización, SKU duplicado y en carrera, validación y errores de tipo, moneda, edición, versión, activar/desactivar, listado, búsqueda, paginación, orden, categorías, roles, i18n es/en).
   - `common/MessageBundlesTests`: `messages_es` y `messages_en` tienen las mismas claves y ninguna vacía.
   - `config/OpenApiIntegrationTests`: documentación pública y rutas antiguas sin versión.
   - `config/ApiDocsDisabledIntegrationTests`: documentación cerrada cuando springdoc está desactivado.
 - Comandos: `./mvnw test` (tests) y `./mvnw -q -B verify` (lo mismo que el CI).
 - El CI ejecuta los tests dos veces: contra H2 y contra PostgreSQL real (ver [devops](../../devops/README.md)).
+
+## Productos (HU-02): decisiones de implementación
+
+- **Concurrencia**: bloqueo *optimista* (`@Version`) en `Product`. Editar el catálogo es una operación humana larga (abrir, editar, guardar) con conflictos raros; lo correcto es avisar al segundo editor (`409 resource.version_conflict`), no hacerle esperar. El servicio compara la versión enviada con la actual y, para la carrera residual al hacer flush, el `GlobalExceptionHandler` traduce `ObjectOptimisticLockingFailureException` al mismo código. El stock se bloqueará de forma pesimista en HU-04 sobre `product_stock` (otra fila, otra versión).
+- **`product_stock` 1:1**: `ProductStock` usa `@MapsId` (PK = `product_id`); `Product` la referencia con `@OneToOne(mappedBy)` y cascade `PERSIST`. El alta crea ambas filas en la misma transacción. El listado trae producto y stock con `join fetch` (una consulta, sin N+1); el conteo de la paginación va sin `fetch`.
+- **SKU único**: comprobación previa (`existsBySku*`) para un 409 claro y `saveAndFlush` capturando `DataIntegrityViolationException`; se reconoce `uk_products_sku` en la cadena de causas sin distinguir mayúsculas (PostgreSQL lo informa en minúsculas, H2 en mayúsculas); cualquier otra violación se relanza.
+- **Normalización antes de validar**: en el constructor compacto de los records de entrada (strip, SKU en mayúsculas, vacío → `null`). La moneda no se normaliza a propósito (`usd` → `product.currency_unsupported`).
+- **Listado**: `ProductQuery` con `@Valid @ModelAttribute` (no `Pageable`, que recortaría `size` en silencio). Búsqueda con `Specification` y `LIKE ... ESCAPE '\'` sobre `LOWER(name)`/`LOWER(sku)`; `%`, `_` y `\` de `q` se escapan. Orden con lista blanca y desempate por `id`.
+- **Escalas**: precio 2 decimales, cantidades 3, costo 4; las entidades fijan la escala para que el JSON sea estable (`0.000`).
+- **Monedas**: `app.currencies.supported` y `app.currencies.reference` (`AppProperties.Currencies`, validado al arrancar: la de referencia debe estar entre las admitidas).
+- Una edición que no cambia ningún valor no genera `UPDATE` y por tanto no incrementa `version` (comportamiento de JPA con entidades sin cambios).

@@ -89,7 +89,10 @@ describe('Login (HU-01)', () => {
   })
 
   it('sin sesión, una ruta protegida va al login y después vuelve a ella con su búsqueda (CA-6)', async () => {
-    installFakeApi().on('POST /api/v1/auth/login', () => json(200, tokenPair(1)))
+    installFakeApi()
+      .on('POST /api/v1/auth/login', () => json(200, tokenPair(1)))
+      .on('GET /api/v1/products', () => json(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }))
+      .on('GET /api/v1/products/categories', () => json(200, []))
     const { router } = renderApp('/products?q=arroz')
     await screen.findByRole('heading', { name: 'Inicia sesión' })
     expect(router.state.location.pathname).toBe('/login')
@@ -97,7 +100,7 @@ describe('Login (HU-01)', () => {
 
     await fillAndSubmit('mario', 'secret')
 
-    await screen.findByText('Esta sección llegará pronto.')
+    await screen.findByRole('heading', { name: 'No hay productos que coincidan con «arroz»' })
     expect(router.state.location.pathname).toBe('/products')
     expect(router.state.location.search).toBe('?q=arroz')
   })
