@@ -59,3 +59,65 @@ erDiagram
 
 Notas: `refresh_tokens` y `product_stock` no extienden `AuditableEntity` (no las edita un usuario). Índices: los `UK`
 (`username`, `token_hash`, `sku`), `idx_refresh_tokens_user` e `idx_refresh_tokens_replaced_by` (nuevo); productos no lleva índices de búsqueda (ver HU-02, migración).
+
+## Propuesta ADR-003 (no implementada)
+
+> **Aceptado, aún no implementado**: [ADR-003](../adr/ADR-003-categories-types-variants.md) (2026-11-09), se
+> implementa en HU-15 (V4) y HU-16 (V5). Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
+> `products.category` (texto) por `categories` (árbol) y `product_stock` por `variant_stock` (1:1 con la variante).
+> Se quitan de `products`: `category`, `sku`, `min_stock` (pasan a categoría y variante).
+
+```mermaid
+erDiagram
+    categories |o--o{ categories : "parent_id (máx. 3 niveles)"
+    categories ||--o{ products : "category_id (obligatoria)"
+    products ||--|{ product_variants : "≥ 1 (simple = 1 sin talla/color)"
+    product_variants ||--|| variant_stock : "caché de stock (ADR-002, ahora por variante)"
+
+    categories {
+        BIGINT id PK
+        BIGINT parent_id FK "nulo = raíz"
+        VARCHAR name "es; único por padre (name_key)"
+        VARCHAR name_en "opcional"
+        VARCHAR name_key "lower(name)"
+        VARCHAR product_type "FOOD | CLOTHING | APPLIANCE | OTHER; heredado de la raíz"
+        SMALLINT depth "1..3"
+        BOOLEAN active
+        BIGINT version
+    }
+    products {
+        BIGINT id PK
+        VARCHAR name
+        BIGINT category_id FK "tipo derivado de la categoría"
+        VARCHAR unit "UNIT obligatorio en CLOTHING y APPLIANCE"
+        VARCHAR brand "opcional"
+        VARCHAR model "solo APPLIANCE"
+        SMALLINT warranty_months "solo APPLIANCE"
+        NUMERIC sale_price
+        VARCHAR sale_price_currency
+        BOOLEAN has_variants
+        BOOLEAN active
+        BIGINT version
+    }
+    product_variants {
+        BIGINT id PK
+        BIGINT product_id FK
+        VARCHAR sku UK "opcional"
+        VARCHAR size "único (product_id, size, color)"
+        VARCHAR color
+        NUMERIC min_stock
+        BOOLEAN active
+        BIGINT version
+    }
+    variant_stock {
+        BIGINT variant_id PK "y FK a product_variants"
+        NUMERIC on_hand
+        NUMERIC reserved
+        NUMERIC average_cost "USD"
+        VARCHAR cost_currency
+        TIMESTAMPTZ updated_at
+    }
+```
+
+Futuro (HU-04/HU-06, referencia): `stock_movements.variant_id` y líneas de compra/pedido con `variant_id`;
+`combo_items (product_id, variant_id nulo = «se elige al vender»)`. Columnas de auditoría omitidas en el diagrama.
