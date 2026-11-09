@@ -79,9 +79,9 @@ erDiagram
         BIGINT parent_id FK "nulo = raíz"
         VARCHAR name "es; único por padre (name_key)"
         VARCHAR name_en "opcional"
-        VARCHAR name_key "lower(name)"
+        VARCHAR name_key "LOWER(TRIM(name)), lo calcula la BD"
         VARCHAR product_type "FOOD | CLOTHING | APPLIANCE | OTHER; heredado de la raíz"
-        SMALLINT depth "1..3"
+        INTEGER depth "1..3"
         BOOLEAN active
         BIGINT version
     }
@@ -92,7 +92,7 @@ erDiagram
         VARCHAR unit "UNIT obligatorio en CLOTHING y APPLIANCE"
         VARCHAR brand "opcional"
         VARCHAR model "solo APPLIANCE"
-        SMALLINT warranty_months "solo APPLIANCE"
+        INTEGER warranty_months "solo APPLIANCE, 0..120"
         NUMERIC sale_price
         VARCHAR sale_price_currency
         BOOLEAN has_variants
@@ -103,8 +103,9 @@ erDiagram
         BIGINT id PK
         BIGINT product_id FK
         VARCHAR sku UK "opcional"
-        VARCHAR size "único (product_id, size, color)"
+        VARCHAR size "mayúsculas; único (product_id, size, color_key)"
         VARCHAR color
+        VARCHAR color_key "LOWER(TRIM(color)), lo calcula la BD"
         NUMERIC min_stock
         BOOLEAN active
         BIGINT version

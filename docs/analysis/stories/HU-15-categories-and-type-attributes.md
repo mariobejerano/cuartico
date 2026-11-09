@@ -42,8 +42,9 @@ garantía).
   `category.parent_inactive`.
 - **CA-6 Nombre único por padre.** Dado `Granos` bajo `Alimentos`, cuando se crea `  granos ` bajo `Alimentos` (o se
   renombra otra hija a ese nombre), entonces **409** `category.name_conflict`. `Granos` bajo `Ropa` sí se permite.
-  Dos raíces con el mismo nombre (sin distinguir mayúsculas) → **409**. Dos altas simultáneas iguales → una 201 y otra
-  409 (la restricción de BD es la garantía final, nunca 500). Las categorías inactivas también cuentan.
+  Dos raíces con el mismo nombre (sin distinguir mayúsculas) → **409**. Con acentos igual: `Lácteos` y `LÁCTEOS` bajo el
+  mismo padre → **409**. Dos altas simultáneas iguales → una 201 y otra 409 (la restricción de BD es la garantía final,
+  nunca 500). Las categorías inactivas también cuentan.
 - **CA-7 Normalización y validación.** `name` y `nameEn` se recortan; `nameEn` vacío → `null`. `name` vacío o de más de
   60 caracteres, o `nameEn` de más de 60 → **400** `validation.failed` con `errors` por campo.
 - **CA-8 Renombrar.** `PUT` con `name`, `nameEn` y `version` → **200**, `version + 1`; las rutas (`path`) de sus
@@ -71,7 +72,9 @@ garantía).
   `product.attribute_not_allowed` (con `{0}` = campo).
 - **CA-17 Unidad por tipo.** En `CLOTHING` o `APPLIANCE` con `unit ≠ UNIT` → **400** `product.unit_not_allowed`.
 - **CA-18 Cambio de categoría y de tipo.** Mover un producto de `Electrodomésticos` a `Alimentos` exige enviar
-  `model = null` y `warrantyMonths = null` (si no, CA-16); mover a `Ropa` con `unit = KG` → CA-17.
+  `model = null` y `warrantyMonths = null`; si llegan con valor → **400** `product.attribute_not_allowed` (CA-16) y el
+  producto no cambia. El servidor **nunca anula atributos por su cuenta** (ADR-003, decisión 2); el frontend los vacía
+  (CA-26). Mover a `Ropa` con `unit = KG` → CA-17.
 - **CA-19 Filtros.** `GET /api/v1/products?categoryId=` incluye los productos de la categoría **y de sus descendientes**;
   `type=FOOD|CLOTHING|APPLIANCE|OTHER` filtra por tipo; ambos combinables con `q` y `active`. `categoryId` inexistente
   → `content` vacío (no error). `type` desconocido → **400** `validation.failed` (`errors.type`).
@@ -79,9 +82,12 @@ garantía).
 - **CA-21 Endpoint retirado.** `GET /api/v1/products/categories` deja de existir (**404**).
 
 ### Migración (V4)
-- **CA-22 Texto → categoría.** Dados productos con `category` = `"alimentos"`, `"ROPA"`, `"Granos"`, `"granos"` y `null`,
-  tras V4: los dos primeros quedan en las raíces `Alimentos` y `Ropa`; los dos `Granos` en **una** subcategoría `Granos`
-  bajo `Alimentos`; el de `null` en `Alimentos`. La columna `products.category` ya no existe y `category_id` es `NOT NULL`.
+- **CA-22 Texto → categoría.** Dados productos con `category` = `"alimentos"`, `"ROPA"`, `"Granos"`, `"granos"`,
+  `"Lácteos"`, `"LÁCTEOS"` y `null`, tras V4: los dos primeros quedan en las raíces `Alimentos` y `Ropa`; los dos `Granos`
+  en **una sola** subcategoría y los dos `Lácteos` en **una sola** subcategoría, ambas bajo `Alimentos` (su nombre es uno
+  de los textos del grupo, `MIN`; el `ADMIN` puede renombrarla después); el de
+  `null` en `Alimentos`. Después, crear `lácteos` bajo `Alimentos` desde la API → **409** `category.name_conflict`
+  (migración y Service normalizan igual). La columna `products.category` ya no existe y `category_id` es `NOT NULL`.
   Ningún producto cambia de `id`, `sku`, precio ni stock.
 
 ### Permisos
@@ -127,7 +133,7 @@ CREATE TABLE categories (
     name_en      VARCHAR(60),
     name_key     VARCHAR(60) NOT NULL,
     product_type VARCHAR(20) NOT NULL,
-    depth        SMALLINT    NOT NULL,
+    depth        INTEGER     NOT NULL,
     active       BOOLEAN     NOT NULL DEFAULT TRUE,
     version      BIGINT      NOT NULL DEFAULT 0,
     created_at   TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -142,17 +148,24 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_parent ON categories (parent_id);
 
 -- 1. Raíces (created_by = 'system', created_at = updated_at = CURRENT_TIMESTAMP)
--- 2. Subcategorías bajo Alimentos para cada LOWER(category) distinto que no coincida con el name/name_en de una raíz
---    (nombre = MIN(category) del grupo, name_key = LOWER(TRIM(...)))
+-- 2. Subcategorías bajo Alimentos para cada LOWER(TRIM(category)) distinto que no coincida con el name_key ni con
+--    LOWER(name_en) de una raíz (nombre = MIN(TRIM(category)) del grupo, name_key = LOWER(TRIM(...)): misma función
+--    que usa la aplicación al escribir, ver «Normalización»)
 -- 3. ALTER TABLE products ADD category_id BIGINT; UPDATE según 1–2; los NULL → Alimentos;
 --    ALTER COLUMN category_id SET NOT NULL; FK fk_products_category; índice idx_products_category
--- 4. ALTER TABLE products ADD brand VARCHAR(80), model VARCHAR(80), warranty_months SMALLINT
+-- 4. ALTER TABLE products ADD brand VARCHAR(80), model VARCHAR(80), warranty_months INTEGER
 --    con CHECK (warranty_months IS NULL OR warranty_months BETWEEN 0 AND 120)
 -- 5. ALTER TABLE products DROP COLUMN category
 ```
-- **Verificar en H2** `UNIQUE NULLS NOT DISTINCT` (PostgreSQL ≥ 15 lo admite). Si H2 no lo admite: quitar la cláusula,
-  comprobar en el Service las raíces duplicadas y aceptar que la carrera entre dos raíces iguales solo la frene
-  PostgreSQL (documentarlo). La unicidad de hijas no depende de esto.
+- `UNIQUE NULLS NOT DISTINCT` está **verificado** por Lupa (PR #11) en H2 2.4.240 (modo PostgreSQL) y PostgreSQL 18:
+  cubre también las raíces, sin comprobación alternativa.
+- Tipos enteros: `INTEGER` (no `SMALLINT`) para `depth` y `warranty_months`, mapeados a `Integer`/`int` en las entidades,
+  para que `ddl-auto=validate` no choque.
+- **Normalización** (una sola función, la de la BD): `name_key` = `LOWER(TRIM(name))` en el SQL de la migración y, en la
+  aplicación, `@ColumnTransformer(write = "lower(trim(?))")` sobre el campo `nameKey` (al que el Service asigna `name`).
+  Así `Lácteos`/`LÁCTEOS` dan la misma clave en la migración y en las altas posteriores. Requisito en Neon:
+  `SHOW lc_ctype` distinto de `C`/`POSIX` (con esos, PostgreSQL solo pasa a minúsculas ASCII); lo comprueba Timon antes
+  de desplegar V4.
 - Test de migración (Vera): CA-22 con datos sembrados antes de V4 (Flyway `target` o script de test).
 
 ### Endpoints
@@ -185,8 +198,9 @@ record CategoryRef(Long id, String name, String nameEn, String path, String path
 ```
 
 ### Reglas en `CategoryService` (`@Transactional`)
-- `name_key = name.strip().toLowerCase(Locale.ROOT)`. Comprobación previa de duplicado + `saveAndFlush` capturando la
-  violación de `uk_categories_parent_name` → `category.name_conflict` (mismo patrón que el SKU en HU-02).
+- `name` llega recortado del DTO (`strip()`); `name_key` lo calcula la BD (ver «Normalización»). Comprobación previa de
+  duplicado con una consulta `name_key = lower(trim(:name))` (misma función) + `saveAndFlush` capturando la violación
+  de `uk_categories_parent_name` → `category.name_conflict` (mismo patrón que el SKU en HU-02).
 - Las rutas (`path`, `pathEn`) se calculan en memoria: el servicio carga todas las categorías (decenas) en un mapa por id.
   Lo mismo para los descendientes del filtro de productos (`descendantIds(id)`, incluido el propio id).
 - Desactivar: comprueba hijas activas en la misma transacción. Carrera residual (alguien crea una hija activa mientras

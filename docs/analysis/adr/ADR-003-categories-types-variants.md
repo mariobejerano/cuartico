@@ -39,10 +39,17 @@ El negocio deja de vender solo alimentos: también ropa (con talla y color, cada
 ### Recomendación: opción 2
 - **Profundidad máxima 3** (`Alimentos › Granos › Arroz`); hoy se usan 2. Se guarda `depth` (1 = raíz) para validarla
   sin recorrer el árbol. Crear un hijo con `depth` > 3 → 400 `category.max_depth`.
-- **Nombre único por padre**, sin distinguir mayúsculas: columna `name_key` (= `lower(strip(name))`, la mantiene el Service)
-  con `UNIQUE NULLS NOT DISTINCT (parent_id, name_key)` para que también sean únicas las raíces (`parent_id` nulo).
-  Requiere PostgreSQL ≥ 15 (Neon cumple) y H2 2.x: **Forja-Back debe verificarlo en H2**; si no lo admite, comprobación en
-  el Service y, como garantía final, la de PostgreSQL. Duplicado → 409 `category.name_conflict`.
+- **Nombre único por padre**, sin distinguir mayúsculas: columna `name_key` con
+  `UNIQUE NULLS NOT DISTINCT (parent_id, name_key)` para que también sean únicas las raíces (`parent_id` nulo).
+  Verificado por Lupa (PR #11): funciona en H2 2.4.240 (modo PostgreSQL) y en PostgreSQL 18 (CI y Neon). Duplicado → 409
+  `category.name_conflict`.
+- **Normalización de claves en un solo sitio: la base de datos.** `name_key` = `LOWER(TRIM(name))` calculado por la BD,
+  tanto en la migración (SQL) como en la aplicación (`@ColumnTransformer(write = "lower(trim(?))")` en la entidad, y la
+  comprobación previa del Service compara con `lower(trim(:name))` en la consulta). Así migración y altas posteriores
+  usan exactamente la misma función y la misma *collation*, también con `Á`/`Ñ`. El `name` ya llega recortado (`strip()`
+  del DTO), así que el `TRIM` de la BD no difiere del de Java. Requisito: el `lc_ctype` de la base de Neon no debe ser
+  `C`/`POSIX` (con esos, PostgreSQL solo pasa a minúsculas ASCII); Timon lo comprueba con `SHOW lc_ctype` (`C.UTF-8` o
+  `en_US.UTF-8` valen).
 - **i18n**: `name` (español, obligatorio, es la clave de unicidad) y `name_en` (opcional; si falta, se muestra `name`).
   Dos columnas en vez de tabla de traducciones: solo hay dos idiomas.
 - **No se borra**: `active`. Desactivar una categoría con hijos activos → 409 `category.has_active_children`. Una categoría
@@ -72,14 +79,17 @@ El negocio deja de vender solo alimentos: también ropa (con talla y color, cada
   Textos visibles en los archivos de traducción del frontend.
 - `categories.product_type`: obligatorio al crear una **raíz**; los hijos lo copian de su padre (inmutable).
 - Cambiar un producto a una categoría de **otro tipo** está permitido salvo que tenga variantes y el nuevo tipo no las
-  admita (hoy todos las admiten, así que no hay bloqueo); los atributos que no apliquen al nuevo tipo se ponen a `null`.
+  admita (hoy todos las admiten, así que no hay bloqueo). El servidor **no anula** atributos por su cuenta: el `PUT` es un
+  reemplazo completo y, si llegan atributos que no aplican al nuevo tipo (`model`, `warrantyMonths` fuera de `APPLIANCE`),
+  responde **400** `product.attribute_not_allowed`. El frontend los vacía antes de enviar (HU-15 CA-18 y CA-26). Así no se
+  pierden datos en silencio y la regla es la misma en alta y en edición.
 
 ### Atributos por tipo
 | Atributo | Tipos | Columna |
 |---|---|---|
 | Marca | todos (útil también en alimentos) | `products.brand VARCHAR(80)` |
 | Modelo | `APPLIANCE` | `products.model VARCHAR(80)` |
-| Garantía (meses) | `APPLIANCE` | `products.warranty_months SMALLINT` (≥ 0, informativa) |
+| Garantía (meses) | `APPLIANCE` | `products.warranty_months INTEGER` (0–120, informativa) |
 | Talla, color | los de las variantes (decisión 3) | en `product_variants` |
 
 Columnas nulas en `products` en lugar de JSON, EAV o tablas por subtipo: son tres campos, se validan con Bean Validation y
@@ -114,15 +124,22 @@ Si solo hace falta para garantías, basta un campo de texto opcional en la líne
   invariante de reconciliación de ADR-002 quedan igual, ahora por variante. Dos pedidos por la misma camiseta en talla M
   y en talla L ya no compiten por la misma fila.
 - **En la variante**: `sku` (único global, mismas reglas de HU-02), `size`, `color` (texto libre; `size` en mayúsculas),
-  `min_stock`, `active`, `version`. Única por `(product_id, size, color)` (comprobación sin distinguir mayúsculas en el
-  Service; restricción exacta en BD como garantía).
+  `min_stock`, `active`, `version`. Única por `(product_id, size, color_key)`, con `color_key` = `LOWER(TRIM(color))`
+  calculado por la BD igual que `name_key`: `Rojo`/`rojo` chocan también en carrera, sin riesgo residual.
+- **Orden de las variantes**: tallas en orden canónico `XXS, XS, S, M, L, XL, XXL, XXXL` (alias `2XL` = `XXL`,
+  `3XL` = `XXXL`), después las numéricas de menor a mayor (`36`, `38`, `10.5`), después el resto alfabético, y sin talla
+  al final; a igual talla, color alfabético. Lo aplica el Service al construir la respuesta (son pocas filas).
 - **En el producto** se quedan: nombre, categoría (y por tanto tipo), unidad, marca, modelo, garantía, precio de
   referencia y `has_variants`.
   - `has_variants = false` ⇒ exactamente una variante, con `size` y `color` nulos.
   - `has_variants = true` ⇒ ≥ 1 variante, cada una con talla o color.
   - Pasar de simple a con variantes: la variante existente recibe su talla/color y **conserva su stock y movimientos**.
     Volver a simple solo si queda una sola variante (si no, 409 `product.has_multiple_variants`).
-- **Costo promedio por variante** (es donde está el stock). Los reportes por producto agregan.
+- **Costo promedio por variante** (es donde está el stock). Agregado por producto (listado, reportes), sobre **todas**
+  sus variantes, activas o no: `onHand`, `reserved` y `available` = sumas; `averageCost` = promedio ponderado
+  Σ(onHand·averageCost) / Σ onHand, ambos sobre las variantes con costo, `null` si ese Σ onHand = 0; `costCurrency` = `USD` si hay
+  costo. Todas, porque desactivar una talla no hace desaparecer las unidades del almacén ni su valor; el detalle por
+  variante muestra cuáles están inactivas (HU-16 CA-15).
 - **Precio**: uno por producto (P-5 propone no tener precio por variante todavía; añadir `product_variants.sale_price`
   nullable más adelante no rompe nada).
 - **Activo**: desactivar el producto impide usar cualquiera de sus variantes en operaciones nuevas; desactivar una variante
@@ -149,15 +166,15 @@ Si solo hace falta para garantías, basta un campo de texto opcional en la líne
 ## Modelo de datos propuesto
 
 ```sql
--- V4: categorías y tipo (esquema orientativo; Forja-Back ajusta sintaxis H2/PostgreSQL)
+-- V4: categorías y tipo (esquema orientativo; el definitivo está en HU-15 y HU-16)
 CREATE TABLE categories (
     id            BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     parent_id     BIGINT REFERENCES categories (id),
     name          VARCHAR(60) NOT NULL,          -- español
     name_en       VARCHAR(60),                   -- opcional; fallback a name
-    name_key      VARCHAR(60) NOT NULL,          -- lower(strip(name)), lo pone el Service
+    name_key      VARCHAR(60) NOT NULL,          -- LOWER(TRIM(name)), calculado por la BD (@ColumnTransformer)
     product_type  VARCHAR(20) NOT NULL,          -- FOOD | CLOTHING | APPLIANCE | OTHER; heredado de la raíz
-    depth         SMALLINT    NOT NULL,          -- 1 = raíz, máx. 3
+    depth         INTEGER     NOT NULL,          -- 1 = raíz, máx. 3 (INTEGER ↔ Integer/int, sin choques con validate)
     active        BOOLEAN     NOT NULL DEFAULT TRUE,
     version       BIGINT      NOT NULL DEFAULT 0,
     created_at …, updated_at …, created_by …, updated_by …,
@@ -169,7 +186,7 @@ CREATE INDEX idx_categories_parent ON categories (parent_id);
 ALTER TABLE products ADD COLUMN category_id BIGINT REFERENCES categories (id);   -- NOT NULL tras migrar los datos
 ALTER TABLE products ADD COLUMN brand VARCHAR(80);
 ALTER TABLE products ADD COLUMN model VARCHAR(80);
-ALTER TABLE products ADD COLUMN warranty_months SMALLINT;                          -- CHECK >= 0
+ALTER TABLE products ADD COLUMN warranty_months INTEGER;                           -- CHECK 0..120
 CREATE INDEX idx_products_category ON products (category_id);
 -- después de migrar: DROP COLUMN category
 
@@ -180,12 +197,13 @@ CREATE TABLE product_variants (
     sku        VARCHAR(50),
     size       VARCHAR(20),
     color      VARCHAR(30),
+    color_key  VARCHAR(30),                      -- LOWER(TRIM(color)), calculado por la BD
     min_stock  NUMERIC(12,3) NOT NULL DEFAULT 0,
     active     BOOLEAN       NOT NULL DEFAULT TRUE,
     version    BIGINT        NOT NULL DEFAULT 0,
     created_at …, updated_at …, created_by …, updated_by …,
     CONSTRAINT uk_product_variants_sku UNIQUE (sku),
-    CONSTRAINT uk_product_variants_options UNIQUE NULLS NOT DISTINCT (product_id, size, color),
+    CONSTRAINT uk_product_variants_options UNIQUE NULLS NOT DISTINCT (product_id, size, color_key),
     CONSTRAINT ck_product_variants_min_stock CHECK (min_stock >= 0)
 );
 CREATE INDEX idx_product_variants_product ON product_variants (product_id);

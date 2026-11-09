@@ -50,8 +50,10 @@ antes de que HU-04 empiece a registrar movimientos.
 - **CA-6 Normalización.** `size` se recorta y pasa a mayúsculas (`" m "` → `"M"`), `color` se recorta; vacíos → `null`.
   `size` ≤ 20, `color` ≤ 30; si no → **400** `validation.failed` con `errors` por campo (`variants[0].size`).
 - **CA-7 Opciones duplicadas.** Dos variantes del mismo producto con la misma talla y color (sin distinguir mayúsculas:
-  `Rojo`/`rojo`), en la misma petición o contra las existentes (activas o no) → **409** `variant.options_conflict`
-  (con `{0}` = `"M / Rojo"`). SKU repetido en la petición o ya usado → **409** `product.sku_conflict`. Nada se guarda.
+  `Rojo`/`rojo`, `Marrón`/`MARRÓN`), en la misma petición o contra las existentes (activas o no) → **409**
+  `variant.options_conflict` (con `{0}` = `"M / Rojo"`). Dos peticiones simultáneas con `Rojo` y `rojo` → una 201 y otra
+  409 (la restricción sobre `color_key` es la garantía final, nunca 500). SKU repetido en la petición o ya usado → **409**
+  `product.sku_conflict`. Nada se guarda.
 
 ### Gestión de variantes
 - **CA-8 Añadir variantes.** `POST /products/{id}/variants` con 1–100 variantes, en un producto con variantes → **201**
@@ -74,10 +76,25 @@ antes de que HU-04 empiece a registrar movimientos.
 
 ### Lectura
 - **CA-14 Detalle.** `GET /products/{id}` (y las respuestas de alta, edición y conversión) incluyen `hasVariants`,
-  `variantCount` y `variants[]` (`id, sku, size, color, minStock, active, stock, lowStock, version`, ordenadas por talla y
-  color). En un producto con variantes, `sku` y `minStock` del producto son `null`.
-- **CA-15 Listado.** Cada fila trae `hasVariants`, `variantCount` y, si tiene variantes, `stock` = **suma** de sus
-  variantes activas y `lowStock` = alguna variante activa con stock bajo (sin `variants[]`, para no cargar el listado).
+  `variantCount` y `variants[]` (`id, sku, size, color, minStock, active, stock, lowStock, version`). En un producto con
+  variantes, `sku` y `minStock` del producto son `null`.
+  **Orden de `variants[]`**: tallas canónicas `XXS, XS, S, M, L, XL, XXL, XXXL` (alias `2XL` = `XXL`, `3XL` = `XXXL`);
+  después las numéricas de menor a mayor (`36` < `38` < `40`; admite decimales: `10.5`); después el resto en orden
+  alfabético; las variantes sin talla al final; a igual talla, por color alfabético (sin distinguir mayúsculas) y, por
+  último, por `id`. Ejemplo: tallas `L, 38, M, XL, Única, S, 36` → `S, M, L, XL, 36, 38, ÚNICA`.
+- **CA-15 Agregado del producto.** En el listado y en el detalle, el `stock` de un producto con variantes agrega
+  **todas** sus variantes, activas e inactivas (desactivar una talla no saca sus unidades del almacén ni su valor; el
+  detalle muestra cuáles están inactivas):
+  - `onHand`, `reserved`, `available` = sumas de las variantes;
+  - `averageCost` = promedio **ponderado** Σ(onHand·averageCost) / Σ onHand, ambos sobre las variantes con costo;
+    `null` si ese Σ onHand = 0 (nunca la suma de promedios);
+  - `costCurrency` = `USD` si `averageCost` no es nulo; si no, `null`;
+  - `lowStock` = el producto está activo y **alguna variante activa** tiene stock bajo (las inactivas no generan alerta).
+
+  El listado no trae `variants[]`, para no cargarlo. **Test** (con `variant_stock` sembrado por SQL, porque hasta HU-04
+  no hay movimientos): variante A con `onHand = 10`, `averageCost = 5.0000`; variante B (inactiva) con `onHand = 30`,
+  `averageCost = 9.0000` → `onHand = 40` y `averageCost = (10·5 + 30·9) / 40 = 8.0000` (no 14 ni 7). Con las dos en
+  `onHand = 0` → `averageCost = null`.
 - **CA-16 Búsqueda.** `q` encuentra productos cuyo nombre o el **SKU de alguna de sus variantes** contiene el texto
   (producto con variantes: aparece una vez).
 - **CA-17 Orden.** `sort` admite `name` y `createdAt`; `sku` deja de admitirse (**400** `request.invalid_sort`).
@@ -130,6 +147,7 @@ CREATE TABLE product_variants (
     sku        VARCHAR(50),
     size       VARCHAR(20),
     color      VARCHAR(30),
+    color_key  VARCHAR(30),                    -- LOWER(TRIM(color)), calculado por la BD
     min_stock  NUMERIC(12,3) NOT NULL DEFAULT 0,
     active     BOOLEAN       NOT NULL DEFAULT TRUE,
     version    BIGINT        NOT NULL DEFAULT 0,
@@ -138,7 +156,7 @@ CREATE TABLE product_variants (
     created_by VARCHAR(50),
     updated_by VARCHAR(50),
     CONSTRAINT uk_product_variants_sku UNIQUE (sku),
-    CONSTRAINT uk_product_variants_options UNIQUE NULLS NOT DISTINCT (product_id, size, color),
+    CONSTRAINT uk_product_variants_options UNIQUE NULLS NOT DISTINCT (product_id, size, color_key),
     CONSTRAINT ck_product_variants_min_stock CHECK (min_stock >= 0)
 );
 CREATE INDEX idx_product_variants_product ON product_variants (product_id);
@@ -163,9 +181,11 @@ ALTER TABLE products ADD COLUMN has_variants BOOLEAN NOT NULL DEFAULT FALSE;
 --    ALTER TABLE products DROP CONSTRAINT ck_products_min_stock;
 --    ALTER TABLE products DROP COLUMN sku; ALTER TABLE products DROP COLUMN min_stock;
 ```
-- `UNIQUE NULLS NOT DISTINCT`: misma verificación en H2 que en HU-15. La comparación sin distinguir mayúsculas de
-  `color` la hace el Service; la restricción exacta de BD solo frena la carrera con el mismo texto (riesgo residual
-  aceptado: dos operadores que crean `Rojo` y `rojo` a la vez).
+- `UNIQUE NULLS NOT DISTINCT` está verificado por Lupa en H2 2.4.240 (modo PostgreSQL) y PostgreSQL 18; también los
+  `DROP CONSTRAINT` antes de los `DROP COLUMN`.
+- **Mayúsculas**: `size` se normaliza en el DTO (`strip()` + `toUpperCase(Locale.ROOT)`) y se guarda así; `color` se guarda
+  como se escribió y su clave `color_key` la calcula la BD con `LOWER(TRIM(?))` (`@ColumnTransformer` en la entidad,
+  igual que `categories.name_key` en HU-15). La restricción sobre `color_key` cubre también la carrera `Rojo`/`rojo`.
 - Test de migración (Vera): CA-18 y CA-19 con datos sembrados antes de V5.
 
 ### Endpoints
@@ -198,20 +218,25 @@ record EnableVariantsRequest(@Size(max = 20) String size, @Size(max = 30) String
 record VariantResponse(Long id, String sku, String size, String color, BigDecimal minStock, boolean active,
                        StockSummary stock, boolean lowStock, long version) {}
 // ProductResponse: + boolean hasVariants, int variantCount, List<VariantResponse> variants (null en el listado);
-//   sku, minStock: los de la única variante si es simple, null si no; stock: el de la única variante o la suma
+//   sku, minStock: los de la única variante si es simple, null si no; stock: el de la única variante o el agregado de CA-15
 ```
 
 ### Reglas en `ProductService` (`@Transactional`)
 - Simple: el `PUT` del producto actualiza también su variante (la `version` que manda es la del producto).
 - Añadir variantes, convertir y crear/editar variantes **bloquean la fila del producto** (`PESSIMISTIC_WRITE`): así
   `disable` no puede cruzarse con un alta de variante (quedaría un «simple» con dos variantes). Son operaciones raras.
-- Duplicados de opciones: comparación con `lower()` en el Service contra las existentes y dentro de la petición; después
-  `saveAndFlush` capturando `uk_product_variants_options` → `variant.options_conflict` y `uk_product_variants_sku`
-  → `product.sku_conflict` (el detector de restricción de HU-02 pasa a reconocer ambos nombres).
+- Duplicados de opciones: dentro de la petición, comparando `size` y `color` en minúsculas; contra las existentes, con
+  una consulta que compara `color_key = lower(trim(:color))` (la misma función de la BD). Después `saveAndFlush`
+  capturando `uk_product_variants_options` → `variant.options_conflict` y `uk_product_variants_sku` →
+  `product.sku_conflict` (el detector de restricción de HU-02 pasa a reconocer ambos nombres).
 - `lowStock` por variante: `active && minStock > 0 && available <= minStock` (misma fórmula de HU-02), y el producto
   `active` también.
-- Listado: el agregado se calcula en la consulta (subconsulta o `GROUP BY` sobre `product_variants` + `variant_stock`)
-  para no cargar variantes por fila; la búsqueda por SKU con `EXISTS` sobre `product_variants`.
+- Agregado (CA-15) sobre todas las variantes: en el listado se calcula en la consulta (`GROUP BY` sobre
+  `product_variants` + `variant_stock`, con `SUM(on_hand * average_cost) / NULLIF(SUM(CASE WHEN average_cost IS NOT NULL
+  THEN on_hand END), 0)` redondeado a 4 decimales, `HALF_UP`) para no cargar variantes por fila; en el detalle, en Java
+  con la misma fórmula. La búsqueda por SKU con `EXISTS` sobre `product_variants`.
+- Orden de `variants[]` (CA-14): `Comparator` en el Service con la lista canónica de tallas como constante
+  (`SizeOrder`); el frontend respeta el orden de la API y el generador emite las filas en ese mismo orden.
 
 ### i18n (es/en)
 `variant.not_found` (`{0}` = id), `variant.options_required`, `variant.options_conflict` (`{0}` = opciones),
@@ -224,7 +249,7 @@ variantes y de la conversión.
 |---|---|
 | `ProductStock` | Se sustituye por `VariantStock` (y su tabla, ADR-002 addendum). |
 | `Product`, `ProductDtos`, `ProductService` | `sku`/`minStock`/`stock` pasan a la variante; `ProductResponse.from` proyecta la variante única o el agregado; búsqueda por SKU con `EXISTS`; se quita `sku` de `SORT_FIELDS`; detector de restricciones con los nombres nuevos. |
-| Tests de HU-02 | CA-1 (la fila de stock es de la variante), CA-3/CA-4/CA-11 (SKU ahora en variantes, mismos códigos), CA-7, CA-17 y CA-21 (orden por SKU retirado). Los demás pasan sin cambios de fondo. |
+| Tests de HU-02 | CA-1 (la fila de stock es de la variante), CA-3/CA-4/CA-11 (SKU ahora en variantes, mismos códigos), CA-7, CA-17, CA-18 (búsqueda por SKU, ahora en las variantes: CA-16) y CA-21 (orden por SKU retirado). Los demás pasan sin cambios de fondo. |
 | `cuartico-web` | `productSchema` y `ProductFormPage` (interruptor, generador y tabla de variantes, conversión), `ProductsListPage` (N variantes, stock agregado), `stockBadge`/`lowStock` por agregado, `queries` (mutaciones de variantes), tests. |
 | Docs | API, errores, matriz QA de HU-02, `CHANGELOG.md`; diagrama ER pasa de propuesta a vigente. |
 

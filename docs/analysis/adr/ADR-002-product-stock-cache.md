@@ -50,5 +50,9 @@ vendible ya no es el producto sino la **variante** (`product_variants`; un produ
 - Todo lo demás se mantiene, ahora **por variante**: bloqueo pesimista de la fila de `variant_stock` al reservar,
   movimiento y caché en la misma transacción, un único punto de escritura (servicio de inventario, HU-04), `average_cost`
   en `USD` con `cost_currency`, e invariante de reconciliación `on_hand` = suma de movimientos de la variante.
-- Los movimientos de HU-04 nacen con `variant_id`. Los totales por producto (listado, reportes) son la suma de sus variantes.
+- Los movimientos de HU-04 nacen con `variant_id`.
+- **Agregado por producto** (listado, reportes), sobre **todas** sus variantes, activas o inactivas (desactivar una talla
+  no saca sus unidades del almacén ni su valor): `onHand`, `reserved`, `available` = sumas; `averageCost` = promedio
+  **ponderado** Σ(onHand·averageCost) / Σ onHand sobre las variantes con costo (nunca la suma de promedios), `null` si
+  ese Σ onHand = 0; `costCurrency` = `USD` cuando hay costo. Detalle y test en [HU-16](../stories/HU-16-product-variants.md) CA-15.
 - Responde a la pregunta de Lupa en el PR #10.
