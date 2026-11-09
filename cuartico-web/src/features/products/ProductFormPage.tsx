@@ -17,6 +17,7 @@ import { Icon } from '../../components/Icon'
 import { useToast } from '../../components/toast'
 import { DESKTOP_QUERY } from '../../components/useMediaQuery'
 import { useDocumentTitle } from '../../components/useDocumentTitle'
+import { MoneyValue } from './MoneyValue'
 import { useListPath } from './navigation'
 import {
   CURRENCIES,
@@ -418,7 +419,7 @@ function ProductForm({ product, listPath }: ProductFormProps) {
               </div>
               <div>
                 <dt>{t('products.avg_cost')}</dt>
-                <dd>{fmt.money(current.stock.averageCost, current.stock.costCurrency)}</dd>
+                <dd><MoneyValue amount={current.stock.averageCost} currency={current.stock.costCurrency} /></dd>
               </div>
             </dl>
             <p className="ro-note">

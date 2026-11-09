@@ -17,6 +17,7 @@ import {
   type StatusFilter,
 } from './listQuery'
 import type { ListReturnState } from './navigation'
+import { MoneyValue } from './MoneyValue'
 import { ProductBadges } from './ProductBadges'
 import { useCategories, useProductList } from './queries'
 import { useProductFormat } from './useProductFormat'
@@ -314,7 +315,7 @@ function ProductTable({ page, query, onSort, ...rest }: RowsProps & { query: Lis
                 {p.name}
                 <span className="sub">{subLine(p)}</span>
               </td>
-              <td className="r">{fmt.money(p.salePrice, p.salePriceCurrency)}</td>
+              <td className="r"><MoneyValue amount={p.salePrice} currency={p.salePriceCurrency} /></td>
               <td className="r">{fmt.quantity(p.stock.available, p.unit)}</td>
               <td>
                 <ProductBadges product={p} />
@@ -350,7 +351,7 @@ function ProductCards({ page, ...rest }: RowsProps) {
             <dl>
               <div>
                 <dt>{t('products.col_price')}</dt>
-                <dd>{fmt.money(p.salePrice, p.salePriceCurrency)}</dd>
+                <dd><MoneyValue amount={p.salePrice} currency={p.salePriceCurrency} /></dd>
               </div>
               <div>
                 <dt>{t('products.col_available')}</dt>

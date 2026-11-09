@@ -37,7 +37,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     await u.type(screen.getByLabelText('Importe'), '3,555')
     await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
     expect(await screen.findByText('Escribe un número igual o mayor que 0, con hasta 2 decimales.')).toBeInTheDocument()
-    expect(screen.getAllByText('Este campo es obligatorio.')).toHaveLength(2) // nombre y unidad
+    await waitFor(() => expect(screen.getAllByText('Este campo es obligatorio.')).toHaveLength(2)) // nombre y unidad
     expect(name).toHaveFocus() // foco en el primer error
     expect(api.calls('POST /api/v1/products')).toHaveLength(0)
 
@@ -117,7 +117,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     expect(alert).toHaveTextContent('No pudimos conectar con el servidor')
     await u.click(within(alert).getByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByText('Producto «Arroz» creado.')).toBeInTheDocument()
-    expect(api.calls('POST /api/v1/products')).toHaveLength(2)
+    await waitFor(() => expect(api.calls('POST /api/v1/products')).toHaveLength(2))
   })
 
   it('edición: carga los valores, stock y costo en solo lectura y auditoría (CA-8, CA-25)', async () => {
@@ -132,6 +132,10 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     expect(screen.getByLabelText(/^Stock mínimo/)).toHaveValue('12,5')
     expect(screen.getByRole('heading', { name: 'Stock y costo' })).toBeInTheDocument()
     expect(screen.getByText('Se actualiza con las compras y ventas.')).toBeInTheDocument()
+    // Costo promedio vacío: «—» con aria-hidden + «Sin definir» para lectores de pantalla.
+    const avgCost = screen.getByText('Costo promedio').nextElementSibling as HTMLElement
+    expect(within(avgCost).getByText('—')).toHaveAttribute('aria-hidden', 'true')
+    expect(within(avgCost).getByText('Sin definir')).toHaveClass('visually-hidden')
     expect(screen.getByText(/^Creado por admin el/)).toBeInTheDocument()
   })
 
@@ -218,7 +222,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     const u = userEvent.setup()
     await u.type(await screen.findByLabelText(/^Nombre/), ' 2')
     await u.click(screen.getByRole('button', { name: 'Desactivar producto' }))
-    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Desactivar' }))
+    await u.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Desactivar' }))
 
     expect(await screen.findByRole('button', { name: 'Activar producto' })).toBeInTheDocument()
     expect(screen.getByText('Inactivo: no se puede usar en compras, combos ni pedidos nuevos.')).toBeInTheDocument()

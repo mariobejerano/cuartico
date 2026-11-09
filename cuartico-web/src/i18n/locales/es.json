@@ -22,7 +22,8 @@
     "pagination": "Mostrando {{from}}–{{to}} de {{total}}",
     "clear_filters": "Limpiar filtros",
     "offline": "Sin conexión. Los cambios no se guardarán hasta que vuelvas a tener internet.",
-    "skip_to_content": "Saltar al contenido"
+    "skip_to_content": "Saltar al contenido",
+    "not_set": "Sin definir"
   },
   "validation": {
     "required": "Este campo es obligatorio.",

@@ -28,15 +28,18 @@ describe('Listado de productos (HU-02)', () => {
     renderApp('/products')
 
     const list = await screen.findByRole('list', { name: 'Productos' })
+    // Espera a que la lista tenga las 2 tarjetas (no a un instante concreto): robusto bajo carga.
+    await waitFor(() => expect(within(list).getAllByRole('article')).toHaveLength(2))
     const cards = within(list).getAllByRole('article')
-    expect(cards).toHaveLength(2)
     expect(within(cards[0]).getByRole('heading', { name: 'Arroz blanco' })).toBeInTheDocument()
     expect(within(cards[0]).getByText('SKU ARR-001 · Granos')).toBeInTheDocument()
     expect(within(cards[0]).getByText('2,50 USD')).toBeInTheDocument()
     expect(within(cards[0]).getByText('0 kg')).toBeInTheDocument()
     expect(within(cards[1]).getByText('Sin SKU · Sin categoría')).toBeInTheDocument()
-    expect(within(cards[1]).getByText('—')).toBeInTheDocument()
-    expect(screen.getByText('Mostrando 1–2 de 2')).toBeInTheDocument()
+    // Valor vacío: «—» visible pero oculto a lectores, y «Sin definir» solo para lectores (propuesta de Lienzo).
+    expect(within(cards[1]).getByText('—')).toHaveAttribute('aria-hidden', 'true')
+    expect(within(cards[1]).getByText('Sin definir')).toHaveClass('visually-hidden')
+    expect(await screen.findByText('Mostrando 1–2 de 2')).toBeInTheDocument()
 
     const q = api.calls(LIST)[0].query
     expect(Object.fromEntries(q)).toEqual({ active: 'true', page: '0', size: '20', sort: 'name,asc' })
@@ -48,7 +51,7 @@ describe('Listado de productos (HU-02)', () => {
     await screen.findByRole('heading', { name: 'Viejo' })
     expect(screen.queryByText('Sin stock')).not.toBeInTheDocument()
     expect(screen.queryByText('Stock bajo')).not.toBeInTheDocument()
-    expect(screen.getByText('Inactivo')).toBeInTheDocument()
+    expect(await screen.findByText('Inactivo')).toBeInTheDocument()
   })
 
   it('en escritorio, tabla con orden por nombre que se refleja en la URL (CA-21, CA-26)', async () => {
@@ -143,7 +146,7 @@ describe('Listado de productos (HU-02)', () => {
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Reintentar' }))
     expect(await screen.findByRole('heading', { name: 'Arroz blanco' })).toBeInTheDocument()
-    expect(api.calls(LIST)).toHaveLength(2)
+    await waitFor(() => expect(api.calls(LIST)).toHaveLength(2))
   })
 
   it('error de red: «No pudimos conectar con el servidor»', async () => {
@@ -178,13 +181,13 @@ describe('Listado de productos (HU-02)', () => {
     const u = userEvent.setup()
 
     await u.click(await screen.findByRole('button', { name: 'Desactivar Arroz blanco' }))
-    const dialog = screen.getByRole('dialog', { name: '¿Desactivar «Arroz blanco»?' })
+    const dialog = await screen.findByRole('dialog', { name: '¿Desactivar «Arroz blanco»?' })
     expect(within(dialog).getByText('Todavía tiene stock: 12,5 kg físico y 2 kg reservado.')).toBeInTheDocument()
     expect(api.calls('POST /api/v1/products/1/deactivate')).toHaveLength(0) // nada sin confirmar
 
     await u.click(within(dialog).getByRole('button', { name: 'Desactivar' }))
     expect(await screen.findByText('«Arroz blanco» desactivado.')).toBeInTheDocument()
-    expect(api.calls('POST /api/v1/products/1/deactivate')).toHaveLength(1)
+    await waitFor(() => expect(api.calls('POST /api/v1/products/1/deactivate')).toHaveLength(1))
 
     await u.click(screen.getByRole('button', { name: 'Deshacer' }))
     await waitFor(() => expect(api.calls('POST /api/v1/products/1/activate')).toHaveLength(1))
@@ -195,7 +198,7 @@ describe('Listado de productos (HU-02)', () => {
     renderApp('/products')
     const u = userEvent.setup()
     await u.click(await screen.findByRole('button', { name: 'Desactivar Arroz blanco' }))
-    const dialog = screen.getByRole('dialog')
+    const dialog = await screen.findByRole('dialog')
     expect(within(dialog).queryByText(/Todavía tiene stock/)).not.toBeInTheDocument() // sin stock: sin aviso
     await u.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
     expect(api.calls('POST /api/v1/products/1/deactivate')).toHaveLength(0)
@@ -209,6 +212,6 @@ describe('Listado de productos (HU-02)', () => {
     renderApp('/products?status=inactive')
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Activar Arroz blanco' }))
     expect(await screen.findByText('«Arroz blanco» activado.')).toBeInTheDocument()
-    expect(api.calls('POST /api/v1/products/1/activate')).toHaveLength(1)
+    await waitFor(() => expect(api.calls('POST /api/v1/products/1/activate')).toHaveLength(1))
   })
 })

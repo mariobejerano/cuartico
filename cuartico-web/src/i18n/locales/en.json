@@ -22,7 +22,8 @@
     "pagination": "Showing {{from}}–{{to}} of {{total}}",
     "clear_filters": "Clear filters",
     "offline": "You're offline. Changes won't be saved until you're back online.",
-    "skip_to_content": "Skip to content"
+    "skip_to_content": "Skip to content",
+    "not_set": "Not set"
   },
   "validation": {
     "required": "This field is required.",
