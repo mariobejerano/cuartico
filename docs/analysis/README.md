@@ -18,13 +18,16 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | HU-01 | [Acceso al panel](stories/HU-01-panel-access.md) | 1 | Implementada, QA APTO, en revisión |
 | HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Implementada, QA APTO, en revisión |
 | HU-14 | [Gestión de usuarios](stories/HU-14-user-management.md) | — | Ficha breve |
+| HU-15 | [Categorías y atributos por tipo](stories/HU-15-categories-and-type-attributes.md) (V4) | — (antes de HU-04) | Analizada; pendiente de prototipo |
+| HU-16 | [Variantes de producto](stories/HU-16-product-variants.md) (V5) | — (antes de HU-04) | Analizada; pendiente de prototipo |
 
 ## ADR
 | ID | Decisión | Estado |
 |---|---|---|
 | ADR-001 | [Almacenamiento de tokens en el frontend](adr/ADR-001-frontend-token-storage.md) | Aceptado (2026-10-30); addendum 2026-11-07 (Render) |
-| ADR-002 | [Stock y costo del producto: caché en `product_stock`](adr/ADR-002-product-stock-cache.md) | Aceptado (2026-10-30) |
+| ADR-002 | [Stock y costo del producto: caché en `product_stock`](adr/ADR-002-product-stock-cache.md) | Aceptado (2026-10-30); addendum 2026-11-09 (la caché pasa a la variante) |
+| ADR-003 | [Categorías con jerarquía, tipos de producto y variantes](adr/ADR-003-categories-types-variants.md) | Aceptado (2026-11-09) |
 
 ## Diagramas
-- [Modelo entidad-relación](diagrams/er.md)
+- [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003, aceptado y pendiente de implementar en HU-15/HU-16)
 - [Sesión en `cuartico-web`: renovación y estados](diagrams/auth-session.md)

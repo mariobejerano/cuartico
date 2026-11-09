@@ -3,6 +3,10 @@
 - **Sprint:** 1 · **Estado:** implementada, QA APTO, en revisión; prototipo aprobado ([`products.html`](../../design/prototypes/products.html), [notas UX](../../design/ux-notes/products.md))
 - **Alcance:** backend (módulo `product`, migración V3) y frontend (`cuartico-web`).
 - **Depende de:** HU-01 (layout, sesión). **Decisión relacionada:** [ADR-002](../adr/ADR-002-product-stock-cache.md).
+- **Revisada por [ADR-003](../adr/ADR-003-categories-types-variants.md) (2026-11-09):** la categoría de texto libre la
+  sustituye [HU-15](HU-15-categories-and-type-attributes.md) (CA-2 en lo relativo a `category`, CA-19, CA-21 y CA-22), y
+  el SKU, el umbral y el stock pasan a la variante en [HU-16](HU-16-product-variants.md) (CA-1, CA-3, CA-4, CA-11,
+  CA-18 —la búsqueda por SKU pasa a las variantes, HU-16 CA-16— y el orden por `sku` de CA-21). El resto de esta historia sigue vigente.
 - **Decisiones de la supervisión (2026-10-30):** `OPERATOR` crea y edita, solo `ADMIN` desactiva/reactiva; monedas
   iniciales `CUP` y `USD` (lista extensible); moneda de referencia para costo y utilidad: `USD`; nombre no único;
   unidades `UNIT, KG, LB, G, L, ML`.
