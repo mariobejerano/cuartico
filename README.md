@@ -11,7 +11,7 @@ Proyecto personal de aprendizaje, desarrollado con un equipo de agentes de IA. L
 
 ## Fases
 
-1. **Cuartico**: gestión interna *(en curso: panel de acceso y catálogo en el sprint 1)*.
+1. **Cuartico**: gestión interna *(en curso: acceso al panel y catálogo de productos, sprint 1)*.
 2. **Combazo catálogo**: combos disponibles y "Pedir por WhatsApp".
 3. **Combazo tienda**: "arma tu combo" y pedidos online.
 4. **Móvil**: PWA y después app Android (React Native / Expo).
@@ -20,7 +20,7 @@ Proyecto personal de aprendizaje, desarrollado con un equipo de agentes de IA. L
 
 - **Backend** (`backend/`): Java 17 · Spring Boot 4.1 · Spring Security 7 (JWT HS256) · JPA · Flyway · PostgreSQL (H2 en local).
 - **Panel de gestión** (`cuartico-web/`): React 19 · TypeScript 6 · Vite 8 · React Router · TanStack Query · react-i18next (es/en).
-  En desarrollo: login, sesión y layout (HU-01). Pantallas de negocio pendientes.
+  Implementado: login, sesión y layout (HU-01); catálogo de productos (HU-02). Resto de pantallas de negocio pendientes.
 - **Tienda** (`combazo-web/`): pendiente (fase 2).
 - **Infraestructura** (planes gratuitos): GitHub y GitHub Actions · Render (backend en Docker y el panel como sitio estático) · Neon (PostgreSQL).
 
@@ -76,7 +76,7 @@ Variables de entorno, CI y despliegue: [`docs/devops/README.md`](docs/devops/REA
 ```
 cuartico/
 ├── backend/        API REST (Spring Boot)
-├── cuartico-web/   Panel de gestión (React + TypeScript + Vite): login, sesión y layout
+├── cuartico-web/   Panel de gestión (React + TypeScript + Vite): login, sesión, layout y catálogo de productos
 ├── combazo-web/    Tienda para clientes (fase 2, pendiente)
 ├── render/         Blueprints de Render (staging y producción)
 ├── docs/           Documentación por rol (ver docs/README.md)

@@ -24,7 +24,7 @@
    bloquea al reservar (`SELECT … FOR UPDATE`), sin interferir con la edición del catálogo. Cada módulo es dueño de su tabla.
 
 ## Decisión
-**Opción 3.** `product_stock` se crea en V2 (HU-02) con ceros; HU-04 la mantiene.
+**Opción 3.** `product_stock` se crea en V3 (HU-02; V2 la ocupó la ventana de gracia de HU-01) con ceros; HU-04 la mantiene.
 
 Reglas para HU-04 (se detallarán allí):
 - El movimiento y la actualización de `product_stock` van en la **misma transacción**, con bloqueo pesimista de la fila de

@@ -133,7 +133,7 @@ export const routes = [
   { element: <RequireAuth />, children: [            // todo lo de dentro exige sesión
       { element: <AppLayout />, children: [            // esqueleto común (barra lateral, inferior…)
           { index: true, element: <HomePage /> },      // "/"
-          { path: 'products', element: <ProductsPage /> },
+          { path: 'products', element: <ProductsListPage /> },
           { path: '*', element: <NotFoundPage /> },     // 404
       ] },
   ] },

@@ -18,9 +18,9 @@ ambos y su QA deben estar terminados (vertical slice).
 | HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | Hecho | Sprint 1. PR #9 (`0446197`). Backend con ventana de gracia y panel `cuartico-web`. Pendientes manuales en staging: M-1..M-3 de `docs/qa/stories/HU-01.md`. |
 | HU-02 | 2 | Catálogo de productos | En curso | Sprint 1. Los productos son lo que se compra suelto; aquí vive el stock. |
 | HU-03 | 3 | Proveedores | Pendiente | Necesario para las compras. |
-| HU-04 | 4 | Compras y movimientos de inventario | Pendiente | Entrada de stock, promedio ponderado, movimientos inmutables. |
+| HU-04 | 4 | Compras y movimientos de inventario | Pendiente | Entrada de stock, promedio ponderado, movimientos inmutables. **Antes de empezar:** ADR de Faro sobre tipos de producto (alimentos, ropa, electrodomésticos), variantes talla × color con stock propio y atributos por tipo (marca, modelo, garantía, ¿nº de serie?). |
 | HU-05 | 5 | Clientes | Pendiente | |
-| HU-06 | 6 | Combos: receta (producto × cantidad), precio, costo, margen y combos disponibles según stock | Pendiente | Combos solo catálogo: se arman al vender. |
+| HU-06 | 6 | Combos: receta (producto × cantidad), precio, costo, margen y combos disponibles según stock | Pendiente | Combos solo catálogo: se arman al vender. **Rebaja opcional** (supervisión, 2026-11-09): el combo puede tener o no descuento sobre la suma de precios sueltos (precio fijo del combo o % / importe de rebaja, con vigencia opcional); mostrar ahorro y margen. Combos **mixtos**: puede haber combos de alimentos, de ropa, de electrodomésticos o mixtos (la receta admite cualquier producto); si hay variantes, decidir si la línea del combo fija la variante o se elige al vender. |
 | HU-07 | 7 | Pedidos: `PENDING` → `CONFIRMED` → `IN_TRANSIT` → `DELIVERED` / `CANCELLED`, con reserva y descuento de stock | Pendiente | |
 | HU-08 | 8 | Pagos manuales multimoneda (`UNPAID` → `PARTIALLY_PAID` → `PAID`), con tasa del día | Pendiente | Independientes del pedido. |
 | HU-09 | 9 | Gastos | Pendiente | |

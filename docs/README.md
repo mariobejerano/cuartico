@@ -52,11 +52,11 @@
 
 | Documento | Contenido |
 |---|---|
-| [`development/backend/README.md`](development/backend/README.md) | Arquitectura del backend: paquetes, capas, seguridad JWT y ventana de gracia del refresh, perfiles, Flyway, auditoría, tests. |
-| [`development/backend/api.md`](development/backend/api.md) | Endpoints de `/api/v1`: método, ruta, rol y descripción. Cómo crear un usuario. |
-| [`development/backend/errors.md`](development/backend/errors.md) | Formato ProblemDetail, propiedad `code`, tabla de códigos (HTTP, es/en) y cómo añadir uno. |
-| [`development/frontend/README.md`](development/frontend/README.md) | Panel `cuartico-web`: cómo arrancarlo, variables de entorno, estructura, convenciones, sesión y despliegue como sitio estático. |
-| [`development/frontend/learning/README.md`](development/frontend/learning/README.md) | Guía de aprendizaje de React para quien viene de Java/Spring, con referencias al código. |
+| [`development/backend/README.md`](development/backend/README.md) | Arquitectura del backend: paquetes (incluido `product`, HU-02), capas, seguridad JWT y ventana de gracia del refresh, perfiles, Flyway, auditoría, tests y decisiones del catálogo. |
+| [`development/backend/api.md`](development/backend/api.md) | Endpoints de `/api/v1` (usuarios, sesión y productos): método, ruta, rol y descripción. Cómo crear un usuario. Cuerpos y respuestas de productos. |
+| [`development/backend/errors.md`](development/backend/errors.md) | Formato ProblemDetail, propiedad `code`, tabla de códigos (HTTP, es/en, también los de productos) y cómo añadir uno. |
+| [`development/frontend/README.md`](development/frontend/README.md) | Panel `cuartico-web`: cómo arrancarlo, variables de entorno, estructura, convenciones, sesión, catálogo de productos (HU-02) y despliegue como sitio estático. |
+| [`development/frontend/learning/README.md`](development/frontend/learning/README.md) | Guía de aprendizaje de React para quien viene de Java/Spring, con referencias al código. Temas 1 a 13 (HU-01) y 14 a 18 (HU-02: caché, mutaciones, estado en la URL, formularios, avisos). |
 
 ### `devops/` (Timon)
 
@@ -71,6 +71,7 @@
 |---|---|
 | [`qa/strategy.md`](qa/strategy.md) | Tipos de prueba, verificación por historia, certificación en staging, reglas de credenciales de QA. |
 | [`qa/stories/HU-01.md`](qa/stories/HU-01.md) | Matriz CA → tests de HU-01 (APTO), verificación manual en staging y defectos encontrados. |
+| [`qa/stories/HU-02.md`](qa/stories/HU-02.md) | Matriz CA → tests de HU-02 (catálogo de productos, APTO) y pruebas manuales pendientes. |
 | [`qa/certifications.md`](qa/certifications.md) | Registro de certificaciones de staging por release. |
 
 ## Dónde mirar según la tarea
@@ -78,8 +79,9 @@
 - **Arrancar el backend o el panel en local**: [`../README.md`](../README.md#arrancar-en-local).
 - **Entender el panel si vienes de Java/Spring**: [`development/frontend/learning/README.md`](development/frontend/learning/README.md).
 - **Usar la API desde un cliente**: [`development/backend/api.md`](development/backend/api.md) y Swagger de staging.
+- **Entender el catálogo de productos**: [HU-02](analysis/stories/HU-02-products.md), [API de productos](development/backend/api.md), [ER](analysis/diagrams/er.md) y [ADR-002](analysis/adr/ADR-002-product-stock-cache.md) (stock en caché).
 - **Tratar un error en el frontend o en la API**: [`development/backend/errors.md`](development/backend/errors.md).
 - **Entender la sesión y el refresh token**: [ADR-001](analysis/adr/ADR-001-frontend-token-storage.md), [diagrama de sesión](analysis/diagrams/auth-session.md) y [HU-01](analysis/stories/HU-01-panel-access.md).
 - **Desplegar o cambiar configuración**: [`devops/README.md`](devops/README.md) y [`devops/deploy.md`](devops/deploy.md).
 - **Saber qué se va a hacer y en qué sprint**: [`scrum/product-backlog.md`](scrum/product-backlog.md) y [`scrum/sprints/01.md`](scrum/sprints/01.md).
-- **Certificar o revisar un release, o ver qué prueba cubre cada criterio**: [`qa/strategy.md`](qa/strategy.md), [`qa/stories/HU-01.md`](qa/stories/HU-01.md) y [`qa/certifications.md`](qa/certifications.md).
+- **Certificar o revisar un release, o ver qué prueba cubre cada criterio**: [`qa/strategy.md`](qa/strategy.md), las matrices [HU-01](qa/stories/HU-01.md) y [HU-02](qa/stories/HU-02.md) y [`qa/certifications.md`](qa/certifications.md).
