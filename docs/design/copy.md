@@ -101,8 +101,8 @@ El selector de idioma muestra **«Español» / «English»** escritos en su prop
 | `products.edit` | Editar | Edit |
 | `products.deactivate` | Desactivar | Deactivate |
 | `products.activate` | Activar | Activate |
-| `products.results` | {{count}} productos | {{count}} products |
 | `products.results_one` | 1 producto | 1 product |
+| `products.results_other` | {{count}} productos | {{count}} products |
 | `products.empty_title` | Todavía no hay productos | No products yet |
 | `products.empty_body` | Crea el primero para poder registrar compras y armar combos. | Create the first one so you can record purchases and build combos. |
 | `products.no_results_query` | No hay productos que coincidan con «{{q}}» | No products match "{{q}}" |
@@ -206,6 +206,14 @@ Claves: `unit.<CÓDIGO>` y `unit_short.<CÓDIGO>`. La corta va tras las cantidad
 | `not_found.title` | Esta página no existe | This page doesn't exist | — | Coherente con `products.not_found_title`. |
 | `not_found.body` | Puede que el enlace esté mal escrito. | The link may be mistyped. | — | — |
 | `not_found.home_link` | Ir al inicio | Go to Home | en: «Go to home» | «Home» es el nombre de la sección (como en la navegación): con mayúscula. |
+
+**Productos (HU-02), revisado el 2026-11-09; aprobado por la supervisión el 2026-11-09, incluido `common.not_set` («Sin definir» / "Not set"):**
+
+| Clave | es (propuesto) | en (propuesto) | Implementado (si difiere) | Comentario |
+|---|---|---|---|---|
+| `products.results_one` / `products.results_other` | 1 producto / {{count}} productos | 1 product / {{count}} products | — | Sustituyen a `products.results` + `products.results_one` (plurales de i18next: `_one`/`_other`). Correcto y suficiente para es/en. §5 ya actualizado. |
+| `products.no_price` | — | — | — | Bien como valor visible (no ensucia la columna). **Propuesta de accesibilidad:** un lector de pantalla lee «raya» o nada, así que conviene añadir texto oculto con una clave genérica nueva `common.not_set` = «Sin definir» / "Not set" (`<span aria-hidden="true">—</span><span class="sr-only">…</span>`). Es genérica porque el mismo formateador se usa también para el costo promedio vacío. Aprobada: la implementa Forja-Front. |
+| `products.sku` | SKU | SKU | — | Etiqueta del campo; igual en ambos idiomas (sigla de uso común). Sin cambios. |
 
 ## 7. Mensajes de la API que propongo (para Forja-Back)
 

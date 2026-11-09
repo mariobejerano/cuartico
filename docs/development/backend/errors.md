@@ -40,6 +40,13 @@ Los textos son los de `backend/src/main/resources/messages_es.properties` (es) y
 | `user.username_taken` | 409 | Ya existe un usuario con ese nombre: {0} | A user with that username already exists: {0} | Alta de un username existente. |
 | `user.cannot_demote_self` | 400 | No puedes desactivarte ni quitarte el rol de administrador a ti mismo | You cannot deactivate yourself or remove your own administrator role | Un admin intenta desactivarse o quitarse el rol `ADMIN`. |
 | `user.wrong_current_password` | 400 | La contraseña actual no es correcta | The current password is incorrect | Cambio de contraseña con una actual errónea. |
+| `product.not_found` | 404 | No existe el producto {0}. | Product {0} doesn't exist. | `GET`/`PUT`/activar/desactivar con un id inexistente. |
+| `product.sku_conflict` | 409 | Ya existe un producto con el SKU {0}. | A product with SKU {0} already exists. | SKU repetido (activo o inactivo), también en carrera: la restricción `uk_products_sku` es la garantía final. |
+| `product.price_currency_mismatch` | 400 | Si indicas un precio, indica también su moneda (y al revés). | If you enter a price, also choose its currency (and vice versa). | `salePrice` sin moneda o moneda sin precio. |
+| `product.currency_unsupported` | 400 | La moneda {0} no está admitida. | Currency {0} isn't supported. | Moneda fuera de `app.currencies.supported` (comparación exacta). |
+| `resource.version_conflict` | 409 | Otra persona cambió este registro mientras lo editabas. Recárgalo y vuelve a intentarlo. | Someone else changed this record while you were editing. Reload it and try again. | Bloqueo optimista: `version` enviada distinta de la actual, o `ObjectOptimisticLockingFailureException` al hacer flush (transversal a toda la API). |
+| `request.invalid_sort` | 400 | Orden no válido: {0} | Invalid sort: {0} | `sort` con un campo fuera de la lista permitida o dirección distinta de `asc`/`desc`. |
+| `validation.invalid_value` | (valor de `errors.<campo>`) | valor no válido | invalid value | No es un código de respuesta: es el texto de `errors.<campo>` cuando el valor no se puede convertir al tipo esperado. |
 | `validation.failed` | 400 | Datos inválidos | Invalid data | Fallo de Bean Validation en un cuerpo de petición. Incluye `errors`. |
 | `request.malformed` | 400 | La petición está mal formada | The request is malformed | JSON mal formado y otros 4xx sin código propio. |
 | `request.unsupported_media_type` | 415 | Tipo de contenido no soportado | Unsupported media type | `Content-Type` que el endpoint no acepta (p. ej. `text/plain`). |
@@ -58,6 +65,21 @@ Las anotaciones usan `message = "{clave}"`; la clave se traduce en los mismos ar
 | `jakarta.validation.constraints.NotNull.message` | es obligatorio | is required |
 | `jakarta.validation.constraints.Size.message` | el tamaño debe estar entre {min} y {max} | size must be between {min} and {max} |
 | `user.username.pattern` | solo letras, números, punto, guion y guion bajo | only letters, digits, dot, hyphen and underscore are allowed |
+| `product.sku.pattern` | Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_). | Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_). |
+| `jakarta.validation.constraints.DecimalMin.message` | debe ser mayor o igual que {value} | must be greater than or equal to {value} |
+| `jakarta.validation.constraints.Digits.message` | número fuera de rango (máximo {integer} enteros y {fraction} decimales) | number out of range (at most {integer} integer digits and {fraction} decimals) |
+| `jakarta.validation.constraints.Min.message` | debe ser mayor o igual que {value} | must be greater than or equal to {value} |
+| `jakarta.validation.constraints.Max.message` | debe ser menor o igual que {value} | must be less than or equal to {value} |
+
+
+### Errores de tipo y de conversión (transversal, desde HU-02)
+
+- Cuerpo JSON con un valor de tipo incorrecto en un campo (`unit = "BOX"`, `minStock = "abc"`, `salePrice = true`): **400 `validation.failed`** con
+  `errors.<campo> = validation.invalid_value` traducido (campos anidados con ruta de puntos). Si no hay campo al que asignarlo (cuerpo `[]` o `"texto"`)
+  o es JSON con sintaxis inválida o cuerpo vacío, sigue siendo `request.malformed`.
+- Parámetros de consulta o de ruta no convertibles (`page=abc`, `active=quizas`, `/products/abc`): **400 `validation.failed`** con `errors.<parámetro>`.
+- Violaciones de Bean Validation sobre `ProductQuery` (`size`, `page`): **400 `validation.failed`** con `errors`; nunca se recorta en silencio.
+- `ObjectOptimisticLockingFailureException` → **409 `resource.version_conflict`**.
 
 ## Cómo añadir un error nuevo
 

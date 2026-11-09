@@ -10,7 +10,10 @@ import { render } from '@testing-library/react'
 
 function loggedIn(role: 'ADMIN' | 'OPERATOR' = 'ADMIN') {
   localStorage.setItem('cuartico.refreshToken', 'refresh-1')
-  return installFakeApi().on('POST /api/v1/auth/refresh', () => json(200, tokenPair(2, role)))
+  return installFakeApi()
+    .on('POST /api/v1/auth/refresh', () => json(200, tokenPair(2, role)))
+    .on('GET /api/v1/products', () => json(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }))
+    .on('GET /api/v1/products/categories', () => json(200, []))
 }
 
 describe('Layout del panel (HU-01 CA-24)', () => {
@@ -29,7 +32,7 @@ describe('Layout del panel (HU-01 CA-24)', () => {
     expect(screen.getAllByRole('button', { name: 'Cuenta de Mario Bejerano' }).length).toBeGreaterThan(0)
   })
 
-  it('navega a Productos (marcador «próximamente») y marca el enlace activo', async () => {
+  it('navega a Productos (catálogo vacío) y marca el enlace activo', async () => {
     loggedIn()
     const { router } = renderApp('/')
     await screen.findByRole('heading', { name: 'Hola, Mario Bejerano' })
@@ -37,7 +40,7 @@ describe('Layout del panel (HU-01 CA-24)', () => {
     const nav = screen.getAllByRole('navigation', { name: 'Navegación principal' })[0]
     await userEvent.setup().click(within(nav).getByRole('link', { name: 'Productos' }))
 
-    expect(await screen.findByText('Esta sección llegará pronto.')).toBeInTheDocument()
+    expect(await screen.findByText('Todavía no hay productos')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/products')
     expect(within(nav).getByRole('link', { name: 'Productos' })).toHaveAttribute('aria-current', 'page')
   })
@@ -47,7 +50,7 @@ describe('Layout del panel (HU-01 CA-24)', () => {
     const { router } = renderApp('/')
     await screen.findByText('Aquí verás el resumen del negocio. Mientras tanto, empieza por el catálogo de productos.')
     await userEvent.setup().click(screen.getByRole('link', { name: 'Ir a productos' }))
-    await screen.findByText('Esta sección llegará pronto.')
+    await screen.findByText('Todavía no hay productos')
     expect(router.state.location.pathname).toBe('/products')
   })
 
@@ -78,7 +81,7 @@ describe('Layout del panel (HU-01 CA-24)', () => {
   it('cerrar sesión: llama a /logout y vuelve al login sin ruta de retorno (CA-19)', async () => {
     const api = loggedIn().on('POST /api/v1/auth/logout', () => json(204))
     const { router } = renderApp('/products')
-    await screen.findByText('Esta sección llegará pronto.')
+    await screen.findByText('Todavía no hay productos')
     const u = userEvent.setup()
     await u.click(screen.getByRole('button', { name: 'Cuenta' }))
     await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cerrar sesión' }))

@@ -33,6 +33,11 @@ public class ProblemFactory {
 		return localeResolver.resolveLocale(request);
 	}
 
+	/** Translated text for a code; falls back to the code itself. */
+	public String message(String code, Locale locale, Object... args) {
+		return messages.getMessage(code, args, code, locale);
+	}
+
 	public ProblemDetail create(HttpStatusCode status, String code, Locale locale, Object... args) {
 		// Si falta la traducción, se muestra el propio código (nunca rompe la respuesta de error)
 		String detail = messages.getMessage(code, args, code, locale);

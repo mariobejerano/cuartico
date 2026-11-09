@@ -20,7 +20,7 @@ Todas las funcionalidades deben tener tests de integración con MockMvc que cubr
 ## Criterios de aceptación y tests
 
 - Cada historia tiene su ficha en `docs/analysis/stories/` (Faro) con los criterios CA-n.
-- Vera mantiene la matriz CA → tests por historia en `docs/qa/stories/<NNN>.md` (se crea con la primera historia que se verifique).
+- Vera mantiene la matriz CA → tests por historia en `docs/qa/stories/HU-<NN>.md` (se crea con la primera historia que se verifique).
 - Una historia no se da por terminada sin el APTO de Vera.
 
 ## Certificación en staging

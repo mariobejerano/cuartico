@@ -1,6 +1,6 @@
 # Frontend: desarrollo
 
-Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el login, la sesión y el layout del panel (HU-01).
+Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el login, la sesión y el layout del panel (HU-01) y el catálogo de productos (HU-02).
 `combazo-web/` llegará en la fase 2.
 
 | Documento | Para qué |
@@ -24,7 +24,7 @@ Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el logi
 > **TypeScript 6, no 7:** la plantilla de Vite trae TypeScript 7, pero `typescript-eslint` todavía solo admite
 > `< 6.1`. Como se pidió ESLint, fijamos `typescript ~6.0.3`. Cuando `typescript-eslint` admita la 7, se sube.
 
-Sin librerías de componentes (MUI, etc.): los estilos salen de los tokens de Lienzo. Bundle actual: ~170 KB gzip en total.
+Sin librerías de componentes (MUI, etc.): los estilos salen de los tokens de Lienzo. Bundle actual: ~190 KB gzip en total; cada pantalla de productos es un trozo aparte (~4 KB gzip) que solo se descarga al visitarla.
 
 ## Cómo arrancar
 
@@ -90,10 +90,11 @@ cuartico-web/
     ├── api/                SIN React: cliente HTTP, errores, tipos de la API, endpoints
     ├── auth/               Sesión (sin React) + hooks y guardas de rutas (con React)
     ├── i18n/               i18next y locales/es.json, en.json
-    ├── components/         Piezas de UI reutilizables (Alert, Icon, LanguageSwitch…)
+    ├── components/         Piezas de UI reutilizables (Alert, Icon, ConfirmDialog, toast, OfflineNotice, useMediaQuery…)
     ├── layout/             Esqueleto del panel: barra lateral, barra inferior, hoja de cuenta
     ├── features/login/     La pantalla de login y su esquema de validación
-    ├── pages/              Páginas simples (Inicio, Productos-placeholder, 404)
+    ├── features/products/  Catálogo de productos (HU-02): ver la tabla «Productos» más abajo
+    ├── pages/              Páginas simples (Inicio, 404)
     ├── styles/             tokens.css (copia de docs/design) y global.css
     └── test/               Utilidades de test (API falsa, renderApp)
 ```
@@ -130,4 +131,35 @@ componentes solo pintan y llaman. En React Native se cambiará el almacenamiento
 | `auth/session.ts` | Estado (`loading`/`unreachable`/`authenticated`/`anonymous`), arranque, login, renovación *single-flight*, logout, evento `storage` |
 | `auth/guards.tsx` | `RequireAuth`, `GuestOnly`, `RequireRole` |
 | `auth/redirect.ts` | Validación de la ruta de retorno (`?redirect=`) |
+
+## Productos (HU-02)
+
+Rutas: `/products` (listado), `/products/new` y `/products/:id/edit` (formulario único, CA-25). Las dos pantallas se cargan con `lazy()`.
+
+| Archivo (`src/`) | Responsabilidad |
+|---|---|
+| `api/types.ts` | Tipos del contrato: `ProductResponse`, `StockSummary`, `Create/UpdateProductRequest`, `ProductListParams`, `PageResponse<T>`, `UNITS` |
+| `api/products.ts` | Endpoints (`list`, `get`, `categories`, `create`, `update`, `activate`, `deactivate`). Sin React |
+| `features/products/queries.ts` | TanStack Query: claves de caché (`productKeys`), `useProductList`, `useProduct`, `useCategories`, `useSaveProduct`, `useSetProductActive` |
+| `features/products/listQuery.ts` | Estado del listado en la URL (`?q=&cat=&status=&page=&sort=`) ⇄ parámetros de la API. Puro |
+| `features/products/productSchema.ts` | Esquema Zod del formulario (mismas reglas que la API), valores iniciales y `toRequest` (normaliza como el backend) |
+| `features/products/format.ts` | `Intl`: importes («3,50 USD»), cantidades («12,5 kg»), fechas, coma/punto decimal. Puro |
+| `features/products/stockBadge.ts` + `features.ts` | Etiquetas «Sin stock»/«Stock bajo» completas pero **apagadas** con `SHOW_STOCK_BADGES = false` hasta HU-04 |
+| `features/products/navigation.ts` | «Volver al listado» con la misma búsqueda, filtros y página (`state.listSearch` en el historial) |
+| `features/products/useToggleActive.tsx` | Activar (directo) / desactivar (confirmación con stock + «Deshacer»), compartido por listado y formulario |
+| `features/products/ProductsListPage.tsx` | Listado: búsqueda (300 ms), filtros, orden, paginación, tabla (≥ 768 px) o tarjetas, skeleton, vacío, sin resultados, errores |
+| `features/products/ProductFormPage.tsx` | Alta/edición: validación, errores del servidor en su campo, conflicto de versión, «¿Descartar los cambios?» (`useBlocker`) |
+
+Decisiones de implementación:
+- **Contrato**: el de la historia, verificado contra el real de Forja-Back (2026-11-07): sin diferencias.
+- **Una sola vista por tamaño**: `useMediaQuery('(min-width: 768px)')` pinta la tabla **o** las tarjetas (no ambas ocultando una con CSS): menos DOM y sin duplicados para lectores de pantalla.
+- **Caché**: tras guardar se invalida `['products']` (listados, detalle, categorías). Tras activar/desactivar se escribe el detalle con la respuesta y se invalidan solo listados y categorías, para no repintar un formulario abierto.
+- **Versión en la edición**: el formulario edita contra la versión que cargó; activar/desactivar desde el formulario actualiza esa versión con la respuesta (no se pierde lo escrito ni se provoca un 409 propio). Un 409 `resource.version_conflict` ofrece «Recargar producto» (se pierde lo escrito, aceptado en Sprint 1).
+- **Errores de la API en el formulario**: `product.sku_conflict` → campo SKU; `product.price_currency_mismatch` / `product.currency_unsupported` → campo precio; `validation.failed` → cada `errors.<campo>` en su campo; el resto, alerta arriba (con «Reintentar» si es de red o 5xx).
+- **Avisos (toasts)**: `components/toast.tsx`, proveedor en `AppLayout` para que el aviso del formulario siga visible en el listado. Éxito: 5 s, en pausa con ratón o foco; error: no se cierra solo.
+- **Sin conexión**: `OfflineNotice` (eventos `online`/`offline`) en la zona de alertas del layout.
+- **Claves i18n**: las de `copy.md`, con dos ajustes técnicos: el plural es `products.results_one` / `products.results_other` (formato de plurales de i18next) y se añadieron `products.no_price` («—») y `products.sku` («SKU»). Los mensajes de Zod se guardan como `clave|{"max":120}` y se traducen al pintar.
+- **Tests**: `features/products/logic.test.ts` (funciones puras), `ProductsListPage.test.tsx` y `ProductFormPage.test.tsx` (flujos con la API falsa; datos en `test/productFixtures.ts`). Para ver la tabla en un test se simula `matchMedia`.
+
+Pendiente / mejoras futuras: `SHOW_STOCK_BADGES = true` con HU-04; mostrar ambas versiones en un conflicto de edición; tipos generados desde `/v3/api-docs`; la lista de monedas (`CURRENCIES` en `productSchema.ts`) está duplicada a mano respecto a `app.currencies.supported`: si se amplía, leerla de la API.
 

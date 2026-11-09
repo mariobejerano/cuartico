@@ -4,6 +4,8 @@ import { vi } from 'vitest'
 export interface SeenRequest {
   method: string
   path: string
+  /** Parámetros de la query string (`?q=…&page=0`). */
+  query: URLSearchParams
   headers: Record<string, string>
   body: unknown
   mode?: RequestMode
@@ -60,6 +62,7 @@ export function installFakeApi() {
     const req: SeenRequest = {
       method,
       path: url.pathname,
+      query: url.searchParams,
       headers: (init.headers ?? {}) as Record<string, string>,
       body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
       mode: init.mode,

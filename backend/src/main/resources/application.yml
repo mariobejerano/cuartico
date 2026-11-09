@@ -30,6 +30,11 @@ app:
     refresh-token-ttl: 7d
     # Ventana en la que reintentar con un refresh ya rotado no se toma por robo (ADR-001)
     refresh-reuse-grace: 120s
+  currencies:
+    # Adding a currency is a configuration change, no migration needed
+    supported: [CUP, USD]
+    # Currency for average cost and profit reporting (ADR-002)
+    reference: USD
   cors:
     allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
   admin:

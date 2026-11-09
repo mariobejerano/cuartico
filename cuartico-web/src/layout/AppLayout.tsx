@@ -1,9 +1,12 @@
 import { Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useCurrentUser } from '../auth/useSession'
 import { BrandMark, Icon, type IconName } from '../components/Icon'
+import { OfflineNotice } from '../components/OfflineNotice'
 import { ServerWakingNotice } from '../components/ServerWakingNotice'
+import { ToastProvider } from '../components/toast'
+import { listPathFrom } from '../features/products/navigation'
 import { AccountPanel } from './AccountPanel'
 import { initials } from './initials'
 import { AccountSheet } from './AccountSheet'
@@ -14,7 +17,12 @@ const NAV_ITEMS: { to: string; labelKey: string; icon: IconName }[] = [
   { to: '/products', labelKey: 'nav.products', icon: 'box' },
 ]
 
+/** Pantallas «hijas» con título propio y botón «atrás» en la barra superior del móvil (prototipo products.html). */
+const PRODUCT_FORM_RE = /^\/products\/(new|[^/]+\/edit)\/?$/
+
 function titleKeyFor(pathname: string): string {
+  const form = PRODUCT_FORM_RE.exec(pathname)
+  if (form) return form[1] === 'new' ? 'products.new' : 'products.edit_title'
   const item = NAV_ITEMS.find((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to)))
   return item?.labelKey ?? 'app.name'
 }
@@ -30,7 +38,8 @@ function titleKeyFor(pathname: string): string {
 export function AppLayout() {
   const { t } = useTranslation()
   const user = useCurrentUser()
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
+  const onProductForm = PRODUCT_FORM_RE.test(pathname)
   const [accountOpen, setAccountOpen] = useState(false)
 
   if (!user) return null // RequireAuth ya lo garantiza; esto solo satisface a TypeScript
@@ -76,6 +85,11 @@ export function AppLayout() {
       </aside>
 
       <header className="topbar">
+        {onProductForm && (
+          <Link className="c-btn c-btn--ghost c-btn--icon back" to={listPathFrom(state)} aria-label={t('products.back_to_list')}>
+            <Icon name="left" />
+          </Link>
+        )}
         <p className="topbar-title" aria-hidden="true">
           {t(titleKeyFor(pathname))}
         </p>
@@ -92,11 +106,14 @@ export function AppLayout() {
 
       <main id="main" className="app-main" tabIndex={-1}>
         <div className="alerts">
+          <OfflineNotice />
           <ServerWakingNotice />
         </div>
-        <Suspense fallback={<div className="spinner" role="status" aria-label={t('common.loading')} />}>
-          <Outlet />
-        </Suspense>
+        <ToastProvider>
+          <Suspense fallback={<div className="spinner" role="status" aria-label={t('common.loading')} />}>
+            <Outlet />
+          </Suspense>
+        </ToastProvider>
       </main>
 
       <nav className="bottomnav" aria-label={t('nav.main')}>

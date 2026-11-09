@@ -5,6 +5,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,7 +16,7 @@ import org.springframework.validation.annotation.Validated;
  */
 @Validated
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(@Valid Jwt jwt, Cors cors, Admin admin) {
+public record AppProperties(@Valid Jwt jwt, Cors cors, Admin admin, @Valid @NotNull Currencies currencies) {
 
 	public record Jwt(
 			@NotBlank String issuer,
@@ -38,6 +39,16 @@ public record AppProperties(@Valid Jwt jwt, Cors cors, Admin admin) {
 	}
 
 	public record Admin(String username, String password) {
+	}
+
+	/** Supported ISO 4217 currency codes and the reference currency for cost and profit. */
+	public record Currencies(@NotEmpty List<String> supported, @NotBlank String reference) {
+
+		public Currencies {
+			if (supported != null && reference != null && !supported.contains(reference)) {
+				throw new IllegalArgumentException("app.currencies.reference must be one of app.currencies.supported");
+			}
+		}
 	}
 
 }

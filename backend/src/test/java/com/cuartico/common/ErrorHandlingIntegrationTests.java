@@ -190,6 +190,44 @@ class ErrorHandlingIntegrationTests {
 			.andExpect(content().string(not(containsString("at com.cuartico"))));
 	}
 
+	@Test
+	void optimisticLockFailureReturns409VersionConflict() throws Exception {
+		String token = adminToken();
+		mvc.perform(get("/api/v1/test/optimistic-lock").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+				.header(HttpHeaders.ACCEPT_LANGUAGE, "en"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("resource.version_conflict"))
+			.andExpect(jsonPath("$.detail").value("Someone else changed this record while you were editing. Reload it and try again."));
+	}
+
+	@Test
+	void typeErrorInBodyFieldIsValidationFailedButMalformedWithoutFieldStaysMalformed() throws Exception {
+		String token = adminToken();
+		mvc.perform(post("/api/v1/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"username\":\"abc\",\"password\":\"Socio123!x\",\"fullName\":\"X\",\"role\":\"BOSS\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("validation.failed"))
+			.andExpect(jsonPath("$.errors.role").value("valor no válido"));
+
+		mvc.perform(post("/api/v1/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+				.header(HttpHeaders.ACCEPT_LANGUAGE, "en")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("[]"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("request.malformed"));
+	}
+
+	@Test
+	void pathVariableTypeMismatchIsValidationFailed() throws Exception {
+		String token = adminToken();
+		mvc.perform(get("/api/v1/users/abc").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+				.header(HttpHeaders.ACCEPT_LANGUAGE, "en"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("validation.failed"))
+			.andExpect(jsonPath("$.errors.id").value("invalid value"));
+	}
+
 	private String adminToken() throws Exception {
 		return JsonPath.read(login("admin", "Admin123!test"), "$.accessToken");
 	}

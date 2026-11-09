@@ -16,7 +16,7 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | ID | Historia | Sprint | Estado |
 |---|---|---|---|
 | HU-01 | [Acceso al panel](stories/HU-01-panel-access.md) | 1 | Implementada, QA APTO, en revisión |
-| HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Análisis listo |
+| HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Implementada, QA APTO, en revisión |
 | HU-14 | [Gestión de usuarios](stories/HU-14-user-management.md) | — | Ficha breve |
 
 ## ADR

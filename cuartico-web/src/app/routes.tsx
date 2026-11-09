@@ -7,7 +7,8 @@ import { AppLayout } from '../layout/AppLayout'
 
 // Carga diferida: el código de cada página se descarga solo cuando se visita (bundle inicial más pequeño).
 const HomePage = lazy(() => import('../pages/HomePage'))
-const ProductsPage = lazy(() => import('../pages/ProductsPage'))
+const ProductsListPage = lazy(() => import('../features/products/ProductsListPage'))
+const ProductFormPage = lazy(() => import('../features/products/ProductFormPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
 
 /**
@@ -30,7 +31,9 @@ export const routes: RouteObject[] = [
         element: <AppLayout />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: 'products', element: <ProductsPage /> },
+          { path: 'products', element: <ProductsListPage /> },
+          { path: 'products/new', element: <ProductFormPage /> }, // HU-02 CA-25
+          { path: 'products/:id/edit', element: <ProductFormPage /> },
           { path: '*', element: <NotFoundPage /> }, // CA-26
         ],
       },
