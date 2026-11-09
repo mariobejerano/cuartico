@@ -1,0 +1,2026 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cuartico · Productos</title>
+<!--
+  Prototipo HU-15 (categoría, tipo y atributos) + HU-16 (variantes) sobre productos (HU-02) · Lienzo · Sprint 2
+  · Aprobado por la supervisión (2026-11-09). Parte de products.html (aprobado 2026-11-05) y de lo implementado en
+  cuartico-web/src/features/products: solo cambia lo que piden HU-15 y HU-16 (ver ../ux-notes/products-v2.md §1).
+  Autocontenido: solo depende de ../tokens.css. El JS simula API, rutas y roles; NO es código para copiar a cuartico-web.
+  Rutas simuladas: #/?q=&type=&cat=<id>&status=&page=&sort= · #/new · #/edit/<id>
+  Para ver variantes: «Camiseta básica de algodón» (#/edit/12), «Chancletas» (#/edit/14), «Uniforme escolar» (#/edit/15, una sola variante).
+-->
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* ===== Base ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-family-base); font-size: var(--text-md); line-height: var(--line-height-base); }
+h1, h2, h3 { line-height: var(--line-height-tight); margin: 0; }
+h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-bold); }
+h2 { font-size: var(--text-lg); font-weight: var(--font-weight-semibold); }
+h3 { font-size: var(--text-md); font-weight: var(--font-weight-semibold); }
+p { margin: 0; }
+a { color: var(--color-link); text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: var(--focus-ring-width) solid var(--color-focus); outline-offset: var(--focus-ring-offset); }
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.muted { color: var(--color-text-muted); }
+.small { font-size: var(--text-sm); }
+.num { font-variant-numeric: tabular-nums; }
+.skip-link { position: absolute; left: var(--space-2); top: -100px; z-index: var(--z-toast); background: var(--color-surface); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+.skip-link:focus { top: var(--space-2); }
+
+/* ===== Layout (design system §7.8) ===== */
+.sidebar { display: none; position: fixed; inset: 0 auto 0 0; width: 4rem; background: var(--color-surface); border-right: var(--border-width) solid var(--color-border); flex-direction: column; padding: var(--space-4) var(--space-2); z-index: var(--z-nav); }
+.brand { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--font-weight-bold); font-size: var(--text-lg); color: var(--color-brand); letter-spacing: 0.02em; text-decoration: none; }
+.brand svg { width: 28px; height: 28px; flex: none; }
+.sidebar .brand { justify-content: center; padding: var(--space-2) 0 var(--space-6); }
+.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.nav a { display: flex; align-items: center; justify-content: center; gap: var(--space-3); min-height: var(--touch-target-min); padding: 0; border-radius: var(--radius-md); color: var(--color-text); text-decoration: none; border-left: 3px solid transparent; }
+.nav a[aria-current="page"] { background: var(--color-brand-subtle); color: var(--color-brand); border-left-color: var(--color-brand); font-weight: var(--font-weight-semibold); }
+.sidebar .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sidebar-footer { margin-top: auto; border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-4); display: grid; gap: var(--space-3); }
+.account-full { display: none; }
+.avatar-btn { width: var(--touch-target-min); height: var(--touch-target-min); border-radius: var(--radius-full); border: var(--border-width) solid var(--color-border-strong); background: var(--color-brand-subtle); color: var(--color-brand); font: inherit; font-weight: var(--font-weight-bold); font-size: var(--text-sm); cursor: pointer; justify-self: center; }
+.user-name { font-weight: var(--font-weight-semibold); }
+.c-tag { display: inline-block; padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); font-size: var(--text-sm); font-weight: var(--font-weight-medium); white-space: nowrap; }
+
+.topbar { position: sticky; top: 0; z-index: var(--z-sticky); height: var(--layout-topbar-height); display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2) 0 var(--space-4); background: var(--color-surface); border-bottom: var(--border-width) solid var(--color-border); }
+.topbar-title { flex: 1; font-size: var(--text-lg); font-weight: var(--font-weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .back { margin-left: calc(-1 * var(--space-2)); }
+
+.bottomnav { position: fixed; inset: auto 0 0 0; z-index: var(--z-nav); background: var(--color-surface); border-top: var(--border-width) solid var(--color-border); box-shadow: var(--shadow-md); padding-bottom: env(safe-area-inset-bottom); }
+.bottomnav ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--layout-bottomnav-height); }
+.bottomnav a, .bottomnav button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 100%; width: 100%; color: var(--color-text-muted); text-decoration: none; font: inherit; font-size: var(--text-xs); font-weight: var(--font-weight-medium); background: none; border: 0; cursor: pointer; padding: 0 2px; }
+.bottomnav [aria-current="page"] { color: var(--color-brand); }
+.bottomnav [aria-current="page"] .icon { stroke-width: 2.5; }
+
+main { padding: var(--space-4); padding-bottom: calc(var(--layout-bottomnav-height) + 6rem + env(safe-area-inset-bottom)); max-width: var(--layout-content-max); }
+main:focus { outline: none; }
+.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.page-head h1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+@media (max-width: 767.98px) { .page-head h1.mobile-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
+@media (max-width: 767.98px) { .desktop-only { display: none !important; } }
+@media (min-width: 768px) {
+  .topbar, .bottomnav, .fab, .mobile-only { display: none !important; }
+  .sidebar { display: flex; }
+  main { margin-left: 4rem; padding: var(--space-8); }
+}
+@media (min-width: 1024px) {
+  .sidebar { width: var(--layout-sidebar-width); padding-inline: var(--space-3); }
+  .sidebar .brand { justify-content: flex-start; padding-inline: var(--space-3); }
+  .sidebar .label { position: static; width: auto; height: auto; overflow: visible; clip: auto; white-space: normal; }
+  .nav a { justify-content: flex-start; padding: 0 var(--space-3); }
+  .account-full { display: grid; gap: var(--space-3); }
+  .avatar-btn { display: none; }
+  main { margin-left: var(--layout-sidebar-width); }
+}
+@media (hover: hover) {
+  .nav a:hover { background: var(--color-surface-hover); }
+  .nav a[aria-current="page"]:hover { background: var(--color-brand-subtle); }
+}
+
+/* ===== Botones ===== */
+.c-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-height); padding: 0 var(--space-4); border-radius: var(--radius-md); font: inherit; font-weight: var(--font-weight-semibold); line-height: 1.2; text-decoration: none; cursor: pointer; border: var(--border-width) solid transparent; transition: background-color var(--duration-fast) var(--easing-standard); white-space: nowrap; }
+.c-btn--primary { background: var(--color-action-primary-bg); color: var(--color-action-primary-text); }
+.c-btn--secondary { background: var(--color-action-secondary-bg); color: var(--color-action-secondary-text); border-color: var(--color-action-secondary-border); }
+.c-btn--ghost { background: transparent; color: var(--color-link); }
+.c-btn--sm { min-height: var(--control-height-sm); padding: 0 var(--space-3); font-size: var(--text-sm); }
+.c-btn--icon { width: var(--control-height); padding: 0; }
+@media (hover: hover) {
+  .c-btn--primary:hover { background: var(--color-action-primary-bg-hover); }
+  .c-btn--secondary:hover { background: var(--color-action-secondary-bg-hover); }
+  .c-btn--ghost:hover { background: var(--color-surface-hover); }
+}
+.c-btn--primary:active { background: var(--color-action-primary-bg-active); }
+.c-btn:disabled { background: var(--color-action-disabled-bg); color: var(--color-action-disabled-text); border-color: transparent; cursor: not-allowed; }
+.c-btn--ghost:disabled { background: transparent; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.btn-bar { display: flex; flex-direction: column-reverse; gap: var(--space-3); }
+.btn-bar .c-btn { width: 100%; }
+@media (min-width: 768px) { .btn-bar { flex-direction: row; justify-content: flex-end; } .btn-bar .c-btn { width: auto; } }
+.fab { position: fixed; z-index: var(--z-nav); right: var(--space-4); bottom: calc(var(--layout-bottomnav-height) + var(--space-4) + env(safe-area-inset-bottom)); min-height: 3.5rem; padding: 0 var(--space-5); border-radius: var(--radius-full); box-shadow: var(--shadow-lg); }
+
+/* ===== Campos ===== */
+.c-field { display: grid; gap: var(--space-1); align-content: start; min-width: 0; }
+.c-label { font-weight: var(--font-weight-medium); }
+.c-label .hint { font-weight: var(--font-weight-regular); color: var(--color-text-muted); font-size: var(--text-sm); }
+.c-input, .c-select { width: 100%; min-height: var(--control-height); padding: 0 var(--space-3); font: inherit; color: var(--color-text); background-color: var(--color-surface); border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-md); }
+.c-select { appearance: none; padding-right: var(--space-10); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right var(--space-3) center; text-overflow: ellipsis; }
+.c-input:focus-visible, .c-select:focus-visible { outline-offset: 0; border-color: var(--color-focus); }
+.c-input[aria-invalid="true"], .c-select[aria-invalid="true"] { border: 2px solid var(--color-danger-text); padding-left: calc(var(--space-3) - 1px); }
+.c-select:disabled, .c-input:disabled { background-color: var(--color-action-disabled-bg); color: var(--color-text); border-color: var(--color-border); cursor: not-allowed; }
+.c-help { font-size: var(--text-sm); color: var(--color-text-muted); }
+.c-error { font-size: var(--text-sm); color: var(--color-danger-text); display: flex; gap: var(--space-1); align-items: flex-start; }
+.c-error .icon { width: 16px; height: 16px; margin-top: 3px; }
+.c-input-group { position: relative; }
+.c-input-group .c-input { padding-right: 4.5rem; }
+.c-input-group .suffix { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); font-size: var(--text-sm); font-weight: var(--font-weight-medium); pointer-events: none; }
+.c-search { position: relative; }
+.c-search .icon { position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+.c-search .c-input { padding-left: var(--space-10); }
+.c-select--sm { min-height: var(--control-height); font-size: var(--text-sm); }
+/* Casilla nativa: «Tiene tallas o colores» se aplica al Guardar, por eso es checkbox y no interruptor */
+.c-check { display: inline-flex; align-items: center; gap: var(--space-3); min-height: var(--touch-target-min); cursor: pointer; font-weight: var(--font-weight-medium); }
+.c-check input { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--color-action-primary-bg); }
+
+/* ===== Badges ===== */
+.c-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px var(--space-2) 2px 6px; border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--font-weight-medium); line-height: 1.4; white-space: nowrap; }
+.c-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.c-badge--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-badge--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-badge--neutral { background: var(--color-neutral-bg); color: var(--color-neutral-on-bg); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* ===== Barra de filtros: buscador + Tipo + Categoría + Estado ===== */
+.toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
+.toolbar .f-q, .toolbar .f-cat { grid-column: 1 / -1; }
+.toolbar .c-label { font-size: var(--text-sm); }
+@media (min-width: 768px) { .toolbar { grid-template-columns: minmax(0, 1fr) 11rem; } .toolbar .f-q { grid-column: 1 / -1; } .toolbar .f-cat { grid-column: auto; } }
+@media (min-width: 1024px) { .toolbar { grid-template-columns: minmax(12rem, 1fr) 10rem minmax(12rem, 16rem) 9rem; align-items: end; } .toolbar .f-q, .toolbar .f-cat { grid-column: auto; } }
+.list-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); font-size: var(--text-sm); color: var(--color-text-muted); min-height: var(--control-height-sm); }
+
+/* ===== Tabla (≥768 px). Columna «Categoría» solo ≥1024; debajo va en la línea secundaria ===== */
+.table-wrap { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.c-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.c-table th { text-align: left; background: var(--color-surface-muted); color: var(--color-text); font-weight: var(--font-weight-semibold); padding: var(--space-3) var(--space-4); white-space: nowrap; }
+.c-table td { padding: var(--space-3) var(--space-4); border-top: var(--border-width) solid var(--color-border); vertical-align: middle; }
+.c-table .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.c-table .cell-title { font-weight: var(--font-weight-semibold); font-size: var(--text-md); }
+.c-table .cell-title .sub { display: block; font-weight: var(--font-weight-regular); font-size: var(--text-sm); color: var(--color-text-muted); }
+.c-table .actions { text-align: right; white-space: nowrap; }
+.c-table tr.is-inactive .cell-title { color: var(--color-text-muted); }
+.c-table .col-cat { display: none; color: var(--color-text); max-width: 16rem; }
+@media (min-width: 1024px) { .c-table .col-cat { display: table-cell; } .cat-inline { display: none; } }
+.sort-btn { display: inline-flex; align-items: center; gap: var(--space-1); background: none; border: 0; padding: 0; font: inherit; font-weight: inherit; color: inherit; cursor: pointer; }
+.sort-btn .icon { width: 16px; height: 16px; }
+@media (hover: hover) { .c-table tbody tr:hover td { background: var(--color-surface-hover); } }
+
+/* ===== Tarjetas (<768 px) ===== */
+.card-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.p-card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-2); }
+.p-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3); }
+.p-card h2 { font-size: var(--text-md); }
+.p-card.is-inactive h2 { color: var(--color-text-muted); }
+.p-card dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-4); }
+.p-card dt { font-size: var(--text-sm); color: var(--color-text-muted); }
+.p-card dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-medium); }
+.p-card-actions { display: flex; gap: var(--space-3); border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-2); }
+.p-card-actions .c-btn { flex: 1; }
+
+/* ===== Paginación ===== */
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); }
+.pager .pages { display: flex; align-items: center; gap: var(--space-2); }
+.pager .pages span { font-size: var(--text-sm); color: var(--color-text-muted); white-space: nowrap; }
+@media (max-width: 767.98px) { .pager { justify-content: center; } .pager .pages { width: 100%; justify-content: space-between; } }
+
+/* ===== Alertas, vacío, carga ===== */
+.alerts { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
+.alerts:empty { display: none; }
+.c-alert { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border-left: 4px solid currentColor; }
+.c-alert .icon { margin-top: 2px; }
+.c-alert strong { display: block; }
+.c-alert .c-btn { margin-top: var(--space-3); }
+.c-alert--success { background: var(--color-success-bg); color: var(--color-success-on-bg); }
+.c-alert--warning { background: var(--color-warning-bg); color: var(--color-warning-on-bg); }
+.c-alert--danger  { background: var(--color-danger-bg);  color: var(--color-danger-on-bg); }
+.c-alert--info    { background: var(--color-info-bg);    color: var(--color-info-on-bg); }
+.c-alert--sm { font-size: var(--text-sm); padding: var(--space-2) var(--space-3); }
+.c-alert--sm ul { margin: 0; padding-left: var(--space-4); }
+.c-empty { text-align: center; padding: var(--space-10) var(--space-4); display: grid; justify-items: center; gap: var(--space-2); background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); }
+.c-empty .icon { width: 48px; height: 48px; stroke-width: 1.5; color: var(--color-text-muted); }
+.c-empty.is-error .icon { color: var(--color-danger-text); }
+.c-empty h2 { margin-top: var(--space-2); }
+.c-empty p { color: var(--color-text-muted); max-width: 28rem; }
+.c-empty .c-btn { margin-top: var(--space-3); }
+.code { font-family: var(--font-family-mono); font-size: var(--text-xs); color: var(--color-text-muted); }
+.skeleton { display: grid; gap: var(--space-3); }
+.sk { height: 14px; border-radius: var(--radius-sm); background: var(--color-surface-muted); animation: pulse 1.4s ease-in-out infinite; }
+.sk-row { display: grid; grid-template-columns: 3fr 1fr 1fr 1fr; gap: var(--space-6); padding: var(--space-4); border-top: var(--border-width) solid var(--color-border); }
+.sk-card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: grid; gap: var(--space-3); }
+@keyframes pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+
+/* ===== Formulario ===== */
+.back-link { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--touch-target-min); margin-bottom: var(--space-2); font-weight: var(--font-weight-medium); }
+.form-layout { display: grid; gap: var(--space-4); max-width: 56rem; }
+.card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: var(--space-4); }
+@media (min-width: 768px) { .card { padding: var(--space-6); } }
+.card > h2 { margin-bottom: var(--space-4); }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.fields { display: grid; gap: var(--space-4); }
+.grid-2 { display: grid; gap: var(--space-4); }
+@media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; gap: var(--space-5); } .fields { gap: var(--space-5); } }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend { padding: 0; font-weight: var(--font-weight-medium); margin-bottom: var(--space-1); }
+.price-row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: var(--space-3); }
+.ro-grid { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (min-width: 768px) { .ro-grid { grid-template-columns: repeat(4, 1fr); } }
+.ro-grid dt { font-size: var(--text-sm); color: var(--color-text-muted); }
+.ro-grid dd { margin: 0; font-size: var(--text-lg); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+.ro-note { display: flex; gap: var(--space-2); align-items: flex-start; margin-top: var(--space-4); font-size: var(--text-sm); color: var(--color-text-muted); }
+.ro-note .icon { width: 16px; height: 16px; margin-top: 3px; }
+.status-card { display: grid; gap: var(--space-3); }
+@media (min-width: 768px) { .status-card { grid-template-columns: 1fr auto; align-items: center; } }
+.audit { font-size: var(--text-sm); color: var(--color-text-muted); }
+/* Tipo derivado de la categoría: etiqueta gris (es información, no un estado) */
+.type-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+.divider { border: 0; border-top: var(--border-width) solid var(--color-border); margin: var(--space-2) 0; }
+
+/* ===== Generador talla × color ===== */
+/* Fondo de página, no surface-muted: lleva textos de ayuda atenuados (en oscuro, surface-muted daría 4.04:1) */
+.gen { display: grid; gap: var(--space-4); padding: var(--space-4); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
+.gen h3 { margin-bottom: calc(-1 * var(--space-2)); }
+.tag-row { display: flex; gap: var(--space-2); }
+.tag-row .c-input { flex: 1; min-width: 0; }
+.presets { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.presets .c-help { margin-right: var(--space-1); }
+.preset { min-width: 3rem; padding: 0 var(--space-3); }
+.preset[aria-pressed="true"] { background: var(--color-brand-subtle); border-color: var(--color-brand); color: var(--color-brand); }
+.preset[aria-pressed="true"]::before { content: "✓"; } /* el estado también en forma, no solo en color */
+.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; border: var(--border-width) solid var(--color-border-strong); border-radius: var(--radius-full); background: var(--color-surface); padding-left: var(--space-3); font-weight: var(--font-weight-medium); }
+.chip button { display: inline-flex; align-items: center; justify-content: center; min-width: var(--touch-target-min); min-height: var(--touch-target-min); background: none; border: 0; border-radius: var(--radius-full); color: var(--color-text-muted); cursor: pointer; }
+.chip button .icon { width: 16px; height: 16px; }
+@media (min-width: 768px) { .chip button { min-width: 2rem; min-height: 2rem; } }
+@media (hover: hover) { .chip button:hover { color: var(--color-danger-text); } }
+.gen-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.gen-preview { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+/* ===== Lista de variantes: una sola marcación para móvil (tarjetas) y escritorio (filas alineadas) ===== */
+.v-head { display: none; }
+.v-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.v-row { display: grid; gap: var(--space-2) var(--space-3); padding: var(--space-3); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); align-items: start; }
+.v-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-weight: var(--font-weight-semibold); min-height: var(--touch-target-min); overflow-wrap: anywhere; }
+.v-row.is-inactive .v-title .vt { color: var(--color-text-muted); }
+/* Borrador (alta / añadir): título + quitar | SKU + mínimo */
+.v-row--draft { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; grid-template-areas: "title title rm" "sku min min"; }
+.v-row--draft .v-title { grid-area: title; }
+.v-row--draft .f-sku { grid-area: sku; }
+.v-row--draft .f-min { grid-area: min; }
+.v-row--draft .rm { grid-area: rm; }
+/* Lectura (edición): título | datos | acciones */
+.v-row--read { grid-template-columns: minmax(0, 1fr); }
+.v-row--read dl { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
+.v-row--read dt { font-size: var(--text-sm); color: var(--color-text-muted); }
+.v-row--read dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: var(--font-weight-medium); overflow-wrap: anywhere; }
+.v-row--read .v-actions { display: flex; gap: var(--space-3); border-top: var(--border-width) solid var(--color-border); padding-top: var(--space-2); }
+.v-row--read .v-actions .c-btn { flex: 1; }
+.v-row--edit { grid-template-columns: minmax(0, 1fr); border-color: var(--color-focus); }
+.v-row--edit .v-fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.v-lbl { font-size: var(--text-sm); }
+@media (min-width: 768px) {
+  .v-list { gap: 0; border: var(--border-width) solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+  .v-head { display: grid; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--color-surface-muted); font-size: var(--text-sm); font-weight: var(--font-weight-semibold); border: var(--border-width) solid var(--color-border); border-bottom: 0; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+  .v-head + .v-list { border-top-left-radius: 0; border-top-right-radius: 0; }
+  .v-row { border: 0; border-top: var(--border-width) solid var(--color-border); border-radius: 0; padding: var(--space-2) var(--space-3); }
+  .v-list > li:first-child .v-row, .v-list > li:first-child.v-row { border-top: 0; }
+  .v-head--draft, .v-row--draft { grid-template-columns: minmax(8rem, 1.2fr) minmax(9rem, 1.4fr) 10rem 2.75rem; grid-template-areas: "title sku min rm"; }
+  .v-row--draft .v-lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .v-head--read, .v-row--read { grid-template-columns: minmax(9rem, 1.3fr) minmax(0, 2.6fr) 13rem; align-items: center; }
+  .v-head--read .v-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+  .v-row--read dt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .v-row--read .v-actions { border-top: 0; padding-top: 0; justify-content: flex-end; gap: var(--space-1); }
+  .v-row--read .v-actions .c-btn { flex: none; }
+  .v-row--edit { border: 2px solid var(--color-focus); padding: var(--space-4); }
+  .v-row--edit .v-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .v-head .r, .v-row--read dd.r { text-align: right; }
+}
+@media (min-width: 768px) and (hover: hover) { .v-row--read:hover { background: var(--color-surface-hover); } }
+.v-count { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); margin: var(--space-4) 0 var(--space-2); }
+.add-panel { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+.card-foot { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; margin-top: var(--space-4); padding-top: var(--space-4); border-top: var(--border-width) solid var(--color-border); }
+
+/* ===== Toast y modal ===== */
+.toast-region { position: fixed; z-index: var(--z-toast); left: var(--space-4); right: var(--space-4); bottom: calc(var(--layout-bottomnav-height) + 5.5rem + env(safe-area-inset-bottom)); display: grid; gap: var(--space-2); pointer-events: none; }
+@media (min-width: 768px) { .toast-region { left: auto; right: var(--space-6); bottom: var(--space-6); width: 24rem; } }
+.c-toast { pointer-events: auto; display: flex; align-items: center; gap: var(--space-3); background: var(--color-surface); color: var(--color-text); border: var(--border-width) solid var(--color-border); border-left: 4px solid var(--color-success-text); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); }
+.c-toast .msg { flex: 1; }
+.c-toast > .icon { color: var(--color-success-text); }
+.c-toast--danger { border-left-color: var(--color-danger-text); }
+.c-toast--danger > .icon { color: var(--color-danger-text); }
+.c-modal { border: 0; padding: 0; width: min(32rem, calc(100% - 2 * var(--space-4))); max-height: calc(100dvh - 2rem); overflow: auto; border-radius: var(--radius-lg); background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.c-modal::backdrop { background: var(--overlay-bg); }
+.c-modal .body { padding: var(--space-6); display: grid; gap: var(--space-3); }
+.c-modal .actions { padding: 0 var(--space-6) var(--space-6); }
+.c-modal .alerts { margin-bottom: 0; }
+@media (max-width: 767.98px) { .c-modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); } }
+.sheet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.sheet-list a, .sheet-list button { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--touch-target-min); padding: 0 var(--space-2); color: var(--color-text); text-decoration: none; background: none; border: 0; font: inherit; border-radius: var(--radius-md); cursor: pointer; }
+@media (hover: hover) { .sheet-list a:hover, .sheet-list button:hover { background: var(--color-surface-hover); } }
+.sheet-section { font-size: var(--text-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-muted); margin-top: var(--space-2); }
+
+/* ===== Controles del prototipo (NO son diseño: borde discontinuo magenta) ===== */
+.proto-fab { position: fixed; z-index: 70; top: var(--space-2); left: 50%; transform: translateX(-50%); min-height: 40px; padding: 0 var(--space-3); border: 2px dashed #c026d3; border-radius: var(--radius-full); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--text-sm); font-weight: var(--font-weight-semibold); cursor: pointer; box-shadow: var(--shadow-md); }
+@media (min-width: 768px) { .proto-fab { left: auto; right: var(--space-4); transform: none; } }
+.proto-panel { border: 2px dashed #c026d3; border-radius: var(--radius-lg); padding: var(--space-5); width: min(28rem, calc(100% - 2rem)); background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-lg); }
+.proto-panel::backdrop { background: var(--overlay-bg); }
+.proto-panel h2 { margin-bottom: var(--space-2); }
+.proto-panel label { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
+.proto-panel label.check { display: flex; align-items: center; gap: var(--space-2); }
+.proto-panel select { min-height: 44px; font: inherit; padding: 0 var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); }
+.proto-panel input[type=checkbox] { width: 20px; height: 20px; }
+.proto-panel p { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main" data-i18n="common.skip_to_content">Saltar al contenido</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-empty" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/><path d="M7.5 5.5l9 5" /></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20M5.8 8.6A5 5 0 0 0 7 18h10.5M20.6 15.6A4 4 0 0 0 17 9h-1.3A7 7 0 0 0 10 5.1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+</svg>
+
+<!-- ============ Barra lateral ============ -->
+<aside class="sidebar">
+  <a class="brand" href="#/" aria-label="Cuartico">
+    <svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6" fill="currentColor"/><path d="M19 9.5a6 6 0 1 0 0 9" fill="none" stroke="var(--color-surface)" stroke-width="3" stroke-linecap="round"/></svg>
+    <span class="label">Cuartico</span>
+  </a>
+  <nav aria-label="Navegación principal" data-i18n-aria="nav.main">
+    <ul class="nav">
+      <li><a href="#home" data-home><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="label" data-i18n="nav.home">Inicio</span></a></li>
+      <li><a href="#/" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg><span class="label" data-i18n="nav.products">Productos</span></a></li>
+      <li data-admin-only><a href="categories.html"><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg><span class="label" data-i18n="nav.categories">Categorías</span></a></li>
+    </ul>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="account-full">
+      <div><div class="user-name" data-user-name>Mario Bejerano</div><span class="c-tag" data-user-role>Administrador</span></div>
+      <div class="c-field">
+        <label class="c-label small" for="langSidebar" data-i18n="common.language">Idioma</label>
+        <select class="c-select c-select--sm" id="langSidebar" data-lang-select><option value="es" lang="es">Español</option><option value="en" lang="en">English</option></select>
+      </div>
+      <a class="c-btn c-btn--secondary" href="login.html"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span data-i18n="nav.logout">Cerrar sesión</span></a>
+    </div>
+    <button type="button" class="avatar-btn" data-open-account aria-haspopup="dialog">MB</button>
+  </div>
+</aside>
+
+<header class="topbar">
+  <a class="c-btn c-btn--ghost c-btn--icon back" id="topBack" href="#/" hidden data-i18n-aria="products.back_to_list"><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg></a>
+  <p class="topbar-title" id="topTitle" aria-hidden="true">Productos</p>
+  <button type="button" class="avatar-btn" data-open-account aria-haspopup="dialog">MB</button>
+</header>
+
+<main id="main" tabindex="-1">
+  <div id="offlineBox" class="alerts"></div>
+
+  <!-- ===================== LISTADO ===================== -->
+  <section id="viewList" aria-labelledby="listTitle">
+    <div class="page-head">
+      <h1 id="listTitle" class="mobile-sr" data-i18n="products.title">Productos</h1>
+      <a class="c-btn c-btn--primary desktop-only" href="#/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="products.new">Nuevo producto</span></a>
+    </div>
+    <form class="toolbar" role="search" id="filters" onsubmit="return false">
+      <div class="c-field f-q">
+        <label class="c-label" for="q" data-i18n="products.search_label">Buscar por nombre o SKU</label>
+        <div class="c-search"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input class="c-input" id="q" type="search" autocomplete="off" enterkeyhint="search"></div>
+      </div>
+      <div class="c-field f-type">
+        <label class="c-label" for="ftype" data-i18n="products.type">Tipo</label>
+        <select class="c-select" id="ftype"></select>
+      </div>
+      <div class="c-field f-cat">
+        <label class="c-label" for="cat" data-i18n="products.category">Categoría</label>
+        <select class="c-select" id="cat"></select>
+      </div>
+      <div class="c-field f-status">
+        <label class="c-label" for="status" data-i18n="products.status">Estado</label>
+        <select class="c-select" id="status">
+          <option value="active" data-i18n="products.status_active">Activos</option>
+          <option value="inactive" data-i18n="products.status_inactive">Inactivos</option>
+          <option value="all" data-i18n="products.status_all">Todos</option>
+        </select>
+      </div>
+    </form>
+    <div class="alerts" id="listAlerts"></div>
+    <div class="list-meta" id="listMeta"></div>
+    <p class="sr-only" role="status" id="listStatus"></p>
+    <div id="listRegion" aria-busy="false"></div>
+  </section>
+
+  <!-- ===================== FORMULARIO ===================== -->
+  <section id="viewForm" aria-labelledby="formTitle" hidden>
+    <a class="back-link desktop-only" href="#/" data-cancel><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg><span data-i18n="products.back_to_list">Volver a productos</span></a>
+    <div class="page-head">
+      <h1 id="formTitle" class="mobile-sr"><span id="formTitleText">Nuevo producto</span> <span id="formInactiveBadge" class="c-badge c-badge--neutral" hidden data-i18n="products.badge_inactive">Inactivo</span></h1>
+    </div>
+    <div id="notFound" hidden>
+      <div class="c-empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-empty"/></svg>
+        <h2 data-i18n="products.not_found_title">Este producto no existe</h2>
+        <p data-i18n="products.not_found_body">Puede que el enlace esté mal escrito.</p>
+        <a class="c-btn c-btn--secondary" href="#/" data-i18n="products.back_to_list">Volver a productos</a>
+      </div>
+    </div>
+
+    <div class="form-layout" id="formLayout">
+      <div class="alerts" id="formAlerts"></div>
+      <form id="productForm" novalidate class="form-layout">
+        <!-- ---------- Datos ---------- -->
+        <div class="card">
+          <h2 data-i18n="products.section_data">Datos del producto</h2>
+          <div class="fields">
+            <div class="c-field">
+              <label class="c-label" for="f-name"><span data-i18n="products.name">Nombre</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+              <input class="c-input" id="f-name" maxlength="120" autocomplete="off" aria-describedby="f-name-help f-name-error">
+              <p class="c-help" id="f-name-help" data-i18n="products.name_help">Incluye la presentación si importa: «Aceite de girasol 1 L».</p>
+              <p class="c-error" id="f-name-error" hidden></p>
+            </div>
+            <!-- Categoría a ancho completo: las rutas («Electrodomésticos › Cocina › Ollas y arroceras») son largas -->
+            <div class="c-field">
+              <label class="c-label" for="f-category"><span data-i18n="products.category">Categoría</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+              <select class="c-select" id="f-category" aria-describedby="f-category-type f-category-help f-category-error"></select>
+              <p class="type-line" id="f-category-type" hidden></p>
+              <p class="c-help" id="f-category-help" data-i18n="products.category_help">El tipo sale de la categoría y decide qué datos se piden.</p>
+              <p class="c-error" id="f-category-error" hidden></p>
+              <!-- Avisa de lo que cambia al elegir una categoría de otro tipo (región viva: el lector lo anuncia) -->
+              <div id="typeChangeNote" role="status"></div>
+            </div>
+            <div class="grid-2">
+              <div class="c-field">
+                <label class="c-label" for="f-brand"><span data-i18n="products.brand">Marca</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <input class="c-input" id="f-brand" maxlength="80" autocomplete="off" aria-describedby="f-brand-error">
+                <p class="c-error" id="f-brand-error" hidden></p>
+              </div>
+              <div class="c-field">
+                <label class="c-label" for="f-unit"><span data-i18n="products.unit">Unidad de medida</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+                <select class="c-select" id="f-unit" aria-describedby="f-unit-help f-unit-error"></select>
+                <p class="c-help" id="f-unit-help"></p>
+                <p class="c-error" id="f-unit-error" hidden></p>
+              </div>
+            </div>
+            <!-- Solo electrodomésticos (CA-26) -->
+            <div class="grid-2" id="applianceFields" hidden>
+              <div class="c-field">
+                <label class="c-label" for="f-model"><span data-i18n="products.model">Modelo</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <input class="c-input" id="f-model" maxlength="80" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="f-model-help f-model-error">
+                <p class="c-help" id="f-model-help" data-i18n="products.model_help">Como aparece en la caja o la etiqueta: «RC-18».</p>
+                <p class="c-error" id="f-model-error" hidden></p>
+              </div>
+              <div class="c-field">
+                <label class="c-label" for="f-warranty"><span data-i18n="products.warranty">Garantía</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <div class="c-input-group">
+                  <input class="c-input num" id="f-warranty" inputmode="numeric" autocomplete="off" aria-describedby="f-warranty-help f-warranty-error">
+                  <span class="suffix" aria-hidden="true" data-i18n="products.months">meses</span>
+                </div>
+                <p class="c-help" id="f-warranty-help" data-i18n="products.warranty_help">En meses, de 0 a 120. Es informativa: se muestra al vender.</p>
+                <p class="c-error" id="f-warranty-error" hidden></p>
+              </div>
+            </div>
+            <fieldset aria-describedby="f-price-help">
+              <legend><span data-i18n="products.sale_price">Precio de venta de referencia</span> <span class="hint muted small" data-i18n="common.optional">(opcional)</span></legend>
+              <div class="price-row">
+                <div class="c-field">
+                  <label class="sr-only" for="f-salePrice" data-i18n="products.amount">Importe</label>
+                  <input class="c-input num" id="f-salePrice" inputmode="decimal" autocomplete="off" aria-describedby="f-price-help f-salePrice-error">
+                </div>
+                <div class="c-field">
+                  <label class="sr-only" for="f-currency" data-i18n="products.currency">Moneda</label>
+                  <select class="c-select" id="f-currency"><option value="CUP">CUP</option><option value="USD">USD</option></select>
+                </div>
+              </div>
+              <p class="c-help" id="f-price-help" data-i18n="products.sale_price_help">Orientativo y para todas sus tallas y colores. El precio real lo fija cada combo o pedido.</p>
+              <p class="c-error" id="f-salePrice-error" hidden></p>
+            </fieldset>
+          </div>
+        </div>
+
+        <!-- ---------- Inventario (alta siempre; edición solo si es simple) ---------- -->
+        <div class="card" id="invCard">
+          <h2 data-i18n="products.section_inventory">Inventario</h2>
+          <div class="fields">
+            <div class="c-field" id="hasVariantsField">
+              <label class="c-check"><input type="checkbox" id="f-hasVariants" aria-describedby="f-hasVariants-help"> <span data-i18n="products.has_variants">Tiene tallas o colores</span></label>
+              <p class="c-help" id="f-hasVariants-help" data-i18n="products.has_variants_help">Márcalo si cada talla o color lleva su propio SKU y stock. En ropa viene marcado.</p>
+            </div>
+            <div class="grid-2" id="simpleFields">
+              <div class="c-field">
+                <label class="c-label" for="f-sku"><span>SKU</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+                <input class="c-input" id="f-sku" maxlength="50" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="f-sku-help f-sku-error">
+                <p class="c-help" id="f-sku-help" data-i18n="products.sku_help">Código interno único. Letras, números, punto, guion y guion bajo.</p>
+                <p class="c-error" id="f-sku-error" hidden></p>
+              </div>
+              <div class="c-field">
+                <label class="c-label" for="f-minStock"><span data-i18n="products.min_stock">Stock mínimo</span> <span class="hint" data-i18n="common.required">(obligatorio)</span></label>
+                <div class="c-input-group">
+                  <input class="c-input num" id="f-minStock" inputmode="decimal" autocomplete="off" aria-describedby="f-minStock-help f-minStock-error">
+                  <span class="suffix" id="minStockSuffix" aria-hidden="true">u</span>
+                </div>
+                <p class="c-help" id="f-minStock-help" data-i18n="products.min_stock_help">Te avisaremos cuando el disponible llegue a esta cantidad. 0 = sin aviso.</p>
+                <p class="c-error" id="f-minStock-error" hidden></p>
+              </div>
+            </div>
+            <!-- Alta con variantes: generador + filas en borrador; se guardan con «Guardar producto» -->
+            <div id="newVariants" hidden>
+              <div id="genHostNew"></div>
+              <div class="v-count"><span id="draftCount" role="status"></span></div>
+              <div class="v-head v-head--draft" aria-hidden="true"><span data-i18n="variants.col_variant">Variante</span><span>SKU</span><span data-i18n="products.min_stock">Stock mínimo</span><span></span></div>
+              <ul class="v-list" id="draftList" aria-label="Variantes"></ul>
+              <p class="c-error" id="draftError" hidden></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stock (solo lectura) de un producto simple en edición -->
+        <div class="card" id="stockCard">
+          <h2 data-i18n="products.section_stock">Stock y costo</h2>
+          <dl class="ro-grid">
+            <div><dt data-i18n="products.on_hand">Físico</dt><dd id="ro-onHand">—</dd></div>
+            <div><dt data-i18n="products.reserved">Reservado</dt><dd id="ro-reserved">—</dd></div>
+            <div><dt data-i18n="products.available">Disponible</dt><dd id="ro-available">—</dd></div>
+            <div><dt data-i18n="products.avg_cost">Costo promedio</dt><dd id="ro-avgCost">—</dd></div>
+          </dl>
+          <p class="ro-note"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span data-i18n="products.stock_readonly_note">Se actualiza con las compras y ventas.</span></p>
+        </div>
+        <p class="c-help" id="newStockNote"></p>
+
+        <div class="btn-bar">
+          <a class="c-btn c-btn--secondary" href="#/" data-cancel data-i18n="common.cancel">Cancelar</a>
+          <button class="c-btn c-btn--primary" type="submit" id="saveBtn"><span data-i18n="products.save">Guardar producto</span></button>
+        </div>
+      </form>
+
+      <!-- ---------- Edición de un producto con variantes: fuera del formulario, cada acción se guarda al momento ---------- -->
+      <div class="card" id="variantsCard" hidden>
+        <div class="card-head">
+          <h2 id="variantsTitle"></h2>
+          <button type="button" class="c-btn c-btn--secondary" id="addToggle" aria-expanded="false" aria-controls="addPanel"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="variants.add">Añadir variantes</span></button>
+        </div>
+        <p class="c-help" data-i18n="variants.immediate_note">Los cambios de cada variante se guardan con su propio botón, sin tocar «Guardar producto».</p>
+        <div class="add-panel" id="addPanel" hidden>
+          <div id="genHostEdit"></div>
+          <div id="stagedWrap" hidden>
+            <div class="v-count"><span id="stagedCount" role="status"></span></div>
+            <div class="v-head v-head--draft" aria-hidden="true"><span data-i18n="variants.col_variant">Variante</span><span>SKU</span><span data-i18n="products.min_stock">Stock mínimo</span><span></span></div>
+            <ul class="v-list" id="stagedList"></ul>
+          </div>
+          <div class="alerts" id="stagedAlerts"></div>
+          <div class="btn-bar">
+            <button type="button" class="c-btn c-btn--secondary" id="addCancel" data-i18n="common.cancel">Cancelar</button>
+            <button type="button" class="c-btn c-btn--primary" id="addSave" disabled></button>
+          </div>
+        </div>
+        <h3 class="sr-only" id="aggTitle" data-i18n="variants.total_title">Total de todas las variantes</h3>
+        <dl class="ro-grid" style="margin-top:var(--space-4)" aria-labelledby="aggTitle">
+          <div><dt data-i18n="products.on_hand">Físico</dt><dd id="ag-onHand">—</dd></div>
+          <div><dt data-i18n="products.reserved">Reservado</dt><dd id="ag-reserved">—</dd></div>
+          <div><dt data-i18n="products.available">Disponible</dt><dd id="ag-available">—</dd></div>
+          <div><dt data-i18n="products.avg_cost">Costo promedio</dt><dd id="ag-avgCost">—</dd></div>
+        </dl>
+        <p class="ro-note"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span data-i18n="variants.total_note">Suma de todas las variantes, también las inactivas. Se actualiza con las compras y ventas.</span></p>
+        <div class="v-count"><span id="varCount"></span></div>
+        <div class="v-head v-head--read" aria-hidden="true"><span data-i18n="variants.col_variant">Variante</span><span class="v-cols"><span>SKU</span><span data-i18n="products.min_stock">Stock mínimo</span><span class="r" data-i18n="products.available">Disponible</span></span><span></span></div>
+        <ul class="v-list" id="varList"></ul>
+        <div class="card-foot" id="toSimpleFoot" hidden>
+          <p class="small muted" data-i18n="variants.to_simple_hint">Tiene una sola variante: puedes volver a gestionarlo como producto simple.</p>
+          <button type="button" class="c-btn c-btn--secondary" id="toSimpleBtn" data-i18n="variants.to_simple">Convertir en producto simple</button>
+        </div>
+      </div>
+
+      <!-- Producto simple en edición: puerta a las variantes (acción inmediata, fuera del formulario) -->
+      <div class="card status-card" id="convertCard" hidden>
+        <div>
+          <h2 data-i18n="variants.section">Tallas y colores</h2>
+          <p class="muted small" data-i18n="variants.simple_text">Este producto no tiene tallas ni colores: todo su stock se cuenta junto.</p>
+        </div>
+        <button type="button" class="c-btn c-btn--secondary" id="toVariantsBtn"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><span data-i18n="variants.to_variants">Convertir en producto con variantes</span></button>
+      </div>
+
+      <div class="card status-card" id="statusCard" hidden>
+        <div><h2 data-i18n="products.section_status">Estado del producto</h2><p class="muted small" id="statusText"></p></div>
+        <button type="button" class="c-btn c-btn--secondary" id="statusBtn"></button>
+      </div>
+      <p class="audit" id="auditLine"></p>
+    </div>
+  </section>
+</main>
+
+<!-- Generador talla × color: un único bloque que se mueve entre el alta y «Añadir variantes» -->
+<div id="genParking" hidden>
+  <div class="gen" id="gen">
+    <h3 data-i18n="gen.title">Generar combinaciones</h3>
+    <div class="c-field">
+      <label class="c-label" for="gen-size" data-i18n="gen.sizes">Tallas</label>
+      <div class="tag-row">
+        <input class="c-input" id="gen-size" maxlength="60" autocomplete="off" autocapitalize="characters" enterkeyhint="done" aria-describedby="gen-size-help">
+        <button type="button" class="c-btn c-btn--secondary" data-gen-add="size" data-i18n="gen.add">Añadir</button>
+      </div>
+      <p class="c-help" id="gen-size-help" data-i18n="gen.sizes_help">Escribe una o varias separadas por comas y pulsa Intro. Ej.: M, 38, 10.</p>
+      <div class="presets" role="group" aria-labelledby="gen-presets-label">
+        <span class="c-help" id="gen-presets-label" data-i18n="gen.presets">Habituales:</span>
+      </div>
+      <ul class="chips" id="gen-size-chips"></ul>
+    </div>
+    <div class="c-field">
+      <label class="c-label" for="gen-color" data-i18n="gen.colors">Colores</label>
+      <div class="tag-row">
+        <input class="c-input" id="gen-color" maxlength="60" autocomplete="off" enterkeyhint="done" aria-describedby="gen-color-help">
+        <button type="button" class="c-btn c-btn--secondary" data-gen-add="color" data-i18n="gen.add">Añadir</button>
+      </div>
+      <p class="c-help" id="gen-color-help" data-i18n="gen.colors_help">Ej.: Blanco, Azul marino. Puedes dejarlo vacío si solo cambia la talla.</p>
+      <ul class="chips" id="gen-color-chips"></ul>
+    </div>
+    <div class="grid-2">
+      <div class="c-field">
+        <label class="c-label" for="gen-prefix"><span data-i18n="gen.prefix">Prefijo de SKU</span> <span class="hint" data-i18n="common.optional">(opcional)</span></label>
+        <input class="c-input" id="gen-prefix" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="gen-prefix-help">
+        <p class="c-help" id="gen-prefix-help" data-i18n="gen.prefix_help">Propone cada SKU como PREFIJO-TALLA-COLOR (p. ej. CAM-M-BLA). Puedes cambiarlos después.</p>
+      </div>
+      <div class="c-field">
+        <label class="c-label" for="gen-min" data-i18n="gen.min">Stock mínimo de cada una</label>
+        <div class="c-input-group"><input class="c-input num" id="gen-min" inputmode="decimal" autocomplete="off" value="0"><span class="suffix" aria-hidden="true" id="gen-min-suffix">u</span></div>
+      </div>
+    </div>
+    <div class="gen-foot">
+      <p class="gen-preview" id="gen-preview" role="status"></p>
+      <button type="button" class="c-btn c-btn--secondary" id="gen-apply" disabled></button>
+    </div>
+  </div>
+</div>
+
+<a class="c-btn c-btn--primary fab" id="fab" href="#/new"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="products.new">Nuevo producto</span></a>
+
+<nav class="bottomnav" aria-label="Navegación principal" data-i18n-aria="nav.main">
+  <ul>
+    <li><a href="#home" data-home><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span data-i18n="nav.home">Inicio</span></a></li>
+    <li><a href="#/" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg><span data-i18n="nav.products">Productos</span></a></li>
+    <li><button type="button" data-open-account aria-haspopup="dialog" id="moreTab"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg><span id="moreTabLabel">Más</span></button></li>
+  </ul>
+</nav>
+
+<dialog class="c-modal" id="accountDialog" aria-labelledby="accName">
+  <div class="body">
+    <div><h2 id="accName" data-user-name>Mario Bejerano</h2><span class="c-tag" data-user-role>Administrador</span></div>
+    <div data-admin-only>
+      <p class="sheet-section" data-i18n="nav.manage">Gestión</p>
+      <ul class="sheet-list"><li><a href="categories.html"><svg class="icon" aria-hidden="true"><use href="#i-tag"/></svg><span data-i18n="nav.categories">Categorías</span></a></li></ul>
+    </div>
+    <p class="sheet-section" data-i18n="nav.account_short">Cuenta</p>
+    <div class="c-field">
+      <label class="c-label" for="langSheet" data-i18n="common.language">Idioma</label>
+      <select class="c-select" id="langSheet" data-lang-select><option value="es" lang="es">Español</option><option value="en" lang="en">English</option></select>
+    </div>
+    <ul class="sheet-list">
+      <li><button type="button" data-change-pw><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span data-i18n="nav.change_password">Cambiar contraseña</span></button></li>
+      <li><a href="login.html"><svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg><span data-i18n="nav.logout">Cerrar sesión</span></a></li>
+    </ul>
+  </div>
+  <form method="dialog" class="actions btn-bar"><button class="c-btn c-btn--secondary" data-i18n="common.close">Cerrar</button></form>
+</dialog>
+
+<dialog class="c-modal" id="deactivateDialog" aria-labelledby="deactTitle" aria-describedby="deactBody">
+  <div class="body">
+    <h2 id="deactTitle"></h2><p id="deactBody"></p>
+    <div class="c-alert c-alert--warning" id="deactStock" hidden><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><p></p></div>
+  </div>
+  <div class="actions btn-bar">
+    <button type="button" class="c-btn c-btn--secondary" data-close data-i18n="common.cancel">Cancelar</button>
+    <button type="button" class="c-btn c-btn--primary" id="deactConfirm"><span data-i18n="products.deactivate">Desactivar</span></button>
+  </div>
+</dialog>
+
+<dialog class="c-modal" id="discardDialog" aria-labelledby="discTitle">
+  <div class="body"><h2 id="discTitle" data-i18n="products.discard_title">¿Descartar los cambios?</h2><p data-i18n="products.discard_body">Lo que has escrito en este producto no se guardará.</p></div>
+  <div class="actions btn-bar">
+    <button type="button" class="c-btn c-btn--secondary" data-close data-i18n="products.keep_editing">Seguir editando</button>
+    <button type="button" class="c-btn c-btn--primary" id="discardConfirm" data-i18n="products.discard">Descartar</button>
+  </div>
+</dialog>
+
+<!-- Simple → con variantes (CA-12 de HU-16) -->
+<dialog class="c-modal" id="enableDialog" aria-labelledby="enTitle" aria-describedby="enBody">
+  <form id="enableForm" novalidate>
+    <div class="body">
+      <h2 id="enTitle" data-i18n="variants.to_variants">Convertir en producto con variantes</h2>
+      <p id="enBody"></p>
+      <div class="alerts" id="enAlerts"></div>
+      <div class="grid-2">
+        <div class="c-field">
+          <label class="c-label" for="en-size" data-i18n="variants.size">Talla</label>
+          <input class="c-input" id="en-size" maxlength="20" autocomplete="off" autocapitalize="characters" aria-describedby="en-error">
+        </div>
+        <div class="c-field">
+          <label class="c-label" for="en-color" data-i18n="variants.color">Color</label>
+          <input class="c-input" id="en-color" maxlength="30" autocomplete="off" aria-describedby="en-error">
+        </div>
+      </div>
+      <p class="c-error" id="en-error" hidden></p>
+    </div>
+    <div class="actions btn-bar">
+      <button type="button" class="c-btn c-btn--secondary" data-close data-i18n="common.cancel">Cancelar</button>
+      <button type="submit" class="c-btn c-btn--primary" id="enOk" data-i18n="variants.convert">Convertir</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Confirmación / aviso genérico -->
+<dialog class="c-modal" id="confirmDialog" aria-labelledby="cfTitle" aria-describedby="cfBody">
+  <div class="body"><h2 id="cfTitle"></h2><p id="cfBody"></p></div>
+  <div class="actions btn-bar">
+    <button type="button" class="c-btn c-btn--secondary" data-close id="cfCancel" data-i18n="common.cancel">Cancelar</button>
+    <button type="button" class="c-btn c-btn--primary" id="cfOk"></button>
+  </div>
+</dialog>
+
+<div class="toast-region" id="toasts" aria-live="polite"></div>
+
+<!-- ===================== Solo prototipo ===================== -->
+<button type="button" class="proto-fab" id="protoOpen">⚙ Prototipo</button>
+<dialog class="proto-panel" id="protoPanel" aria-labelledby="protoTitle">
+  <h2 id="protoTitle">Controles del prototipo</h2>
+  <p>No forman parte del diseño. Los SKU y las combinaciones repetidas se detectan de verdad contra los datos (prueba el SKU «ARR-001» o la talla «m» con color «blanco» en la camiseta).</p>
+  <label>Rol del usuario
+    <select id="pRole"><option value="ADMIN">ADMIN (activa/desactiva productos y variantes)</option><option value="OPERATOR">OPERATOR</option></select>
+  </label>
+  <label>Respuesta del listado
+    <select id="pList">
+      <option value="ok">Normal (0,6 s)</option>
+      <option value="waking">Servidor dormido (8 s, aviso a los 5 s)</option>
+      <option value="empty">Catálogo vacío (primera vez)</option>
+      <option value="error">Error 500 con ProblemDetail</option>
+      <option value="network">Error de red</option>
+    </select>
+  </label>
+  <label>Respuesta al guardar (producto, variante, conversión)
+    <select id="pSave">
+      <option value="ok">Según los datos (0,8 s)</option>
+      <option value="category_inactive">400 category.inactive (la desactivaron mientras tanto)</option>
+      <option value="version_conflict">409 resource.version_conflict</option>
+      <option value="network">Error de red</option>
+      <option value="waking">Servidor dormido (7 s)</option>
+    </select>
+  </label>
+  <label class="check"><input type="checkbox" id="pOffline"> Sin conexión (alerta persistente)</label>
+  <label class="check"><input type="checkbox" id="pStockBadges"> Previsualizar etiquetas de stock (llegan con HU-04)</label>
+  <label>Tema
+    <select id="pTheme"><option value="">Según el sistema</option><option value="light">Claro</option><option value="dark">Oscuro</option></select>
+  </label>
+  <form method="dialog"><button class="c-btn c-btn--secondary" style="width:100%">Cerrar</button></form>
+</dialog>
+
+<script>
+/* =====================================================================
+   i18n — claves de copy.md (§1–10 aprobadas)
+   ===================================================================== */
+const I18N = {
+  es: {
+    "common.skip_to_content": "Saltar al contenido", "common.language": "Idioma", "common.required": "(obligatorio)",
+    "common.optional": "(opcional)", "common.cancel": "Cancelar", "common.close": "Cerrar", "common.retry": "Reintentar", "common.got_it": "Entendido",
+    "common.undo": "Deshacer", "common.saving": "Guardando…", "common.loading": "Cargando…", "common.previous": "Anterior", "common.next": "Siguiente",
+    "common.page_of": "Página {{page}} de {{pages}}", "common.pagination": "Mostrando {{from}}–{{to}} de {{total}}",
+    "common.clear_filters": "Limpiar filtros", "common.not_available_proto": "Esta pantalla no forma parte del prototipo.",
+    "common.offline": "Sin conexión. Los cambios no se guardarán hasta que vuelvas a tener internet.", "common.edit": "Editar",
+    "nav.main": "Navegación principal", "nav.home": "Inicio", "nav.products": "Productos", "nav.categories": "Categorías", "nav.more": "Más", "nav.manage": "Gestión",
+    "nav.account": "Cuenta de {{name}}", "nav.account_short": "Cuenta", "nav.logout": "Cerrar sesión", "nav.change_password": "Cambiar contraseña",
+    "role.ADMIN": "Administrador", "role.OPERATOR": "Operador",
+    "net.waking_title": "El servidor se está despertando", "net.waking_body": "Puede tardar hasta un minuto. No cierres esta pantalla.",
+    "net.unreachable_title": "No pudimos conectar con el servidor", "net.unreachable_body": "Revisa tu conexión a internet e inténtalo de nuevo.",
+    "product_type.FOOD": "Alimentos", "product_type.CLOTHING": "Ropa", "product_type.APPLIANCE": "Electrodomésticos", "product_type.OTHER": "Aseo y hogar",
+    "products.title": "Productos", "products.new": "Nuevo producto", "products.edit_title": "Editar producto", "products.back_to_list": "Volver a productos",
+    "products.search_label": "Buscar por nombre o SKU", "products.type": "Tipo", "products.all_types": "Todos", "products.category": "Categoría",
+    "products.all_categories": "Todas", "products.category_inactive_suffix": "{{path}} (inactiva)",
+    "products.status": "Estado", "products.status_active": "Activos", "products.status_inactive": "Inactivos", "products.status_all": "Todos",
+    "products.col_product": "Producto", "products.col_category": "Categoría", "products.col_price": "Precio de referencia", "products.col_available": "Disponible",
+    "products.col_status": "Estado", "products.col_actions": "Acciones", "products.sort_by_name": "Ordenar por nombre",
+    "products.sku_inline": "SKU {{sku}}", "products.no_sku": "Sin SKU", "products.no_price": "—", "products.variant_count_one": "1 variante", "products.variant_count_other": "{{count}} variantes",
+    "products.badge_inactive": "Inactivo", "products.badge_low_stock": "Stock bajo", "products.badge_out_of_stock": "Sin stock",
+    "products.edit": "Editar", "products.deactivate": "Desactivar", "products.activate": "Activar",
+    "products.results_one": "1 producto", "products.results_other": "{{count}} productos",
+    "products.empty_title": "Todavía no hay productos", "products.empty_body": "Crea el primero para poder registrar compras y armar combos.",
+    "products.no_results_query": "No hay productos que coincidan con «{{q}}»", "products.no_results_filters": "No hay productos con estos filtros",
+    "products.no_results_body": "Prueba con otra palabra o revisa los filtros. La búsqueda distingue tildes: «azucar» no encuentra «Azúcar».",
+    "products.load_error_title": "No se pudieron cargar los productos", "products.error_code": "Código para soporte: {{code}}",
+    "products.section_data": "Datos del producto", "products.name": "Nombre", "products.name_help": "Incluye la presentación si importa: «Aceite de girasol 1 L».",
+    "products.category_placeholder": "Elige una categoría", "products.category_help": "El tipo sale de la categoría y decide qué datos se piden.",
+    "products.type_tag": "Tipo: {{type}}",
+    "products.type_change_attrs": "Este tipo no usa modelo ni garantía: no se guardarán.",
+    "products.type_change_unit": "La unidad pasa a «{{unit}}»: {{type}} se cuenta por unidades.",
+    "products.brand": "Marca", "products.model": "Modelo", "products.model_help": "Como aparece en la caja o la etiqueta: «RC-18».",
+    "products.warranty": "Garantía", "products.months": "meses", "products.warranty_help": "En meses, de 0 a 120. Es informativa: se muestra al vender.",
+    "products.unit": "Unidad de medida", "products.unit_placeholder": "Elige una unidad", "products.unit_help": "Cómo se cuenta el stock de este producto.",
+    "products.unit_locked_help": "Fija: {{type}} se cuenta por unidades.",
+    "products.section_inventory": "Inventario", "products.has_variants": "Tiene tallas o colores",
+    "products.has_variants_help": "Márcalo si cada talla o color lleva su propio SKU y stock. En ropa viene marcado.",
+    "products.sku_help": "Código interno único. Letras, números, punto, guion y guion bajo.",
+    "products.min_stock": "Stock mínimo", "products.min_stock_help": "Te avisaremos cuando el disponible llegue a esta cantidad. 0 = sin aviso.",
+    "products.sale_price": "Precio de venta de referencia", "products.amount": "Importe", "products.currency": "Moneda",
+    "products.sale_price_help": "Orientativo y para todas sus tallas y colores. El precio real lo fija cada combo o pedido.",
+    "products.section_stock": "Stock y costo", "products.on_hand": "Físico", "products.reserved": "Reservado", "products.available": "Disponible", "products.avg_cost": "Costo promedio",
+    "products.stock_readonly_note": "Se actualiza con las compras y ventas.",
+    "products.stock_new_note": "El stock empieza en 0 y se actualiza con las compras y ventas.",
+    "products.stock_new_note_variants": "El stock de cada variante empieza en 0 y se actualiza con las compras y ventas.",
+    "products.save": "Guardar producto", "products.section_status": "Estado del producto",
+    "products.status_text_active": "Activo: se puede usar en compras, combos y pedidos.",
+    "products.status_text_inactive": "Inactivo: no se puede usar en compras, combos ni pedidos nuevos.",
+    "products.deactivate_product": "Desactivar producto", "products.activate_product": "Activar producto",
+    "products.audit": "Creado por {{createdBy}} el {{createdAt}} · Última modificación por {{updatedBy}} el {{updatedAt}}",
+    "products.created": "Producto «{{name}}» creado.", "products.saved": "Cambios guardados.",
+    "products.deactivated": "«{{name}}» desactivado.", "products.activated": "«{{name}}» activado.",
+    "products.deactivate_title": "¿Desactivar «{{name}}»?",
+    "products.deactivate_body": "No se podrá usar en compras, combos ni pedidos nuevos. Lo ya registrado no cambia. Puedes volver a activarlo cuando quieras.",
+    "products.deactivate_stock": "Todavía tiene stock: {{onHand}} físico y {{reserved}} reservado.", "products.deactivating": "Desactivando…",
+    "products.discard_title": "¿Descartar los cambios?", "products.discard_body": "Lo que has escrito en este producto no se guardará.",
+    "products.keep_editing": "Seguir editando", "products.discard": "Descartar",
+    "products.not_found_title": "Este producto no existe", "products.not_found_body": "Puede que el enlace esté mal escrito.",
+    "products.version_conflict_title": "Otra persona cambió este producto mientras lo editabas",
+    "products.version_conflict_body": "Tus cambios no se han guardado. Recarga para ver la versión actual y vuelve a aplicarlos.",
+    "products.reload": "Recargar producto",
+    "validation.required": "Este campo es obligatorio.", "validation.max_length": "Máximo {{max}} caracteres.",
+    "product.sku_pattern": "Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_).",
+    "product.price_format": "Escribe un número igual o mayor que 0, con hasta 2 decimales.",
+    "product.min_stock_format": "Escribe un número igual o mayor que 0, con hasta 3 decimales.",
+    "product.warranty_format": "Escribe un número entero de 0 a 120.",
+    "variant.options_required": "Indica al menos una talla o un color.",
+    "variant.sku_repeated": "Este SKU se repite en otra variante.",
+    "variants.required": "Añade al menos una variante: elige tallas o colores y pulsa «Añadir variantes».",
+    "variants.max": "Máximo 100 variantes por producto.",
+    "api.product.sku_conflict": "El SKU {{sku}} ya lo usa otro producto o variante.",
+    "api.variant.options_conflict": "Ya existe la variante {{options}} en este producto.",
+    "api.category.inactive": "Esta categoría se ha desactivado. Elige otra.",
+    "api.server_detail": "Error interno del servidor",
+    "variants.section": "Tallas y colores", "variants.title_count": "Tallas y colores ({{count}})",
+    "variants.col_variant": "Variante", "variants.size": "Talla", "variants.color": "Color", "variants.no_options": "—",
+    "variants.count_one": "1 variante", "variants.count_other": "{{count}} variantes", "variants.count_inactive": "{{count}} inactivas",
+    "variants.badge_inactive": "Inactiva", "variants.remove": "Quitar {{name}}",
+    "variants.add": "Añadir variantes", "variants.immediate_note": "Los cambios de cada variante se guardan con su propio botón, sin tocar «Guardar producto».",
+    "variants.total_title": "Total de todas las variantes",
+    "variants.total_note": "Suma de todas las variantes, también las inactivas. Se actualiza con las compras y ventas.",
+    "variants.save_row": "Guardar variante", "variants.saved": "Variante «{{name}}» guardada.",
+    "variants.save_new_one": "Guardar 1 variante nueva", "variants.save_new_other": "Guardar {{count}} variantes nuevas", "variants.save_new_zero": "Guardar variantes nuevas",
+    "variants.added_one": "1 variante añadida.", "variants.added_other": "{{count}} variantes añadidas.",
+    "variants.staged_one": "1 variante por guardar", "variants.staged_other": "{{count}} variantes por guardar",
+    "variants.deactivated": "Variante «{{name}}» desactivada.", "variants.activated": "Variante «{{name}}» activada.",
+    "variants.version_conflict": "Otra persona cambió esta variante. Tu cambio no se ha guardado.", "variants.reload_row": "Recargar variante",
+    "variants.simple_text": "Este producto no tiene tallas ni colores: todo su stock se cuenta junto.",
+    "variants.to_variants": "Convertir en producto con variantes", "variants.convert": "Convertir",
+    "variants.enable_body": "Las unidades que ya tienes ({{onHand}}) pasan a ser la primera variante, con su SKU y su stock mínimo. ¿Qué talla o color tienen? Después podrás añadir las demás.",
+    "variants.enabled": "«{{name}}» ya tiene tallas o colores. Añade las demás variantes.",
+    "variants.save_first_title": "Guarda antes los cambios del producto",
+    "variants.save_first_body": "La conversión se guarda al momento. Para no perder lo que has escrito, guarda o descarta los cambios del producto y vuelve a intentarlo.",
+    "variants.to_simple": "Convertir en producto simple",
+    "variants.to_simple_hint": "Tiene una sola variante: puedes volver a gestionarlo como producto simple.",
+    "variants.to_simple_title": "¿Convertir en producto simple?",
+    "variants.to_simple_body": "«{{name}}» deja de tener talla y color. Su SKU, su stock mínimo y su stock pasan a ser los del producto.",
+    "variants.to_simple_body_inactive": "«{{name}}» deja de tener talla y color y se vuelve a activar. Su SKU, su stock mínimo y su stock pasan a ser los del producto.",
+    "variants.disabled_done": "«{{name}}» es ahora un producto simple.",
+    "gen.title": "Generar combinaciones", "gen.sizes": "Tallas", "gen.colors": "Colores", "gen.add": "Añadir", "gen.presets": "Habituales:",
+    "gen.sizes_help": "Escribe una o varias separadas por comas y pulsa Intro. Ej.: M, 38, 10.",
+    "gen.colors_help": "Ej.: Blanco, Azul marino. Puedes dejarlo vacío si solo cambia la talla.",
+    "gen.remove_size": "Quitar la talla {{v}}", "gen.remove_color": "Quitar el color {{v}}", "gen.chosen_sizes": "Tallas elegidas", "gen.chosen_colors": "Colores elegidos",
+    "gen.prefix": "Prefijo de SKU", "gen.prefix_help": "Propone cada SKU como PREFIJO-TALLA-COLOR (p. ej. CAM-M-BLA). Puedes cambiarlos después.",
+    "gen.min": "Stock mínimo de cada una",
+    "gen.preview_none": "Elige al menos una talla o un color.",
+    "gen.preview": "{{count}} combinaciones nuevas.", "gen.preview_one": "1 combinación nueva.", "gen.preview_skipped": "{{n}} ya existen y se omiten.",
+    "gen.apply_one": "Añadir 1 variante", "gen.apply_other": "Añadir {{count}} variantes", "gen.apply_zero": "Añadir variantes",
+    "unit.UNIT": "Unidad (u)", "unit.KG": "Kilogramo (kg)", "unit.LB": "Libra (lb)", "unit.G": "Gramo (g)", "unit.L": "Litro (L)", "unit.ML": "Mililitro (mL)",
+    "unit_short.UNIT": "u", "unit_short.KG": "kg", "unit_short.LB": "lb", "unit_short.G": "g", "unit_short.L": "L", "unit_short.ML": "mL"
+  },
+  en: {
+    "common.skip_to_content": "Skip to content", "common.language": "Language", "common.required": "(required)",
+    "common.optional": "(optional)", "common.cancel": "Cancel", "common.close": "Close", "common.retry": "Try again", "common.got_it": "Got it",
+    "common.undo": "Undo", "common.saving": "Saving…", "common.loading": "Loading…", "common.previous": "Previous", "common.next": "Next",
+    "common.page_of": "Page {{page}} of {{pages}}", "common.pagination": "Showing {{from}}–{{to}} of {{total}}",
+    "common.clear_filters": "Clear filters", "common.not_available_proto": "This screen isn't part of the prototype.",
+    "common.offline": "You're offline. Changes won't be saved until you're back online.", "common.edit": "Edit",
+    "nav.main": "Main navigation", "nav.home": "Home", "nav.products": "Products", "nav.categories": "Categories", "nav.more": "More", "nav.manage": "Management",
+    "nav.account": "{{name}}'s account", "nav.account_short": "Account", "nav.logout": "Log out", "nav.change_password": "Change password",
+    "role.ADMIN": "Administrator", "role.OPERATOR": "Operator",
+    "net.waking_title": "The server is waking up", "net.waking_body": "It can take up to a minute. Please keep this screen open.",
+    "net.unreachable_title": "We couldn't reach the server", "net.unreachable_body": "Check your internet connection and try again.",
+    "product_type.FOOD": "Food", "product_type.CLOTHING": "Clothing", "product_type.APPLIANCE": "Appliances", "product_type.OTHER": "Personal care & home",
+    "products.title": "Products", "products.new": "New product", "products.edit_title": "Edit product", "products.back_to_list": "Back to products",
+    "products.search_label": "Search by name or SKU", "products.type": "Type", "products.all_types": "All", "products.category": "Category",
+    "products.all_categories": "All", "products.category_inactive_suffix": "{{path}} (inactive)",
+    "products.status": "Status", "products.status_active": "Active", "products.status_inactive": "Inactive", "products.status_all": "All",
+    "products.col_product": "Product", "products.col_category": "Category", "products.col_price": "Reference price", "products.col_available": "Available",
+    "products.col_status": "Status", "products.col_actions": "Actions", "products.sort_by_name": "Sort by name",
+    "products.sku_inline": "SKU {{sku}}", "products.no_sku": "No SKU", "products.no_price": "—", "products.variant_count_one": "1 variant", "products.variant_count_other": "{{count}} variants",
+    "products.badge_inactive": "Inactive", "products.badge_low_stock": "Low stock", "products.badge_out_of_stock": "Out of stock",
+    "products.edit": "Edit", "products.deactivate": "Deactivate", "products.activate": "Activate",
+    "products.results_one": "1 product", "products.results_other": "{{count}} products",
+    "products.empty_title": "No products yet", "products.empty_body": "Create the first one so you can record purchases and build combos.",
+    "products.no_results_query": "No products match \"{{q}}\"", "products.no_results_filters": "No products match these filters",
+    "products.no_results_body": "Try another word or check the filters. Search is accent-sensitive: \"azucar\" won't find \"Azúcar\".",
+    "products.load_error_title": "We couldn't load the products", "products.error_code": "Support code: {{code}}",
+    "products.section_data": "Product details", "products.name": "Name", "products.name_help": "Include the size if it matters: \"Sunflower oil 1 L\".",
+    "products.category_placeholder": "Choose a category", "products.category_help": "The type comes from the category and decides which details are needed.",
+    "products.type_tag": "Type: {{type}}",
+    "products.type_change_attrs": "This type doesn't use model or warranty: they won't be saved.",
+    "products.type_change_unit": "The unit changes to \"{{unit}}\": {{type}} is counted in pieces.",
+    "products.brand": "Brand", "products.model": "Model", "products.model_help": "As shown on the box or label: \"RC-18\".",
+    "products.warranty": "Warranty", "products.months": "months", "products.warranty_help": "In months, from 0 to 120. For information only: shown when selling.",
+    "products.unit": "Unit of measure", "products.unit_placeholder": "Choose a unit", "products.unit_help": "How this product's stock is counted.",
+    "products.unit_locked_help": "Fixed: {{type}} is counted in pieces.",
+    "products.section_inventory": "Inventory", "products.has_variants": "Has sizes or colors",
+    "products.has_variants_help": "Tick it if each size or color has its own SKU and stock. Ticked by default for clothing.",
+    "products.sku_help": "Unique internal code. Letters, numbers, dot, hyphen and underscore.",
+    "products.min_stock": "Minimum stock", "products.min_stock_help": "We'll warn you when available stock reaches this amount. 0 = no warning.",
+    "products.sale_price": "Reference sale price", "products.amount": "Amount", "products.currency": "Currency",
+    "products.sale_price_help": "A guide only, the same for all sizes and colors. The actual price is set by each combo or order.",
+    "products.section_stock": "Stock and cost", "products.on_hand": "On hand", "products.reserved": "Reserved", "products.available": "Available", "products.avg_cost": "Average cost",
+    "products.stock_readonly_note": "Updated by purchases and sales.",
+    "products.stock_new_note": "Stock starts at 0 and is updated by purchases and sales.",
+    "products.stock_new_note_variants": "Each variant's stock starts at 0 and is updated by purchases and sales.",
+    "products.save": "Save product", "products.section_status": "Product status",
+    "products.status_text_active": "Active: can be used in purchases, combos and orders.",
+    "products.status_text_inactive": "Inactive: can't be used in new purchases, combos or orders.",
+    "products.deactivate_product": "Deactivate product", "products.activate_product": "Activate product",
+    "products.audit": "Created by {{createdBy}} on {{createdAt}} · Last changed by {{updatedBy}} on {{updatedAt}}",
+    "products.created": "Product \"{{name}}\" created.", "products.saved": "Changes saved.",
+    "products.deactivated": "\"{{name}}\" deactivated.", "products.activated": "\"{{name}}\" activated.",
+    "products.deactivate_title": "Deactivate \"{{name}}\"?",
+    "products.deactivate_body": "It can't be used in new purchases, combos or orders. Existing records don't change. You can activate it again at any time.",
+    "products.deactivate_stock": "It still has stock: {{onHand}} on hand and {{reserved}} reserved.", "products.deactivating": "Deactivating…",
+    "products.discard_title": "Discard changes?", "products.discard_body": "What you typed for this product won't be saved.",
+    "products.keep_editing": "Keep editing", "products.discard": "Discard",
+    "products.not_found_title": "This product doesn't exist", "products.not_found_body": "The link may be mistyped.",
+    "products.version_conflict_title": "Someone else changed this product while you were editing",
+    "products.version_conflict_body": "Your changes weren't saved. Reload to see the current version and apply them again.",
+    "products.reload": "Reload product",
+    "validation.required": "This field is required.", "validation.max_length": "Maximum {{max}} characters.",
+    "product.sku_pattern": "Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_).",
+    "product.price_format": "Enter a number of 0 or more, with up to 2 decimals.",
+    "product.min_stock_format": "Enter a number of 0 or more, with up to 3 decimals.",
+    "product.warranty_format": "Enter a whole number from 0 to 120.",
+    "variant.options_required": "Enter at least a size or a color.",
+    "variant.sku_repeated": "This SKU is repeated in another variant.",
+    "variants.required": "Add at least one variant: choose sizes or colors and press \"Add variants\".",
+    "variants.max": "A product can have up to 100 variants.",
+    "api.product.sku_conflict": "SKU {{sku}} is already used by another product or variant.",
+    "api.variant.options_conflict": "Variant {{options}} already exists in this product.",
+    "api.category.inactive": "This category has been deactivated. Choose another one.",
+    "api.server_detail": "Internal server error",
+    "variants.section": "Sizes and colors", "variants.title_count": "Sizes and colors ({{count}})",
+    "variants.col_variant": "Variant", "variants.size": "Size", "variants.color": "Color", "variants.no_options": "—",
+    "variants.count_one": "1 variant", "variants.count_other": "{{count}} variants", "variants.count_inactive": "{{count}} inactive",
+    "variants.badge_inactive": "Inactive", "variants.remove": "Remove {{name}}",
+    "variants.add": "Add variants", "variants.immediate_note": "Each variant is saved with its own button, without \"Save product\".",
+    "variants.total_title": "Total of all variants",
+    "variants.total_note": "Sum of all variants, inactive ones included. Updated by purchases and sales.",
+    "variants.save_row": "Save variant", "variants.saved": "Variant \"{{name}}\" saved.",
+    "variants.save_new_one": "Save 1 new variant", "variants.save_new_other": "Save {{count}} new variants", "variants.save_new_zero": "Save new variants",
+    "variants.added_one": "1 variant added.", "variants.added_other": "{{count}} variants added.",
+    "variants.staged_one": "1 variant to save", "variants.staged_other": "{{count}} variants to save",
+    "variants.deactivated": "Variant \"{{name}}\" deactivated.", "variants.activated": "Variant \"{{name}}\" activated.",
+    "variants.version_conflict": "Someone else changed this variant. Your change wasn't saved.", "variants.reload_row": "Reload variant",
+    "variants.simple_text": "This product has no sizes or colors: all its stock is counted together.",
+    "variants.to_variants": "Convert to product with variants", "variants.convert": "Convert",
+    "variants.enable_body": "The units you already have ({{onHand}}) become the first variant, keeping their SKU and minimum stock. What size or color are they? You can add the others afterwards.",
+    "variants.enabled": "\"{{name}}\" now has sizes or colors. Add the other variants.",
+    "variants.save_first_title": "Save the product changes first",
+    "variants.save_first_body": "Converting is saved right away. To keep what you typed, save or discard the product changes and try again.",
+    "variants.to_simple": "Convert to simple product",
+    "variants.to_simple_hint": "It has a single variant: you can manage it as a simple product again.",
+    "variants.to_simple_title": "Convert to a simple product?",
+    "variants.to_simple_body": "\"{{name}}\" will no longer have a size or color. Its SKU, minimum stock and stock become the product's.",
+    "variants.to_simple_body_inactive": "\"{{name}}\" will no longer have a size or color and will be activated again. Its SKU, minimum stock and stock become the product's.",
+    "variants.disabled_done": "\"{{name}}\" is now a simple product.",
+    "gen.title": "Generate combinations", "gen.sizes": "Sizes", "gen.colors": "Colors", "gen.add": "Add", "gen.presets": "Common:",
+    "gen.sizes_help": "Type one or more, separated by commas, and press Enter. E.g.: M, 38, 10.",
+    "gen.colors_help": "E.g.: White, Navy blue. Leave it empty if only the size changes.",
+    "gen.remove_size": "Remove size {{v}}", "gen.remove_color": "Remove color {{v}}", "gen.chosen_sizes": "Chosen sizes", "gen.chosen_colors": "Chosen colors",
+    "gen.prefix": "SKU prefix", "gen.prefix_help": "Suggests each SKU as PREFIX-SIZE-COLOR (e.g. TSH-M-WHI). You can change them afterwards.",
+    "gen.min": "Minimum stock for each",
+    "gen.preview_none": "Choose at least one size or color.",
+    "gen.preview": "{{count}} new combinations.", "gen.preview_one": "1 new combination.", "gen.preview_skipped": "{{n}} already exist and are skipped.",
+    "gen.apply_one": "Add 1 variant", "gen.apply_other": "Add {{count}} variants", "gen.apply_zero": "Add variants",
+    "unit.UNIT": "Piece (pcs)", "unit.KG": "Kilogram (kg)", "unit.LB": "Pound (lb)", "unit.G": "Gram (g)", "unit.L": "Liter (L)", "unit.ML": "Milliliter (mL)",
+    "unit_short.UNIT": "pcs", "unit_short.KG": "kg", "unit_short.LB": "lb", "unit_short.G": "g", "unit_short.L": "L", "unit_short.ML": "mL"
+  }
+};
+let lang = localStorage.getItem("cuartico.lang") || (navigator.language.toLowerCase().startsWith("en") ? "en" : "es");
+function t(key, vars) {
+  let s = (I18N[lang] && I18N[lang][key]) || key;
+  if (vars) for (const k in vars) s = s.split("{{" + k + "}}").join(vars[k]);
+  return s;
+}
+const tc = (base, count, vars) => t(base + (count === 1 ? "_one" : count === 0 && I18N[lang][base + "_zero"] ? "_zero" : "_other"), { count, ...vars });
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const locale = () => (lang === "en" ? "en-US" : "es-ES");
+const fmtMoney = (n, cur) => new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: "always" }).format(n) + " " + cur;
+const fmtQty = (n, unit) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 3, useGrouping: "always" }).format(n) + " " + t("unit_short." + unit);
+const fmtDate = (iso) => new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+const ICON = (id) => '<svg class="icon" aria-hidden="true"><use href="#i-' + id + '"/></svg>';
+const q2 = (s) => (lang === "en" ? '"' + s + '"' : "«" + s + "»");
+
+/* =====================================================================
+   Categorías (las mismas que categories.html; en la app: GET /api/v1/categories)
+   ===================================================================== */
+const CAT_RAW = [
+  [1, null, "Alimentos", "Food", "FOOD", true], [2, null, "Ropa", "Clothing", "CLOTHING", true],
+  [3, null, "Electrodomésticos", "Appliances", "APPLIANCE", true], [4, null, "Aseo y hogar", "Personal care & home", "OTHER", true],
+  [10, 1, "Granos", "Grains"], [11, 1, "Aceites y grasas", "Oils & fats"], [12, 1, "Bebidas", "Drinks"], [13, 1, "Cárnicos y huevos", "Meat & eggs"],
+  [14, 1, "Lácteos", "Dairy"], [15, 1, "Pastas", null], [16, 1, "Salsas y conservas", "Sauces & canned food"], [17, 1, "Dulces y galletas", "Sweets & cookies"],
+  [19, 1, "Confituras", "Preserves", null, false], [36, 19, "Mermeladas", "Jams", null, false],
+  [30, 10, "Arroz", "Rice"], [31, 10, "Frijoles", "Beans"], [32, 12, "Cervezas", "Beer"], [33, 12, "Rones", "Rum"],
+  [20, 2, "Camisetas", "T-shirts"], [21, 2, "Pantalones", "Trousers"], [22, 2, "Calzado", "Footwear"], [23, 2, "Ropa de niños", "Kids' clothing"],
+  [34, 23, "Uniformes escolares", null], [24, 3, "Cocina", "Kitchen"], [25, 3, "Climatización", "Cooling"], [35, 24, "Ollas y arroceras", "Cookers"],
+  [26, 4, "Aseo personal", "Personal care"], [27, 4, "Limpieza del hogar", "Household cleaning"]
+];
+const CATS = CAT_RAW.map(([id, parentId, name, nameEn, productType, active]) => ({ id, parentId, name, nameEn, productType: productType || null, active: active !== false }));
+const catById = (id) => CATS.find((c) => c.id === id);
+const catDisplay = (c) => (lang === "en" ? c.nameEn || c.name : c.name);
+const catPath = (c) => (c.parentId == null ? catDisplay(c) : catPath(catById(c.parentId)) + " › " + catDisplay(c));
+const catType = (c) => (c.parentId == null ? c.productType : catType(catById(c.parentId)));
+const descIds = (id) => [id, ...CATS.filter((c) => c.parentId === id).flatMap((c) => descIds(c.id))];
+const catsByPath = () => CATS.slice().sort((a, b) => catPath(a).localeCompare(catPath(b), lang, { sensitivity: "base" }));
+const TYPES = ["FOOD", "CLOTHING", "APPLIANCE", "OTHER"];
+const UNIT_LOCKED = (type) => type === "CLOTHING" || type === "APPLIANCE"; // CA-17
+const UNITS = ["UNIT", "KG", "LB", "G", "L", "ML"];
+
+/* =====================================================================
+   Productos. Variante: [talla, color, sku, mínimo, físico, reservado, costoUSD, activa]
+   Un producto simple tiene UNA variante sin talla ni color (invisible en la interfaz).
+   ===================================================================== */
+const S = (sku, min, on, res, cost, active = true) => [[null, null, sku, min, on, res, cost, active]];
+const P_RAW = [
+  [1, "Aceite de girasol 1 L", 11, "Vatel", null, null, "UNIT", 3.5, "USD", true, S("ACE-001", 10, 42, 6, 2.8)],
+  [2, "Arroz blanco", 30, null, null, null, "KG", 1.4, "USD", true, S("ARR-001", 50, 180, 25, 1.05)],
+  [3, "Azúcar blanca", 10, null, null, null, "KG", 1.3, "USD", true, S("AZU-001", 30, 22, 4, 0.95)],
+  [4, "Café molido Cubita 250 g", 12, "Cubita", null, null, "UNIT", 4.8, "USD", true, S("CAF-250", 12, 30, 2, 3.6)],
+  [5, "Cerveza Cristal lata 355 mL", 32, "Cristal", null, null, "UNIT", 1.2, "USD", true, S("CER-CRI", 48, 240, 48, 0.85)],
+  [6, "Frijoles negros", 31, null, null, null, "KG", 2.2, "USD", true, S("FRI-001", 20, 15, 3, 1.6)],
+  [7, "Leche en polvo entera 1 kg", 14, null, null, null, "UNIT", 9.5, "USD", true, S("LEC-001", 8, 16, 3, 7.4)],
+  [8, "Ron Havana Club Añejo 3 Años 700 mL", 33, "Havana Club", null, null, "UNIT", 9, "USD", true, S("RON-HC3", 6, 18, 2, 7)],
+  [9, "Pasta dental 90 g", 26, "Colgate", null, null, "UNIT", 1.5, "USD", true, S("PAS-DEN", 10, 20, 0, 1)],
+  [10, "Detergente en polvo 1 kg", 27, null, null, null, "UNIT", 3, "USD", true, S("DET-001", 10, 8, 0, 2.1)],
+  [11, "Jabón de baño (paquete de 3)", 26, null, null, null, "UNIT", 1200, "CUP", true, S("JAB-003", 10, 40, 0, 2.4)],
+  [12, "Camiseta básica de algodón", 20, "Caribe", null, null, "UNIT", 8, "USD", true, [
+    ["S", "Blanco", "CAM-S-BLA", 3, 6, 0, 4.1], ["M", "Blanco", "CAM-M-BLA", 3, 12, 2, 4.1], ["L", "Blanco", "CAM-L-BLA", 3, 9, 0, 4.2],
+    ["XL", "Blanco", "CAM-XL-BLA", 2, 4, 0, 4.3], ["S", "Negro", "CAM-S-NEG", 3, 5, 0, 4.1], ["M", "Negro", "CAM-M-NEG", 3, 10, 1, 4.1],
+    ["L", "Negro", "CAM-L-NEG", 3, 2, 0, 4.2], ["XL", "Azul marino", "CAM-XL-AZM", 2, 3, 0, 4.4, false]]],
+  [13, "Pantalón de mezclilla de hombre", 21, null, null, null, "UNIT", 18, "USD", true, [
+    ["30", "Azul", "PAN-30", 1, 3, 0, 11], ["32", "Azul", "PAN-32", 2, 5, 1, 11], ["34", "Azul", "PAN-34", 2, 4, 0, 11.5], ["36", "Azul", "PAN-36", 1, 0, 0, null]]],
+  [14, "Chancletas de playa", 22, null, null, null, "UNIT", 3.5, "USD", true, [
+    ["38", "Negro", "CHA-38-NEG", 2, 6, 0, 1.9], ["40", "Negro", "CHA-40-NEG", 2, 8, 2, 1.9], ["42", "Negro", "CHA-42-NEG", 2, 5, 0, 1.9],
+    ["38", "Azul", "CHA-38-AZU", 2, 4, 0, 1.9], ["40", "Azul", "CHA-40-AZU", 2, 3, 0, 1.9], ["42", "Azul", "CHA-42-AZU", 2, 1, 0, 1.9]]],
+  [15, "Uniforme escolar de primaria (camisa)", 34, null, null, null, "UNIT", 2500, "CUP", true, [["8", null, "UNI-PRI-8", 5, 14, 3, 5.2]]],
+  [16, "Olla arrocera 1,8 L", 35, "Royal", "RC-18", 6, "UNIT", 35, "USD", true, S("OLL-ARR", 2, 5, 1, 27)],
+  [17, "Ventilador de pie 16\"", 25, "Milexus", "ML-FS16", 12, "UNIT", 45, "USD", true, S("VEN-16", 2, 7, 2, 33)],
+  [18, "Aire acondicionado split 1 t", 25, "Royal", "RSA-12", 24, "UNIT", 420, "USD", true, S("SPL-12", 1, 2, 1, 360)],
+  [19, "Olla de presión eléctrica 6 L", 35, "Milexus", "ML-PC6", 6, "UNIT", 55, "USD", true, S("OLL-PRE", 2, 4, 0, 41)],
+  [20, "Refrigerador 7 pies", 24, "Royal", "RF-7", 12, "UNIT", 520, "USD", true, S("REF-7", 1, 0, 0, null)],
+  [21, "Muslo de pollo", 13, null, null, null, "KG", 2.9, "USD", true, S("POL-MUS", 40, 120, 30, 2.05)],
+  [22, "Galletas de soda (paquete)", 17, null, null, null, "UNIT", 420, "CUP", true, S("GAL-001", 15, 50, 5, 0.95)],
+  [23, "Leche condensada lata 397 g", 14, null, null, null, "UNIT", 1.6, "USD", false, S("LEC-CON", 12, 0, 0, null)],
+  [24, "Huevos (cartón de 30)", 13, null, null, null, "UNIT", 3200, "CUP", true, S("HUE-030", 10, 0, 0, null)]
+];
+let nextVariantId = 1000;
+const mkVariant = ([size, color, sku, minStock, onHand, reserved, cost, active]) => ({ id: nextVariantId++, size, color, sku, minStock, active: active !== false, version: 1,
+  stock: { onHand, reserved, available: +(onHand - reserved).toFixed(3), averageCost: cost, costCurrency: cost == null ? null : "USD" } });
+let DATA = P_RAW.map(([id, name, categoryId, brand, model, warrantyMonths, unit, salePrice, cur, active, vs]) => ({
+  id, name, categoryId, brand, model, warrantyMonths, unit, salePrice, salePriceCurrency: cur, active, version: (id % 4) + 1,
+  hasVariants: vs.length > 1 || vs[0][0] != null || vs[0][1] != null, variants: vs.map(mkVariant),
+  createdBy: "mario", createdAt: "2026-10-02T14:20:00Z", updatedBy: id % 2 ? "yanelis" : "mario", updatedAt: "2026-11-09T09:05:00Z"
+}));
+
+/* Orden de variantes (HU-16 CA-14); en la app lo hace la API y el frontend lo respeta */
+const CANON = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"], ALIAS = { "2XL": "XXL", "3XL": "XXXL" };
+function sizeRank(s) {
+  if (s == null) return [3, 0, ""];
+  const u = ALIAS[s] || s, i = CANON.indexOf(u);
+  if (i >= 0) return [0, i, ""];
+  const n = Number(u.replace(",", "."));
+  return Number.isFinite(n) && /^\d+([.,]\d+)?$/.test(u) ? [1, n, ""] : [2, 0, u.toLowerCase()];
+}
+function cmpVariant(a, b) {
+  const ra = sizeRank(a.size), rb = sizeRank(b.size);
+  return ra[0] - rb[0] || ra[1] - rb[1] || ra[2].localeCompare(rb[2], "es") ||
+    (a.color || "￿").localeCompare(b.color || "￿", "es", { sensitivity: "base" }) || (a.id || 0) - (b.id || 0);
+}
+const sortVariants = (p) => p.variants.sort(cmpVariant);
+DATA.forEach(sortVariants);
+const vName = (v) => [v.size, v.color].filter(Boolean).join(" · ");
+/* Agregado del producto (CA-15): sumas sobre TODAS las variantes; costo ponderado solo con las que tienen costo */
+function stockOf(p) {
+  if (!p.hasVariants) return p.variants[0].stock;
+  const sum = (f) => +p.variants.reduce((s, v) => s + v.stock[f], 0).toFixed(3);
+  const withCost = p.variants.filter((v) => v.stock.averageCost != null);
+  const qty = withCost.reduce((s, v) => s + v.stock.onHand, 0);
+  const avg = qty > 0 ? +(withCost.reduce((s, v) => s + v.stock.onHand * v.stock.averageCost, 0) / qty).toFixed(4) : null;
+  return { onHand: sum("onHand"), reserved: sum("reserved"), available: sum("available"), averageCost: avg, costCurrency: avg == null ? null : "USD" };
+}
+const vLow = (p, v) => p.active && v.active && v.minStock > 0 && v.stock.available <= v.minStock;
+const pLow = (p) => p.variants.some((v) => vLow(p, v));
+const USERS = { ADMIN: { name: "Mario Bejerano", initials: "MB" }, OPERATOR: { name: "Yanelis Pérez", initials: "YP" } };
+const proto = { role: sessionStorage.getItem("proto.role") || "ADMIN", stockBadges: false };
+const isAdmin = () => proto.role === "ADMIN";
+
+/* =====================================================================
+   API simulada. Las reglas «del servidor» se comprueban contra los datos de verdad.
+   ===================================================================== */
+const PAGE_SIZE = 20;
+function apiList(query) {
+  const sc = $("#pList").value;
+  return new Promise((resolve, reject) => setTimeout(() => {
+    if (sc === "error") return reject({ status: 500, code: "internal.error", detail: t("api.server_detail") });
+    if (sc === "network") return reject({ status: 0 });
+    let rows = sc === "empty" ? [] : DATA.slice();
+    const q = query.q.trim().toLowerCase();
+    if (q) rows = rows.filter((p) => p.name.toLowerCase().includes(q) || p.variants.some((v) => (v.sku || "").toLowerCase().includes(q))); // CA-16
+    if (query.status !== "all") rows = rows.filter((p) => p.active === (query.status === "active"));
+    if (query.type) rows = rows.filter((p) => catType(catById(p.categoryId)) === query.type);
+    if (query.cat) { const ids = descIds(Number(query.cat)); rows = rows.filter((p) => ids.includes(p.categoryId)); } // incluye descendientes (CA-19)
+    const dir = query.sort.endsWith("desc") ? -1 : 1;
+    rows.sort((a, b) => dir * a.name.localeCompare(b.name, "es", { sensitivity: "base" }) || a.id - b.id);
+    const total = rows.length, totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE)), page = query.page - 1;
+    resolve({ content: rows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE), page, size: PAGE_SIZE, totalElements: total, totalPages });
+  }, sc === "waking" ? 8000 : 600));
+}
+function apiWrite(check, { delay = 800, kind = "save" } = {}) {
+  const sc = $("#pSave").value;
+  return new Promise((resolve, reject) => setTimeout(() => {
+    if (sc === "network") return reject({ status: 0 });
+    if (sc === "version_conflict" && kind !== "toggle") return reject({ status: 409, code: "resource.version_conflict" });
+    if (sc === "category_inactive" && kind === "product") return reject({ status: 400, code: "category.inactive" });
+    const err = check && check();
+    if (err) return reject(err);
+    resolve();
+  }, sc === "waking" ? 7000 : delay));
+}
+const allSkus = (exceptIds = []) => DATA.flatMap((p) => p.variants).filter((v) => v.sku && !exceptIds.includes(v.id)).map((v) => v.sku);
+const optKey = (size, color) => (size || "").toUpperCase() + "|" + (color || "").trim().toLowerCase();
+function withWakeNotice(promise, box) {
+  const timer = setTimeout(() => showAlert(box, { variant: "info", title: "net.waking_title", body: "net.waking_body" }), 5000);
+  return promise.finally(() => { clearTimeout(timer); clearAlert(box); });
+}
+
+/* =====================================================================
+   Alertas y toasts
+   ===================================================================== */
+const alertState = new Map();
+function showAlert(box, a) { alertState.set(box, a); renderAlert(box); }
+function clearAlert(box) { alertState.delete(box); box.innerHTML = ""; }
+function renderAlert(box) {
+  const a = alertState.get(box); if (!a) return;
+  box.innerHTML = '<div class="c-alert c-alert--' + a.variant + '" role="' + (a.variant === "danger" ? "alert" : "status") + '">' + ICON(a.variant === "danger" ? "alert" : "info") +
+    "<div>" + (a.title ? "<strong>" + esc(t(a.title)) + "</strong>" : "") + "<p>" + esc(t(a.body, a.vars)) + "</p>" +
+    (a.action ? '<button type="button" class="c-btn c-btn--secondary" data-alert-action>' + esc(t(a.action.label)) + "</button>" : "") + "</div></div>";
+  if (a.action) $("[data-alert-action]", box).addEventListener("click", a.action.run);
+}
+function toast(text, { variant = "success", action } = {}) {
+  const el = document.createElement("div");
+  el.className = "c-toast c-toast--" + variant;
+  if (variant === "danger") el.setAttribute("role", "alert");
+  el.innerHTML = ICON(variant === "danger" ? "alert" : "check") + '<span class="msg">' + esc(text) + "</span>" +
+    (action ? '<button type="button" class="c-btn c-btn--ghost c-btn--sm">' + esc(t(action.label)) + "</button>" : "") +
+    '<button type="button" class="c-btn c-btn--ghost c-btn--icon" aria-label="' + esc(t("common.close")) + '">' + ICON("x") + "</button>";
+  const close = () => el.remove();
+  const btns = $$("button", el);
+  if (action) btns[0].addEventListener("click", () => { close(); action.run(); });
+  btns[btns.length - 1].addEventListener("click", close);
+  const region = $("#toasts"); region.appendChild(el);
+  while (region.children.length > 3) region.firstElementChild.remove();
+  if (variant !== "danger") {
+    let remaining = 5000, start = Date.now(), timer = setTimeout(close, remaining);
+    const pause = () => { clearTimeout(timer); remaining -= Date.now() - start; };
+    const resume = () => { start = Date.now(); timer = setTimeout(close, remaining); };
+    el.addEventListener("mouseenter", pause); el.addEventListener("mouseleave", resume);
+    el.addEventListener("focusin", pause); el.addEventListener("focusout", resume);
+  }
+}
+let returnFocus = null;
+function info(title, body) {
+  $("#cfTitle").textContent = title; $("#cfBody").textContent = body; $("#cfCancel").hidden = true;
+  const ok = $("#cfOk"); ok.disabled = false; ok.textContent = t("common.got_it"); ok.onclick = () => $("#confirmDialog").close();
+  $("#confirmDialog").showModal();
+}
+function confirmBox(title, body, label, run) {
+  $("#cfTitle").textContent = title; $("#cfBody").textContent = body; $("#cfCancel").hidden = false;
+  const ok = $("#cfOk"); ok.disabled = false; ok.textContent = label;
+  ok.onclick = () => { ok.disabled = true; ok.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>"; run(() => $("#confirmDialog").close()); };
+  $("#confirmDialog").showModal();
+}
+$$("dialog.c-modal").forEach((d) => d.addEventListener("close", () => { if (returnFocus && document.contains(returnFocus)) returnFocus.focus(); }));
+$$("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+
+/* =====================================================================
+   Rutas
+   ===================================================================== */
+const DEFAULT_QUERY = { q: "", type: "", cat: "", status: "active", page: 1, sort: "name,asc" };
+let lastListHash = "#/";
+function parseHash() {
+  const h = location.hash || "#/";
+  if (h === "#/new") return { view: "form", id: null };
+  const m = h.match(/^#\/edit\/(\d+)$/);
+  if (m) return { view: "form", id: Number(m[1]) };
+  const params = new URLSearchParams(h.split("?")[1] || "");
+  const cat = params.get("cat") || "", type = params.get("type") || "";
+  return { view: "list", query: {
+    q: params.get("q") || "", type: TYPES.includes(type) ? type : "",
+    cat: /^\d+$/.test(cat) ? cat : "", // CA-27: un enlace antiguo con texto («?cat=Granos») se ignora
+    status: params.get("status") || "active",
+    page: Math.max(1, parseInt(params.get("page") || "1", 10) || 1), sort: params.get("sort") === "name,desc" ? "name,desc" : "name,asc" } };
+}
+function queryToHash(q) {
+  const p = new URLSearchParams();
+  if (q.q) p.set("q", q.q); if (q.type) p.set("type", q.type); if (q.cat) p.set("cat", q.cat);
+  if (q.status !== "active") p.set("status", q.status); if (q.page > 1) p.set("page", q.page); if (q.sort !== "name,asc") p.set("sort", q.sort);
+  const s = p.toString();
+  return "#/" + (s ? "?" + s : "");
+}
+let currentQuery = { ...DEFAULT_QUERY };
+function navigateList(patch, { replace = false } = {}) {
+  const h = queryToHash({ ...currentQuery, ...patch });
+  if (replace) { history.replaceState(null, "", h); route(); } else location.hash = h;
+}
+window.addEventListener("hashchange", route);
+let formDirty = false;
+function route() {
+  if (location.hash === "#home") { toast(t("common.not_available_proto")); history.replaceState(null, "", lastListHash); return; }
+  const r = parseHash();
+  $("#viewList").hidden = r.view !== "list"; $("#viewForm").hidden = r.view !== "form";
+  $("#fab").hidden = r.view !== "list"; $("#topBack").hidden = r.view !== "form";
+  if (r.view === "list") {
+    lastListHash = location.hash || "#/";
+    $$("a[data-cancel], #topBack").forEach((a) => (a.href = lastListHash));
+    currentQuery = r.query; syncFilters(); loadList();
+  } else openForm(r.id);
+  updateTitles();
+}
+
+/* =====================================================================
+   Listado
+   ===================================================================== */
+let lastResult = null, lastError = null, loading = false, reqSeq = 0;
+function syncFilters() {
+  if (document.activeElement !== $("#q")) $("#q").value = currentQuery.q;
+  $("#ftype").innerHTML = '<option value="">' + esc(t("products.all_types")) + "</option>" + TYPES.map((x) => '<option value="' + x + '">' + esc(t("product_type." + x)) + "</option>").join("");
+  $("#ftype").value = currentQuery.type;
+  // Categoría: todas (también inactivas, marcadas), por ruta; si hay tipo, solo las de ese tipo
+  const opts = catsByPath().filter((c) => !currentQuery.type || catType(c) === currentQuery.type);
+  $("#cat").innerHTML = '<option value="">' + esc(t("products.all_categories")) + "</option>" +
+    opts.map((c) => '<option value="' + c.id + '">' + esc(c.active ? catPath(c) : t("products.category_inactive_suffix", { path: catPath(c) })) + "</option>").join("");
+  $("#cat").value = opts.some((c) => String(c.id) === currentQuery.cat) ? currentQuery.cat : "";
+  $("#status").value = currentQuery.status;
+}
+let debounce;
+$("#q").addEventListener("input", (e) => { clearTimeout(debounce); debounce = setTimeout(() => navigateList({ q: e.target.value.trim(), page: 1 }, { replace: true }), 300); });
+$("#ftype").addEventListener("change", (e) => {
+  const type = e.target.value, cat = currentQuery.cat && type && catType(catById(Number(currentQuery.cat))) !== type ? "" : currentQuery.cat;
+  navigateList({ type, cat, page: 1 }); // si la categoría elegida no es de ese tipo, se quita (evita combinaciones siempre vacías)
+});
+$("#cat").addEventListener("change", (e) => navigateList({ cat: e.target.value, page: 1 }));
+$("#status").addEventListener("change", (e) => navigateList({ status: e.target.value, page: 1 }));
+function loadList() {
+  const seq = ++reqSeq; loading = true; lastError = null; renderList();
+  withWakeNotice(apiList(currentQuery), $("#listAlerts"))
+    .then((res) => { if (seq === reqSeq) lastResult = res; })
+    .catch((err) => { if (seq === reqSeq) lastError = err; })
+    .finally(() => { if (seq !== reqSeq) return; loading = false; renderList(); announce(); });
+}
+function announce() { $("#listStatus").textContent = lastError ? t("products.load_error_title") : tc("products.results", lastResult.totalElements); }
+const filtersActive = () => currentQuery.q || currentQuery.type || currentQuery.cat || currentQuery.status !== "active";
+function clearFilters() { $("#q").value = ""; navigateList({ ...DEFAULT_QUERY }); $("#q").focus(); }
+function badgesHtml(p) {
+  const st = stockOf(p);
+  if (!p.active) return '<span class="c-badge c-badge--neutral">' + esc(t("products.badge_inactive")) + "</span>";
+  if (!proto.stockBadges) return ""; // hasta HU-04 (ux-notes/products.md §5)
+  if (st.available <= 0) return '<span class="c-badge c-badge--danger">' + esc(t("products.badge_out_of_stock")) + "</span>";
+  if (pLow(p)) return '<span class="c-badge c-badge--warning">' + esc(t("products.badge_low_stock")) + "</span>";
+  return "";
+}
+const priceHtml = (p) => (p.salePrice == null ? '<span class="muted">' + t("products.no_price") + "</span>" : esc(fmtMoney(p.salePrice, p.salePriceCurrency)));
+const skuOrCount = (p) => (p.hasVariants ? tc("products.variant_count", p.variants.length) : p.variants[0].sku ? t("products.sku_inline", { sku: p.variants[0].sku }) : t("products.no_sku"));
+function actionHtml(p, cls) {
+  const name = '<span class="sr-only"> ' + esc(p.name) + "</span>";
+  let h = '<a class="c-btn ' + cls + '" href="#/edit/' + p.id + '">' + esc(t("products.edit")) + name + "</a>";
+  if (isAdmin()) h += '<button type="button" class="c-btn ' + cls + '" data-toggle="' + p.id + '">' + esc(t(p.active ? "products.deactivate" : "products.activate")) + name + "</button>";
+  return h;
+}
+function renderList() {
+  const region = $("#listRegion"), meta = $("#listMeta");
+  region.setAttribute("aria-busy", String(loading));
+  if (loading) {
+    meta.innerHTML = "";
+    region.innerHTML = '<div class="table-wrap desktop-only" aria-hidden="true"><div style="padding:var(--space-4)"><div class="sk" style="width:30%"></div></div>' +
+      Array.from({ length: 5 }, () => '<div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>').join("") + "</div>" +
+      '<div class="skeleton mobile-only" aria-hidden="true">' + Array.from({ length: 4 }, () => '<div class="sk-card"><div class="sk" style="width:65%"></div><div class="sk" style="width:40%"></div><div class="sk" style="width:85%"></div></div>').join("") + "</div>" +
+      '<p class="sr-only">' + esc(t("common.loading")) + "</p>";
+    return;
+  }
+  if (lastError) {
+    meta.innerHTML = "";
+    const net = lastError.status === 0;
+    region.innerHTML = '<div class="c-empty is-error">' + ICON(net ? "cloud-off" : "alert") + "<h2>" + esc(t(net ? "net.unreachable_title" : "products.load_error_title")) + "</h2>" +
+      "<p>" + esc(net ? t("net.unreachable_body") : lastError.detail) + "</p>" + (lastError.code ? '<p class="code">' + esc(t("products.error_code", { code: lastError.code })) + "</p>" : "") +
+      '<button type="button" class="c-btn c-btn--secondary" id="retryList">' + esc(t("common.retry")) + "</button></div>";
+    $("#retryList").addEventListener("click", loadList);
+    return;
+  }
+  const res = lastResult;
+  if (res.totalElements === 0) {
+    meta.innerHTML = "";
+    if (!filtersActive()) region.innerHTML = '<div class="c-empty">' + ICON("empty") + "<h2>" + esc(t("products.empty_title")) + "</h2><p>" + esc(t("products.empty_body")) + '</p><a class="c-btn c-btn--primary" href="#/new">' + ICON("plus") + esc(t("products.new")) + "</a></div>";
+    else {
+      region.innerHTML = '<div class="c-empty">' + ICON("search") + "<h2>" + esc(currentQuery.q ? t("products.no_results_query", { q: currentQuery.q }) : t("products.no_results_filters")) + "</h2><p>" + esc(t("products.no_results_body")) +
+        '</p><button type="button" class="c-btn c-btn--secondary" id="clearFilters2">' + esc(t("common.clear_filters")) + "</button></div>";
+      $("#clearFilters2").addEventListener("click", clearFilters);
+    }
+    return;
+  }
+  const from = res.page * res.size + 1, to = from + res.content.length - 1;
+  meta.innerHTML = "<span>" + esc(t("common.pagination", { from, to, total: res.totalElements })) + "</span>" +
+    (filtersActive() ? '<button type="button" class="c-btn c-btn--ghost c-btn--sm" id="clearFilters">' + esc(t("common.clear_filters")) + "</button>" : "");
+  if (filtersActive()) $("#clearFilters").addEventListener("click", clearFilters);
+  if (res.content.length === 0) { navigateList({ page: res.totalPages }, { replace: true }); return; }
+  const asc = currentQuery.sort === "name,asc";
+  const table = '<div class="table-wrap desktop-only"><table class="c-table"><caption class="sr-only">' + esc(t("products.title") + " · " + t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + "</caption>" +
+    '<thead><tr><th scope="col" aria-sort="' + (asc ? "ascending" : "descending") + '"><button type="button" class="sort-btn" id="sortName">' + esc(t("products.col_product")) + '<span class="sr-only">, ' + esc(t("products.sort_by_name")) + "</span>" + ICON(asc ? "up" : "down") + "</button></th>" +
+    '<th scope="col" class="col-cat">' + esc(t("products.col_category")) + '</th><th scope="col" class="r">' + esc(t("products.col_price")) + '</th><th scope="col" class="r">' + esc(t("products.col_available")) +
+    '</th><th scope="col">' + esc(t("products.col_status")) + '</th><th scope="col"><span class="sr-only">' + esc(t("products.col_actions")) + "</span></th></tr></thead><tbody>" +
+    res.content.map((p) => { const path = catPath(catById(p.categoryId));
+      return '<tr class="' + (p.active ? "" : "is-inactive") + '"><td class="cell-title">' + esc(p.name) + '<span class="sub">' + esc(skuOrCount(p)) + '<span class="cat-inline"> · ' + esc(path) + "</span></span></td>" +
+      '<td class="col-cat">' + esc(path) + '</td><td class="r">' + priceHtml(p) + '</td><td class="r">' + esc(fmtQty(stockOf(p).available, p.unit)) + "</td>" +
+      '<td><div class="badges">' + badgesHtml(p) + '</div></td><td class="actions">' + actionHtml(p, "c-btn--ghost c-btn--sm") + "</td></tr>"; }).join("") + "</tbody></table></div>";
+  const cards = '<ul class="card-list mobile-only" aria-label="' + esc(t("products.title")) + '">' +
+    res.content.map((p) => '<li><article class="p-card ' + (p.active ? "" : "is-inactive") + '" aria-labelledby="pc-' + p.id + '"><div class="p-card-head"><div><h2 id="pc-' + p.id + '">' + esc(p.name) + "</h2>" +
+      '<p class="small muted">' + esc(skuOrCount(p) + " · " + catPath(catById(p.categoryId))) + '</p></div><div class="badges">' + badgesHtml(p) + "</div></div>" +
+      "<dl><div><dt>" + esc(t("products.col_price")) + "</dt><dd>" + priceHtml(p) + "</dd></div><div><dt>" + esc(t("products.col_available")) + "</dt><dd>" + esc(fmtQty(stockOf(p).available, p.unit)) + "</dd></div></dl>" +
+      '<div class="p-card-actions">' + actionHtml(p, "c-btn--secondary") + "</div></article></li>").join("") + "</ul>";
+  const pager = res.totalPages > 1 ? '<nav class="pager" aria-label="' + esc(t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + '"><div class="pages">' +
+    '<button type="button" class="c-btn c-btn--secondary" data-page="' + res.page + '"' + (res.page === 0 ? " disabled" : "") + ">" + ICON("left") + esc(t("common.previous")) + "</button>" +
+    "<span>" + esc(t("common.page_of", { page: res.page + 1, pages: res.totalPages })) + "</span>" +
+    '<button type="button" class="c-btn c-btn--secondary" data-page="' + (res.page + 2) + '"' + (res.page + 1 >= res.totalPages ? " disabled" : "") + ">" + esc(t("common.next")) + ICON("right") + "</button></div></nav>" : "";
+  region.innerHTML = table + cards + pager;
+  $("#sortName").addEventListener("click", () => navigateList({ sort: asc ? "name,desc" : "name,asc", page: 1 }));
+  $$("[data-page]", region).forEach((b) => b.addEventListener("click", () => { navigateList({ page: Number(b.dataset.page) }); window.scrollTo(0, 0); $("#main").focus({ preventScroll: true }); }));
+  $$("[data-toggle]", region).forEach((b) => b.addEventListener("click", () => toggleActive(DATA.find((p) => p.id === Number(b.dataset.toggle)), b)));
+}
+
+/* Activar / desactivar producto (solo ADMIN; igual que HU-02, con el stock agregado) */
+function toggleActive(p, opener) {
+  returnFocus = opener;
+  if (!p.active) return doActivate(p, true);
+  $("#deactTitle").textContent = t("products.deactivate_title", { name: p.name });
+  $("#deactBody").textContent = t("products.deactivate_body");
+  const st = stockOf(p), hasStock = st.onHand > 0 || st.reserved > 0;
+  $("#deactStock").hidden = !hasStock;
+  if (hasStock) $("p", $("#deactStock")).textContent = t("products.deactivate_stock", { onHand: fmtQty(st.onHand, p.unit), reserved: fmtQty(st.reserved, p.unit) });
+  const btn = $("#deactConfirm");
+  btn.disabled = false; btn.innerHTML = "<span>" + esc(t("products.deactivate")) + "</span>";
+  btn.onclick = () => {
+    btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("products.deactivating")) + "</span>";
+    apiWrite(null, { delay: 700, kind: "toggle" }).then(() => {
+      p.active = false; p.version++; $("#deactivateDialog").close();
+      toast(t("products.deactivated", { name: p.name }), { action: { label: "common.undo", run: () => doActivate(p, false) } });
+      refreshAfterChange(p);
+    }).catch(() => { $("#deactivateDialog").close(); toast(t("net.unreachable_title"), { variant: "danger" }); });
+  };
+  $("#deactivateDialog").showModal();
+}
+function doActivate(p, announceIt) {
+  apiWrite(null, { delay: 500, kind: "toggle" }).then(() => { p.active = true; p.version++; if (announceIt) toast(t("products.activated", { name: p.name })); refreshAfterChange(p); })
+    .catch(() => toast(t("net.unreachable_title"), { variant: "danger" }));
+}
+function refreshAfterChange(p) { if (!$("#viewList").hidden) loadList(); else openForm(p.id, { keepValues: true }); }
+
+/* =====================================================================
+   Formulario
+   ===================================================================== */
+let editing = null, prevType = null, hasVariantsTouched = false;
+const fieldErrors = {};
+const val = (f) => $("#f-" + f).value.trim();
+const decimalToInput = (n) => (n == null ? "" : lang === "es" ? String(n).replace(".", ",") : String(n));
+const parseNum = (s) => (s ? Number(s.replace(",", ".")) : null);
+function selectedType() { const c = catById(Number($("#f-category").value)); return c ? catType(c) : null; }
+function renderCategoryOptions() {
+  const v = $("#f-category").value;
+  // Solo activas (CA-26); si el producto está en una inactiva, también esa, marcada
+  const current = editing ? editing.categoryId : null;
+  const opts = catsByPath().filter((c) => c.active || c.id === current);
+  $("#f-category").innerHTML = '<option value="">' + esc(t("products.category_placeholder")) + "</option>" +
+    opts.map((c) => '<option value="' + c.id + '">' + esc(c.active ? catPath(c) : t("products.category_inactive_suffix", { path: catPath(c) })) + "</option>").join("");
+  $("#f-category").value = v;
+}
+function renderUnitOptions() {
+  const v = $("#f-unit").value;
+  $("#f-unit").innerHTML = '<option value="">' + esc(t("products.unit_placeholder")) + "</option>" + UNITS.map((u) => '<option value="' + u + '">' + esc(t("unit." + u)) + "</option>").join("");
+  $("#f-unit").value = v;
+}
+/* Aplica lo que decide el tipo: campos visibles, unidad fija y avisos. notes = avisos del cambio recién hecho */
+function applyType(notes = []) {
+  const type = selectedType();
+  const line = $("#f-category-type");
+  line.hidden = !type;
+  line.innerHTML = type ? '<span class="c-tag">' + esc(t("products.type_tag", { type: t("product_type." + type) })) + "</span>" : "";
+  $("#applianceFields").hidden = type !== "APPLIANCE";
+  const locked = UNIT_LOCKED(type);
+  if (locked) $("#f-unit").value = "UNIT";
+  $("#f-unit").disabled = locked;
+  $("#f-unit-help").textContent = locked ? t("products.unit_locked_help", { type: t("product_type." + type) }) : t("products.unit_help");
+  if (locked) setErr("unit", null);
+  $("#typeChangeNote").innerHTML = notes.length ? '<div class="c-alert c-alert--warning c-alert--sm">' + ICON("info") + "<div>" + (notes.length > 1 ? "<ul>" + notes.map((n) => "<li>" + esc(n) + "</li>").join("") + "</ul>" : "<p>" + esc(notes[0]) + "</p>") + "</div></div>" : "";
+  updateUnitSuffix();
+}
+$("#f-category").addEventListener("change", () => {
+  formDirty = true;
+  validateField("category");
+  const type = selectedType(), notes = [];
+  if (prevType === "APPLIANCE" && type !== "APPLIANCE" && (val("model") || val("warranty"))) notes.push(t("products.type_change_attrs"));
+  if (UNIT_LOCKED(type) && $("#f-unit").value && $("#f-unit").value !== "UNIT") notes.push(t("products.type_change_unit", { unit: t("unit.UNIT"), type: t("product_type." + type) }));
+  // CA-21: en el alta, elegir ropa marca «Tiene tallas o colores» si el usuario no lo ha tocado
+  if (!editing && !hasVariantsTouched && type) { $("#f-hasVariants").checked = type === "CLOTHING"; syncVariantMode(); }
+  prevType = type;
+  applyType(notes);
+});
+function updateUnitSuffix() { const u = $("#f-unit").value; const s = u ? t("unit_short." + u) : ""; $("#minStockSuffix").textContent = s; $("#gen-min-suffix").textContent = s; }
+$("#f-unit").addEventListener("change", () => { updateUnitSuffix(); renderRows(); });
+
+function setErr(field, err) {
+  fieldErrors[field] = err;
+  const input = $("#f-" + field), box = $("#f-" + field + "-error");
+  if (!input || !box) return;
+  if (err) { input.setAttribute("aria-invalid", "true"); box.hidden = false; box.innerHTML = ICON("alert") + "<span>" + esc(t(err.key, err.vars)) + "</span>"; }
+  else { input.removeAttribute("aria-invalid"); box.hidden = true; box.innerHTML = ""; }
+}
+const isSimpleMode = () => (editing ? !editing.hasVariants : !$("#f-hasVariants").checked);
+function activeFields() {
+  const f = ["name", "category", "brand", "unit", "salePrice"];
+  if (selectedType() === "APPLIANCE") f.push("model", "warranty");
+  if (isSimpleMode()) f.push("sku", "minStock");
+  return f;
+}
+const SKU_RE = /^[A-Z0-9._-]+$/;
+function validateField(f) {
+  const v = val(f);
+  let e = null;
+  if (f === "name") e = !v ? { key: "validation.required" } : v.length > 120 ? { key: "validation.max_length", vars: { max: 120 } } : null;
+  if (f === "category") e = !v ? { key: "validation.required" } : null;
+  if (f === "brand" || f === "model") e = v.length > 80 ? { key: "validation.max_length", vars: { max: 80 } } : null;
+  if (f === "warranty") e = v && !(/^\d{1,3}$/.test(v) && Number(v) <= 120) ? { key: "product.warranty_format" } : null;
+  if (f === "sku") { const s = v.toUpperCase(); $("#f-sku").value = s; e = s && !SKU_RE.test(s) ? { key: "product.sku_pattern" } : null; }
+  if (f === "unit") e = !$("#f-unit").value ? { key: "validation.required" } : null;
+  if (f === "minStock") e = !v ? { key: "validation.required" } : !/^\d{1,9}([.,]\d{1,3})?$/.test(v) ? { key: "product.min_stock_format" } : null;
+  if (f === "salePrice") e = v && !/^\d{1,10}([.,]\d{1,2})?$/.test(v) ? { key: "product.price_format" } : null;
+  setErr(f, e);
+  return !e;
+}
+["name", "brand", "model", "warranty", "sku", "unit", "minStock", "salePrice"].forEach((f) => {
+  const el = $("#f-" + f);
+  el.addEventListener("blur", () => { if (el.value.trim() || fieldErrors[f]) validateField(f); });
+  el.addEventListener("input", () => { formDirty = true; if (fieldErrors[f]) validateField(f); });
+  el.addEventListener("change", () => { formDirty = true; if (f === "unit") validateField(f); });
+});
+$("#f-currency").addEventListener("change", () => (formDirty = true));
+$("#f-hasVariants").addEventListener("change", () => { hasVariantsTouched = true; formDirty = true; syncVariantMode(); });
+function syncVariantMode() {
+  const on = !editing && $("#f-hasVariants").checked;
+  $("#simpleFields").hidden = !isSimpleMode();
+  $("#newVariants").hidden = !on;
+  $("#newStockNote").textContent = on ? t("products.stock_new_note_variants") : t("products.stock_new_note");
+  if (on) { $("#genHostNew").appendChild($("#gen")); renderGen(); renderRows(); }
+}
+
+function openForm(id, { keepValues = false } = {}) {
+  const p = id ? DATA.find((x) => x.id === id) : null;
+  $("#notFound").hidden = !(id && !p); $("#formLayout").hidden = !!(id && !p);
+  if (id && !p) return;
+  editing = p;
+  if (!keepValues) {
+    clearAlert($("#formAlerts"));
+    Object.keys(fieldErrors).forEach((f) => setErr(f, null));
+    renderUnitOptions(); renderCategoryOptions();
+    $("#f-name").value = p ? p.name : "";
+    $("#f-category").value = p ? String(p.categoryId) : "";
+    $("#f-brand").value = p ? p.brand || "" : "";
+    $("#f-model").value = p ? p.model || "" : "";
+    $("#f-warranty").value = p && p.warrantyMonths != null ? String(p.warrantyMonths) : "";
+    $("#f-unit").value = p ? p.unit : "";
+    $("#f-sku").value = p && !p.hasVariants ? p.variants[0].sku || "" : "";
+    $("#f-minStock").value = p && !p.hasVariants ? decimalToInput(p.variants[0].minStock) : "0";
+    $("#f-salePrice").value = p ? decimalToInput(p.salePrice) : "";
+    $("#f-currency").value = p && p.salePriceCurrency ? p.salePriceCurrency : "USD";
+    $("#f-hasVariants").checked = false; hasVariantsTouched = false;
+    drafts = []; staged = []; editRowId = null; rowState = {}; resetGen(); closeAdd();
+    $("#typeChangeNote").innerHTML = "";
+    formDirty = false;
+  } else renderCategoryOptions();
+  prevType = selectedType();
+  applyType();
+  $("#hasVariantsField").hidden = !!p;
+  $("#invCard").hidden = !!(p && p.hasVariants);
+  syncVariantMode();
+  $("#stockCard").hidden = !(p && !p.hasVariants);
+  $("#newStockNote").hidden = !!p;
+  $("#formInactiveBadge").hidden = !p || p.active;
+  $("#statusCard").hidden = !p || !isAdmin();
+  $("#variantsCard").hidden = !(p && p.hasVariants);
+  $("#convertCard").hidden = !(p && !p.hasVariants);
+  if (p) {
+    const st = stockOf(p);
+    if (!p.hasVariants) {
+      $("#ro-onHand").textContent = fmtQty(st.onHand, p.unit); $("#ro-reserved").textContent = fmtQty(st.reserved, p.unit);
+      $("#ro-available").textContent = fmtQty(st.available, p.unit); $("#ro-avgCost").textContent = st.averageCost == null ? "—" : fmtMoney(st.averageCost, st.costCurrency);
+    } else renderVariantsCard();
+    $("#statusText").textContent = t(p.active ? "products.status_text_active" : "products.status_text_inactive");
+    $("#statusBtn").textContent = t(p.active ? "products.deactivate_product" : "products.activate_product");
+    $("#auditLine").textContent = t("products.audit", { createdBy: p.createdBy, createdAt: fmtDate(p.createdAt), updatedBy: p.updatedBy, updatedAt: fmtDate(p.updatedAt) });
+  } else $("#auditLine").textContent = "";
+  if (!keepValues && matchMedia("(min-width: 768px)").matches) $("#f-name").focus();
+}
+$("#statusBtn").addEventListener("click", (e) => toggleActive(editing, e.currentTarget));
+
+/* ---------- Generador talla × color ---------- */
+let gen = { sizes: [], colors: [] };
+function resetGen() { gen = { sizes: [], colors: [] }; $("#gen-size").value = ""; $("#gen-color").value = ""; $("#gen-prefix").value = ""; $("#gen-min").value = "0"; renderGen(); }
+function addTokens(axis, raw) {
+  raw.split(",").map((s) => s.trim()).filter(Boolean).forEach((s) => {
+    const v = axis === "size" ? s.toUpperCase().slice(0, 20) : s.slice(0, 30);   // CA-6: talla en mayúsculas
+    const list = axis === "size" ? gen.sizes : gen.colors;
+    if (!list.some((x) => x.toLowerCase() === v.toLowerCase())) list.push(v);     // «Rojo» y «rojo» son el mismo color
+  });
+  gen.sizes.sort((a, b) => cmpVariant({ size: a }, { size: b }));
+  renderGen();
+}
+["size", "color"].forEach((axis) => {
+  const input = $("#gen-" + axis);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addTokens(axis, input.value); input.value = ""; } }); // Intro no envía el formulario
+  input.addEventListener("input", () => { if (input.value.includes(",")) { const parts = input.value.split(","); input.value = parts.pop(); addTokens(axis, parts.join(",")); } });
+  $('[data-gen-add="' + axis + '"]').addEventListener("click", () => { addTokens(axis, input.value); input.value = ""; input.focus(); });
+});
+$("#gen-prefix").addEventListener("blur", (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9._-]/g, "")));
+$("#gen-min").addEventListener("input", renderGen);
+const PRESETS = ["XS", "S", "M", "L", "XL", "XXL"];
+function genCombos() {
+  const sizes = gen.sizes.length ? gen.sizes : [null], colors = gen.colors.length ? gen.colors : [null];
+  if (!gen.sizes.length && !gen.colors.length) return [];
+  return sizes.flatMap((s) => colors.map((c) => ({ size: s, color: c })));
+}
+function existingKeys() { return new Set((editing ? editing.variants : []).concat(editing ? staged : drafts).map((v) => optKey(v.size, v.color))); }
+function renderGen() {
+  const presetsBox = $(".presets", $("#gen"));
+  $$(".preset", presetsBox).forEach((b) => b.remove());
+  PRESETS.forEach((s) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "c-btn c-btn--secondary c-btn--sm preset"; b.textContent = s;
+    b.setAttribute("aria-pressed", String(gen.sizes.includes(s)));
+    b.addEventListener("click", () => { if (gen.sizes.includes(s)) gen.sizes = gen.sizes.filter((x) => x !== s); else addTokens("size", s); renderGen(); $$(".preset", presetsBox).find((x) => x.textContent === s).focus(); });
+    presetsBox.appendChild(b);
+  });
+  ["size", "color"].forEach((axis) => {
+    const list = axis === "size" ? gen.sizes : gen.colors, ul = $("#gen-" + axis + "-chips");
+    ul.setAttribute("aria-label", t(axis === "size" ? "gen.chosen_sizes" : "gen.chosen_colors"));
+    ul.innerHTML = list.map((v, i) => '<li class="chip">' + esc(v) + '<button type="button" data-chip="' + axis + '" data-i="' + i + '" aria-label="' + esc(t(axis === "size" ? "gen.remove_size" : "gen.remove_color", { v })) + '">' + ICON("x") + "</button></li>").join("");
+    $$("[data-chip]", ul).forEach((b) => b.addEventListener("click", () => {
+      list.splice(Number(b.dataset.i), 1); renderGen();
+      const next = $$("[data-chip]", ul)[Math.min(Number(b.dataset.i), list.length - 1)];
+      (next || $("#gen-" + axis)).focus(); // el foco no se pierde al quitar una etiqueta
+    }));
+  });
+  const combos = genCombos(), keys = existingKeys();
+  const fresh = combos.filter((c) => !keys.has(optKey(c.size, c.color))), skipped = combos.length - fresh.length;
+  $("#gen-preview").textContent = !combos.length ? t("gen.preview_none")
+    : (fresh.length === 1 ? t("gen.preview_one") : t("gen.preview", { count: fresh.length })) + (skipped ? " " + t("gen.preview_skipped", { n: skipped }) : "");
+  const apply = $("#gen-apply");
+  apply.disabled = fresh.length === 0;
+  apply.textContent = tc("gen.apply", fresh.length);
+}
+function colorCode(c) {
+  const words = c.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, "").split(/\s+/).filter(Boolean);
+  return words.length === 1 ? words[0].slice(0, 3) : (words[0].slice(0, 2) + words.slice(1).map((w) => w[0]).join("")).slice(0, 4);
+}
+function suggestSku(prefix, size, color, taken) {
+  if (!prefix) return "";
+  let base = [prefix, size && size.replace(/[^A-Z0-9.]/g, ""), color && colorCode(color)].filter(Boolean).join("-").slice(0, 46), s = base, n = 2;
+  while (taken.has(s)) s = base + "-" + n++;
+  taken.add(s);
+  return s;
+}
+$("#gen-apply").addEventListener("click", () => {
+  const keys = existingKeys(), prefix = $("#gen-prefix").value.toUpperCase().replace(/[^A-Z0-9._-]/g, "");
+  const min = /^\d{1,9}([.,]\d{1,3})?$/.test($("#gen-min").value.trim()) ? $("#gen-min").value.trim() : "0";
+  const target = editing ? staged : drafts;
+  const taken = new Set(target.map((r) => r.sku).concat(editing ? editing.variants.map((v) => v.sku) : []).filter(Boolean));
+  const fresh = genCombos().filter((c) => !keys.has(optKey(c.size, c.color)));
+  fresh.forEach((c) => target.push({ k: "r" + nextVariantId++, size: c.size, color: c.color, sku: suggestSku(prefix, c.size, c.color, taken), minStock: min, err: {} }));
+  target.sort(cmpVariant);
+  formDirty = formDirty || !editing;
+  gen.sizes = []; gen.colors = []; renderGen(); renderRows();
+  $("#draftError").hidden = true;
+  const firstNew = $("#" + (editing ? "stagedList" : "draftList") + " input");
+  if (firstNew) firstNew.focus();
+});
+
+/* ---------- Filas en borrador: alta (drafts) y «Añadir variantes» (staged) ---------- */
+let drafts = [], staged = [];
+function rowsHtml(rows, kind) {
+  const u = $("#f-unit").value ? t("unit_short." + $("#f-unit").value) : "";
+  return rows.map((r, i) => {
+    const id = kind + "-" + r.k, name = vName(r);
+    const err = (f) => (r.err[f] ? '<p class="c-error" id="' + id + "-" + f + '-error">' + ICON("alert") + "<span>" + esc(t(r.err[f].key, r.err[f].vars)) + "</span></p>" : "");
+    return '<li class="v-row v-row--draft"><div class="v-title" id="' + id + '-t"><span class="vt">' + esc(name) + "</span></div>" +
+      '<div class="c-field f-sku"><label class="c-label v-lbl" id="' + id + '-sku-l" for="' + id + '-sku">SKU</label>' +
+      '<input class="c-input" id="' + id + '-sku" data-row="' + i + '" data-f="sku" value="' + esc(r.sku || "") + '" maxlength="50" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-labelledby="' + id + "-t " + id + '-sku-l"' +
+      (r.err.sku ? ' aria-invalid="true" aria-describedby="' + id + '-sku-error"' : "") + ">" + err("sku") + "</div>" +
+      '<div class="c-field f-min"><label class="c-label v-lbl" id="' + id + '-min-l" for="' + id + '-min">' + esc(t("products.min_stock")) + "</label>" +
+      '<div class="c-input-group"><input class="c-input num" id="' + id + '-min" data-row="' + i + '" data-f="minStock" value="' + esc(r.minStock) + '" inputmode="decimal" autocomplete="off" aria-labelledby="' + id + "-t " + id + '-min-l"' +
+      (r.err.minStock ? ' aria-invalid="true" aria-describedby="' + id + '-minStock-error"' : "") + '><span class="suffix" aria-hidden="true">' + esc(u) + "</span></div>" + err("minStock") + "</div>" +
+      '<button type="button" class="c-btn c-btn--ghost c-btn--icon rm" data-rm="' + i + '" aria-label="' + esc(t("variants.remove", { name })) + '">' + ICON("x") + "</button></li>";
+  }).join("");
+}
+function validateRow(rows, i, f, extraTaken = []) {
+  const r = rows[i];
+  if (f === "sku") {
+    r.sku = (r.sku || "").trim().toUpperCase();
+    r.err.sku = r.sku && !SKU_RE.test(r.sku) ? { key: "product.sku_pattern" }
+      : r.sku && (rows.some((o, j) => j !== i && o.sku === r.sku) || extraTaken.includes(r.sku)) ? { key: "variant.sku_repeated" } : null;
+  }
+  if (f === "minStock") { const v = String(r.minStock).trim(); r.err.minStock = !v ? { key: "validation.required" } : !/^\d{1,9}([.,]\d{1,3})?$/.test(v) ? { key: "product.min_stock_format" } : null; }
+  return !r.err[f];
+}
+/* Pinta el error de UN campo sin volver a dibujar la lista (re-dibujar en blur robaría el foco del siguiente campo) */
+function paintRowField(inp, r, f) {
+  const errId = inp.id.replace(/-(sku|min)$/, "") + "-" + f + "-error", field = inp.closest(".c-field");
+  let p = document.getElementById(errId);
+  if (r.err[f]) {
+    inp.setAttribute("aria-invalid", "true"); inp.setAttribute("aria-describedby", errId);
+    if (!p) { p = document.createElement("p"); p.className = "c-error"; p.id = errId; field.appendChild(p); }
+    p.innerHTML = ICON("alert") + "<span>" + esc(t(r.err[f].key, r.err[f].vars)) + "</span>";
+  } else { inp.removeAttribute("aria-invalid"); inp.removeAttribute("aria-describedby"); if (p) p.remove(); }
+}
+function wireRows(listEl, rows, kind) {
+  const extra = () => (kind === "staged" ? editing.variants.map((v) => v.sku).filter(Boolean) : []);
+  $$("input[data-row]", listEl).forEach((inp) => {
+    const i = Number(inp.dataset.row), f = inp.dataset.f;
+    inp.addEventListener("input", () => { rows[i][f] = inp.value; if (kind === "draft") formDirty = true; if (rows[i].err[f]) { validateRow(rows, i, f, extra()); paintRowField(inp, rows[i], f); } });
+    inp.addEventListener("blur", () => {
+      validateRow(rows, i, f, extra());
+      if (f === "sku") inp.value = rows[i].sku;
+      paintRowField(inp, rows[i], f);
+    });
+  });
+  $$("[data-rm]", listEl).forEach((b) => b.addEventListener("click", () => {
+    const i = Number(b.dataset.rm); rows.splice(i, 1); if (kind === "draft") formDirty = true; renderRows(); renderGen();
+    const next = $$("[data-rm]", listEl)[Math.min(i, rows.length - 1)];
+    (next || $("#gen-size")).focus();
+  }));
+}
+function renderRows() {
+  if (!editing) {
+    $("#draftList").setAttribute("aria-label", tc("variants.count", drafts.length));
+    $("#draftList").innerHTML = rowsHtml(drafts, "draft");
+    $("#draftList").previousElementSibling.hidden = drafts.length === 0;
+    $("#draftList").hidden = drafts.length === 0;
+    $("#draftCount").textContent = drafts.length ? tc("variants.count", drafts.length) : "";
+    wireRows($("#draftList"), drafts, "draft");
+  } else {
+    $("#stagedWrap").hidden = staged.length === 0;
+    $("#stagedList").setAttribute("aria-label", tc("variants.staged", staged.length));
+    $("#stagedList").innerHTML = rowsHtml(staged, "staged");
+    $("#stagedCount").textContent = staged.length ? tc("variants.staged", staged.length) : "";
+    wireRows($("#stagedList"), staged, "staged");
+    const save = $("#addSave"); save.disabled = staged.length === 0; save.textContent = tc("variants.save_new", staged.length);
+  }
+}
+
+/* ---------- Guardar producto ---------- */
+let saving = false;
+function rowsValid(rows, extraTaken) {
+  let firstBad = null;
+  rows.forEach((r, i) => { ["sku", "minStock"].forEach((f) => { if (!validateRow(rows, i, f, extraTaken) && !firstBad) firstBad = { i, f }; }); });
+  return firstBad;
+}
+$("#productForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (saving) return;
+  const bad = activeFields().filter((f) => !validateField(f))[0];
+  let rowBad = null;
+  if (!editing && !isSimpleMode()) {
+    rowBad = rowsValid(drafts, []);
+    renderRows();
+    const none = drafts.length === 0, many = drafts.length > 100;
+    $("#draftError").hidden = !(none || many);
+    $("#draftError").innerHTML = none || many ? ICON("alert") + "<span>" + esc(t(none ? "variants.required" : "variants.max")) + "</span>" : "";
+    if (!bad && (none || many)) { $("#gen-size").focus(); return; }
+  }
+  if (bad) { $("#f-" + bad).focus(); return; }
+  if (rowBad) { $("#draft-" + drafts[rowBad.i].k + "-" + (rowBad.f === "sku" ? "sku" : "min")).focus(); return; }
+  clearAlert($("#formAlerts"));
+  setSaving(true);
+  const simple = isSimpleMode(), type = selectedType();
+  const ownIds = editing ? editing.variants.map((v) => v.id) : [];
+  // Lo que el servidor comprueba de verdad: SKU únicos en todas las variantes (CA-2/CA-7)
+  const check = () => {
+    const taken = allSkus(ownIds);
+    if (simple && val("sku") && taken.includes(val("sku"))) return { status: 409, code: "product.sku_conflict", sku: val("sku") };
+    if (!simple && !editing) { const i = drafts.findIndex((r) => r.sku && taken.includes(r.sku)); if (i >= 0) return { status: 409, code: "product.sku_conflict", sku: drafts[i].sku, row: i }; }
+    const c = catById(Number(val("category")));
+    if (!c.active && (!editing || editing.categoryId !== c.id)) return { status: 400, code: "category.inactive" };
+    return null;
+  };
+  withWakeNotice(apiWrite(check, { kind: "product" }), $("#formAlerts")).then(() => {
+    const data = { name: val("name"), categoryId: Number(val("category")), brand: val("brand") || null,
+      // CA-26: lo que el tipo no admite se vacía antes de enviar (el servidor nunca lo anula por su cuenta)
+      model: type === "APPLIANCE" ? val("model") || null : null, warrantyMonths: type === "APPLIANCE" && val("warranty") ? Number(val("warranty")) : null,
+      unit: $("#f-unit").value, salePrice: parseNum(val("salePrice")), salePriceCurrency: val("salePrice") ? $("#f-currency").value : null };
+    const now = new Date().toISOString(), user = isAdmin() ? "mario" : "yanelis";
+    if (editing) {
+      Object.assign(editing, data, { version: editing.version + 1, updatedBy: user, updatedAt: now });
+      if (simple) Object.assign(editing.variants[0], { sku: val("sku") || null, minStock: parseNum(val("minStock")) });
+      toast(t("products.saved"));
+    } else {
+      const id = Math.max(...DATA.map((p) => p.id)) + 1;
+      const vs = simple ? [mkVariant([null, null, val("sku") || null, parseNum(val("minStock")), 0, 0, null])]
+        : drafts.map((r) => mkVariant([r.size, r.color, r.sku || null, parseNum(String(r.minStock)), 0, 0, null]));
+      const p = { id, ...data, active: true, version: 0, hasVariants: !simple, variants: vs, createdBy: user, createdAt: now, updatedBy: user, updatedAt: now };
+      sortVariants(p); DATA.push(p);
+      toast(t("products.created", { name: data.name }));
+    }
+    formDirty = false;
+    location.hash = lastListHash;
+  }).catch((err) => {
+    if (err.code === "product.sku_conflict" && err.row != null) {
+      drafts[err.row].err.sku = { key: "api.product.sku_conflict", vars: { sku: err.sku } }; renderRows(); $("#draft-" + drafts[err.row].k + "-sku").focus();
+    } else if (err.code === "product.sku_conflict") { setErr("sku", { key: "api.product.sku_conflict", vars: { sku: err.sku } }); $("#f-sku").focus(); }
+    else if (err.code === "category.inactive") {
+      const c = catById(Number(val("category"))); c.active = false; // el selector se pone al día: la categoría ya no aparece
+      renderCategoryOptions(); applyType(); // si no era la suya, la opción desaparece y queda «Elige una categoría»
+      setErr("category", { key: "api.category.inactive" });
+      $("#pSave").value = "ok"; // prototipo: el siguiente intento ya no fuerza el error
+      $("#f-category").focus();
+    } else if (err.code === "resource.version_conflict") {
+      showAlert($("#formAlerts"), { variant: "danger", title: "products.version_conflict_title", body: "products.version_conflict_body",
+        action: { label: "products.reload", run: () => { formDirty = false; $("#pSave").value = "ok"; openForm(editing.id); } } });
+      $("#formAlerts").scrollIntoView({ block: "start" });
+    } else {
+      showAlert($("#formAlerts"), { variant: "danger", title: "net.unreachable_title", body: "net.unreachable_body", action: { label: "common.retry", run: () => $("#productForm").requestSubmit() } });
+      $("#formAlerts").scrollIntoView({ block: "start" });
+    }
+  }).finally(() => setSaving(false));
+});
+function setSaving(on) {
+  saving = on;
+  const b = $("#saveBtn"); b.disabled = on; b.setAttribute("aria-busy", String(on));
+  b.innerHTML = on ? '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>" : "<span>" + esc(t("products.save")) + "</span>";
+}
+let pendingHref = null;
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("[data-cancel], #topBack");
+  if (!a || !formDirty || $("#viewForm").hidden) return;
+  e.preventDefault(); pendingHref = lastListHash; returnFocus = a; $("#discardDialog").showModal();
+});
+$("#discardConfirm").addEventListener("click", () => { formDirty = false; $("#discardDialog").close(); location.hash = pendingHref; });
+
+/* =====================================================================
+   Edición de un producto con variantes (HU-16 CA-22)
+   ===================================================================== */
+let editRowId = null, rowState = {}; // rowState[id] = { values, err, alert, busy }
+function renderVariantsCard() {
+  const p = editing, st = stockOf(p);
+  $("#variantsTitle").textContent = t("variants.title_count", { count: p.variants.length });
+  $("#ag-onHand").textContent = fmtQty(st.onHand, p.unit); $("#ag-reserved").textContent = fmtQty(st.reserved, p.unit);
+  $("#ag-available").textContent = fmtQty(st.available, p.unit); $("#ag-avgCost").textContent = st.averageCost == null ? "—" : fmtMoney(st.averageCost, st.costCurrency);
+  const inactive = p.variants.filter((v) => !v.active).length;
+  $("#varCount").textContent = tc("variants.count", p.variants.length) + (inactive ? " · " + t("variants.count_inactive", { count: inactive }) : "");
+  $("#varList").setAttribute("aria-label", t("variants.section"));
+  $("#varList").innerHTML = p.variants.map((v) => (v.id === editRowId ? editRowHtml(v) : readRowHtml(p, v))).join("");
+  $("#toSimpleFoot").hidden = p.variants.length !== 1; // CA-22: solo visible si queda una
+  wireVariantRows();
+}
+function readRowHtml(p, v) {
+  const name = vName(v), hidden = '<span class="sr-only"> ' + esc(name) + "</span>";
+  let badge = v.active ? "" : '<span class="c-badge c-badge--neutral">' + esc(t("variants.badge_inactive")) + "</span>";
+  if (v.active && proto.stockBadges) badge = v.stock.available <= 0 ? '<span class="c-badge c-badge--danger">' + esc(t("products.badge_out_of_stock")) + "</span>" : vLow(p, v) ? '<span class="c-badge c-badge--warning">' + esc(t("products.badge_low_stock")) + "</span>" : "";
+  const desk = matchMedia("(min-width: 768px)").matches, cls = desk ? "c-btn--ghost c-btn--sm" : "c-btn--secondary";
+  const rs = rowState[v.id] || {};
+  return '<li class="v-row v-row--read' + (v.active ? "" : " is-inactive") + '" id="vr-' + v.id + '">' +
+    '<div class="v-title"><h3 class="vt" style="font-size:inherit">' + esc(name) + "</h3>" + badge + "</div>" +
+    "<dl><div><dt>SKU</dt><dd>" + (v.sku ? esc(v.sku) : '<span class="muted">' + esc(t("products.no_sku")) + "</span>") + "</dd></div>" +
+    "<div><dt>" + esc(t("products.min_stock")) + "</dt><dd>" + esc(fmtQty(v.minStock, p.unit)) + "</dd></div>" +
+    '<div><dt>' + esc(t("products.available")) + '</dt><dd class="r">' + esc(fmtQty(v.stock.available, p.unit)) + "</dd></div></dl>" +
+    '<div class="v-actions"><button type="button" class="c-btn ' + cls + '" data-vedit="' + v.id + '">' + esc(t("common.edit")) + hidden + "</button>" +
+    (isAdmin() ? '<button type="button" class="c-btn ' + cls + '" data-vtoggle="' + v.id + '"' + (rs.busy ? " disabled" : "") + ">" + esc(t(v.active ? "products.deactivate" : "products.activate")) + hidden + "</button>" : "") +
+    "</div></li>";
+}
+function editRowHtml(v) {
+  const rs = rowState[v.id], val2 = rs.values, id = "ve-" + v.id;
+  // El error de opciones (talla + color) se asocia a los dos campos y se pinta una sola vez debajo
+  const field = (f, label, attrs) => {
+    const optErr = (f === "size" || f === "color") && rs.err.options, errId = id + "-" + (optErr ? "options" : f) + "-error";
+    return '<div class="c-field"><label class="c-label v-lbl" for="' + id + "-" + f + '">' + esc(label) + "</label>" +
+      '<input class="c-input" id="' + id + "-" + f + '" data-ef="' + f + '" value="' + esc(val2[f] == null ? "" : val2[f]) + '" ' + attrs + (rs.err[f] || optErr ? ' aria-invalid="true" aria-describedby="' + errId + '"' : "") + ">" +
+      (rs.err[f] ? '<p class="c-error" id="' + errId + '">' + ICON("alert") + "<span>" + esc(t(rs.err[f].key, rs.err[f].vars)) + "</span></p>" : "") + "</div>";
+  };
+  return '<li class="v-row v-row--edit" id="vr-' + v.id + '"><div class="v-title"><h3 style="font-size:inherit">' + esc(t("common.edit") + ": " + vName(v)) + "</h3></div>" +
+    '<div class="alerts" id="' + id + '-alerts"></div>' +
+    '<div class="v-fields">' + field("size", t("variants.size"), 'maxlength="20" autocomplete="off" autocapitalize="characters"') + field("color", t("variants.color"), 'maxlength="30" autocomplete="off"') +
+    field("sku", "SKU", 'maxlength="50" autocomplete="off" autocapitalize="characters" spellcheck="false"') + field("minStock", t("products.min_stock"), 'inputmode="decimal" autocomplete="off"') + "</div>" +
+    (rs.err.options ? '<p class="c-error" id="' + id + '-options-error">' + ICON("alert") + "<span>" + esc(t(rs.err.options.key, rs.err.options.vars)) + "</span></p>" : "") +
+    '<div class="btn-bar"><button type="button" class="c-btn c-btn--secondary" data-vcancel>' + esc(t("common.cancel")) + '</button><button type="button" class="c-btn c-btn--primary" data-vsave' + (rs.busy ? " disabled" : "") + ">" +
+    (rs.busy ? '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>" : esc(t("variants.save_row"))) + "</button></div></li>";
+}
+function wireVariantRows() {
+  const list = $("#varList");
+  $$("[data-vedit]", list).forEach((b) => b.addEventListener("click", () => {
+    const v = editing.variants.find((x) => x.id === Number(b.dataset.vedit));
+    if (editRowId) delete rowState[editRowId];
+    editRowId = v.id; rowState[v.id] = { values: { size: v.size, color: v.color, sku: v.sku, minStock: decimalToInput(v.minStock) }, err: {} };
+    renderVariantsCard(); $("#ve-" + v.id + "-size").focus();
+  }));
+  $$("[data-vtoggle]", list).forEach((b) => b.addEventListener("click", () => toggleVariant(editing.variants.find((x) => x.id === Number(b.dataset.vtoggle)))));
+  const row = editRowId && $("#vr-" + editRowId);
+  if (!row) return;
+  const rs = rowState[editRowId];
+  if (rs.alert) showAlert($("#ve-" + editRowId + "-alerts"), rs.alert);
+  $$("[data-ef]", row).forEach((inp) => {
+    inp.addEventListener("input", () => (rs.values[inp.dataset.ef] = inp.value));
+    inp.addEventListener("keydown", (e) => { if (e.key === "Escape") cancelRowEdit(); if (e.key === "Enter") { e.preventDefault(); saveRow(); } });
+  });
+  $("[data-vcancel]", row).addEventListener("click", cancelRowEdit);
+  $("[data-vsave]", row).addEventListener("click", saveRow);
+}
+function cancelRowEdit() { const id = editRowId; editRowId = null; delete rowState[id]; renderVariantsCard(); const b = $('[data-vedit="' + id + '"]'); if (b) b.focus(); }
+function saveRow() {
+  const v = editing.variants.find((x) => x.id === editRowId), rs = rowState[v.id], val2 = rs.values;
+  const size = (val2.size || "").trim().toUpperCase() || null, color = (val2.color || "").trim() || null, sku = (val2.sku || "").trim().toUpperCase() || null, min = String(val2.minStock || "").trim();
+  rs.err = {}; rs.alert = null;
+  if (!size && !color) rs.err.options = { key: "variant.options_required" };
+  if (sku && !SKU_RE.test(sku)) rs.err.sku = { key: "product.sku_pattern" };
+  if (!min) rs.err.minStock = { key: "validation.required" }; else if (!/^\d{1,9}([.,]\d{1,3})?$/.test(min)) rs.err.minStock = { key: "product.min_stock_format" };
+  if (Object.keys(rs.err).length) { renderVariantsCard(); $("#ve-" + v.id + "-" + (rs.err.options ? "size" : rs.err.sku ? "sku" : "minStock")).focus(); return; }
+  rs.busy = true; renderVariantsCard();
+  const check = () => {
+    if (editing.variants.some((o) => o.id !== v.id && optKey(o.size, o.color) === optKey(size, color))) return { status: 409, code: "variant.options_conflict" };
+    if (sku && allSkus([v.id]).includes(sku)) return { status: 409, code: "product.sku_conflict" };
+    return null;
+  };
+  apiWrite(check, { delay: 700 }).then(() => {
+    Object.assign(v, { size, color, sku, minStock: parseNum(min), version: v.version + 1 });
+    sortVariants(editing); editRowId = null; delete rowState[v.id];
+    renderVariantsCard(); toast(t("variants.saved", { name: vName(v) }));
+    const b = $('[data-vedit="' + v.id + '"]'); if (b) b.focus();
+  }).catch((err) => {
+    rs.busy = false;
+    if (err.code === "variant.options_conflict") rs.err.options = { key: "api.variant.options_conflict", vars: { options: q2([size, color].filter(Boolean).join(" / ")) } };
+    else if (err.code === "product.sku_conflict") rs.err.sku = { key: "api.product.sku_conflict", vars: { sku } };
+    else if (err.code === "resource.version_conflict") rs.alert = { variant: "danger", body: "variants.version_conflict", action: { label: "variants.reload_row", run: () => {
+      $("#pSave").value = "ok"; v.version++; rowState[v.id] = { values: { size: v.size, color: v.color, sku: v.sku, minStock: decimalToInput(v.minStock) }, err: {} }; renderVariantsCard(); $("#ve-" + v.id + "-size").focus(); } } };
+    else rs.alert = { variant: "danger", title: "net.unreachable_title", body: "net.unreachable_body", action: { label: "common.retry", run: saveRow } };
+    renderVariantsCard();
+    const focusId = rs.err.options ? "size" : rs.err.sku ? "sku" : null;
+    if (focusId) $("#ve-" + v.id + "-" + focusId).focus(); else { const a = $("#ve-" + v.id + "-alerts .c-btn"); if (a) a.focus(); }
+  });
+}
+/* Activar / desactivar variante (solo ADMIN, CA-10): reversible → sin diálogo, con «Deshacer» */
+function toggleVariant(v, undo) {
+  rowState[v.id] = { ...(rowState[v.id] || {}), busy: true }; renderVariantsCard();
+  apiWrite(null, { delay: 500, kind: "toggle" }).then(() => {
+    v.active = !v.active; v.version++;
+    delete rowState[v.id]; renderVariantsCard();
+    if (!undo) toast(t(v.active ? "variants.activated" : "variants.deactivated", { name: vName(v) }), v.active ? {} : { action: { label: "common.undo", run: () => toggleVariant(v, true) } });
+    const b = $('[data-vtoggle="' + v.id + '"]'); if (b && !undo) b.focus();
+  }).catch(() => { delete rowState[v.id]; renderVariantsCard(); toast(t("net.unreachable_title"), { variant: "danger" }); });
+}
+
+/* «Añadir variantes» (CA-8/CA-22): reutiliza el generador y omite las combinaciones que ya existen */
+function openAdd() {
+  $("#addPanel").hidden = false; $("#addToggle").setAttribute("aria-expanded", "true"); $("#addToggle").hidden = true;
+  $("#genHostEdit").appendChild($("#gen")); resetGen(); staged = []; renderRows(); clearAlert($("#stagedAlerts"));
+  $("#gen-size").focus();
+}
+function closeAdd() {
+  $("#addPanel").hidden = true; $("#addToggle").setAttribute("aria-expanded", "false"); $("#addToggle").hidden = false; staged = [];
+}
+$("#addToggle").addEventListener("click", openAdd);
+$("#addCancel").addEventListener("click", () => { closeAdd(); $("#addToggle").focus(); });
+$("#addSave").addEventListener("click", () => {
+  const extra = editing.variants.map((v) => v.sku).filter(Boolean);
+  const bad = rowsValid(staged, extra); renderRows();
+  if (bad) { $("#staged-" + staged[bad.i].k + "-" + (bad.f === "sku" ? "sku" : "min")).focus(); return; }
+  const b = $("#addSave"); b.disabled = true; b.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>";
+  const check = () => { const taken = allSkus(); const i = staged.findIndex((r) => r.sku && taken.includes(r.sku)); return i >= 0 ? { status: 409, code: "product.sku_conflict", row: i, sku: staged[i].sku } : null; };
+  withWakeNotice(apiWrite(check), $("#stagedAlerts")).then(() => {
+    const n = staged.length;
+    staged.forEach((r) => editing.variants.push(mkVariant([r.size, r.color, r.sku || null, parseNum(String(r.minStock)), 0, 0, null])));
+    sortVariants(editing); closeAdd(); renderVariantsCard(); toast(tc("variants.added", n)); $("#addToggle").focus();
+  }).catch((err) => {
+    if (err.code === "product.sku_conflict") { staged[err.row].err.sku = { key: "api.product.sku_conflict", vars: { sku: err.sku } }; renderRows(); $("#staged-" + staged[err.row].k + "-sku").focus(); }
+    else if (err.code === "resource.version_conflict") { showAlert($("#stagedAlerts"), { variant: "danger", title: "products.version_conflict_title", body: "products.version_conflict_body", action: { label: "products.reload", run: () => { $("#pSave").value = "ok"; formDirty = false; openForm(editing.id); } } }); renderRows(); }
+    else { showAlert($("#stagedAlerts"), { variant: "danger", title: "net.unreachable_title", body: "net.unreachable_body", action: { label: "common.retry", run: () => $("#addSave").click() } }); renderRows(); }
+  });
+});
+
+/* Conversión simple → con variantes (CA-12) */
+$("#toVariantsBtn").addEventListener("click", (e) => {
+  returnFocus = e.currentTarget;
+  if (formDirty) return info(t("variants.save_first_title"), t("variants.save_first_body"));
+  $("#enBody").textContent = t("variants.enable_body", { onHand: fmtQty(stockOf(editing).onHand, editing.unit) });
+  $("#en-size").value = ""; $("#en-color").value = ""; $("#en-error").hidden = true; clearAlert($("#enAlerts"));
+  ["en-size", "en-color"].forEach((id) => $("#" + id).removeAttribute("aria-invalid"));
+  $("#enableDialog").showModal(); $("#en-size").focus();
+});
+$("#enableForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const size = $("#en-size").value.trim().toUpperCase() || null, color = $("#en-color").value.trim() || null;
+  const showErr = (key) => { $("#en-error").hidden = false; $("#en-error").innerHTML = ICON("alert") + "<span>" + esc(t(key)) + "</span>"; $("#en-size").setAttribute("aria-invalid", "true"); $("#en-color").setAttribute("aria-invalid", "true"); $("#en-size").focus(); };
+  if (!size && !color) return showErr("variant.options_required");
+  const ok = $("#enOk"); ok.disabled = true; ok.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + esc(t("common.saving")) + "</span>";
+  withWakeNotice(apiWrite(null), $("#enAlerts")).then(() => {
+    Object.assign(editing.variants[0], { size, color, version: editing.variants[0].version + 1 });
+    editing.hasVariants = true; editing.version++;
+    $("#enableDialog").close(); returnFocus = null;
+    toast(t("variants.enabled", { name: editing.name }));
+    openForm(editing.id, { keepValues: true }); openAdd(); // siguiente paso natural: añadir las demás tallas/colores
+  }).catch((err) => showAlert($("#enAlerts"), err.code === "resource.version_conflict"
+    ? { variant: "danger", title: "products.version_conflict_title", body: "products.version_conflict_body", action: { label: "products.reload", run: () => { $("#pSave").value = "ok"; $("#enableDialog").close(); openForm(editing.id); } } }
+    : { variant: "danger", title: "net.unreachable_title", body: "net.unreachable_body", action: { label: "common.retry", run: () => $("#enableForm").requestSubmit() } }))
+    .finally(() => { ok.disabled = false; ok.textContent = t("variants.convert"); });
+});
+
+/* Conversión con variantes → simple (CA-13): solo con una variante */
+$("#toSimpleBtn").addEventListener("click", (e) => {
+  returnFocus = e.currentTarget;
+  if (formDirty) return info(t("variants.save_first_title"), t("variants.save_first_body"));
+  const v = editing.variants[0];
+  confirmBox(t("variants.to_simple_title"), t(v.active ? "variants.to_simple_body" : "variants.to_simple_body_inactive", { name: vName(v) }), t("variants.convert"), (done) => {
+    apiWrite(null).then(() => {
+      Object.assign(v, { size: null, color: null, active: true, version: v.version + 1 });
+      editing.hasVariants = false; editing.version++; done(); returnFocus = null;
+      toast(t("variants.disabled_done", { name: editing.name }));
+      openForm(editing.id); $("#f-sku").focus();
+    }).catch(() => { done(); toast(t("net.unreachable_title"), { variant: "danger" }); });
+  });
+});
+
+/* =====================================================================
+   Layout, idioma, prototipo
+   ===================================================================== */
+function updateTitles() {
+  const r = parseHash();
+  const title = r.view === "list" ? t("products.title") : r.id ? t("products.edit_title") : t("products.new");
+  $("#topTitle").textContent = title; $("#formTitleText").textContent = r.view === "form" ? title : ""; document.title = "Cuartico · " + title;
+}
+function renderUser() {
+  const u = USERS[proto.role], admin = isAdmin();
+  $$("[data-user-name]").forEach((el) => (el.textContent = u.name));
+  $$("[data-user-role]").forEach((el) => (el.textContent = t("role." + proto.role)));
+  $$(".avatar-btn").forEach((el) => { el.textContent = u.initials; el.setAttribute("aria-label", t("nav.account", { name: u.name })); });
+  $$("[data-admin-only]").forEach((el) => (el.hidden = !admin));
+  $("#moreTabLabel").textContent = t(admin ? "nav.more" : "nav.account_short");
+  $("#moreTab").firstElementChild.innerHTML = '<use href="#i-' + (admin ? "menu" : "user") + '"/>';
+}
+function applyI18n() {
+  document.documentElement.lang = lang;
+  $$("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+  $$("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+  $$("[data-lang-select]").forEach((s) => (s.value = lang));
+  renderUser(); renderUnitOptions(); updateTitles();
+  Object.keys(fieldErrors).forEach((f) => fieldErrors[f] && setErr(f, fieldErrors[f]));
+  $$(".alerts").forEach((b) => renderAlert(b));
+  if (!$("#viewList").hidden) { syncFilters(); if (!loading && (lastResult || lastError)) renderList(); }
+  else { renderCategoryOptions(); applyType(); renderGen(); renderRows(); syncVariantMode(); if (editing) openForm(editing.id, { keepValues: true }); }
+}
+$$("[data-lang-select]").forEach((s) => s.addEventListener("change", (e) => { lang = e.target.value; localStorage.setItem("cuartico.lang", lang); applyI18n(); }));
+$$("[data-open-account]").forEach((b) => b.addEventListener("click", () => { returnFocus = b; $("#accountDialog").showModal(); }));
+$("[data-change-pw]").addEventListener("click", () => { $("#accountDialog").close(); toast(t("common.not_available_proto")); });
+matchMedia("(min-width: 768px)").addEventListener("change", () => { if (editing && editing.hasVariants && !$("#viewForm").hidden) renderVariantsCard(); });
+
+$("#protoOpen").addEventListener("click", () => $("#protoPanel").showModal());
+$("#pRole").value = proto.role;
+$("#pRole").addEventListener("change", (e) => {
+  proto.role = e.target.value; sessionStorage.setItem("proto.role", proto.role); renderUser();
+  if (!$("#viewList").hidden) renderList(); else if (editing) openForm(editing.id, { keepValues: true });
+});
+$("#pList").addEventListener("change", () => { if (!$("#viewList").hidden) loadList(); });
+$("#pOffline").addEventListener("change", (e) => { if (e.target.checked) showAlert($("#offlineBox"), { variant: "warning", body: "common.offline" }); else clearAlert($("#offlineBox")); });
+$("#pStockBadges").addEventListener("change", (e) => {
+  proto.stockBadges = e.target.checked;
+  if (!$("#viewList").hidden && !loading && (lastResult || lastError)) renderList(); else if (editing && editing.hasVariants) renderVariantsCard();
+});
+$("#pTheme").addEventListener("change", (e) => { if (e.target.value) document.documentElement.dataset.theme = e.target.value; else delete document.documentElement.dataset.theme; });
+
+applyI18n();
+route();
+</script>
+</body>
+</html>

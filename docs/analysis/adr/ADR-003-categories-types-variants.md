@@ -50,6 +50,10 @@ El negocio deja de vender solo alimentos: también ropa (con talla y color, cada
   del DTO), así que el `TRIM` de la BD no difiere del de Java. Requisito: el `lc_ctype` de la base de Neon no debe ser
   `C`/`POSIX` (con esos, PostgreSQL solo pasa a minúsculas ASCII); Timon lo comprueba con `SHOW lc_ctype` (`C.UTF-8` o
   `en_US.UTF-8` valen).
+- **Tildes: aviso, no bloqueo** (2026-11-09, a propuesta de Lienzo). `LOWER` no quita tildes: `Lacteos` y `Lácteos`
+  no chocan. Bloquearlo exigiría `unaccent` (solo PostgreSQL, no existe en H2) o calcular la clave en Java (dos
+  funciones de normalización, justo lo que se quiere evitar). Es un caso raro: el frontend avisa sin bloquear
+  (HU-15 CA-6). `name_en` no es único.
 - **i18n**: `name` (español, obligatorio, es la clave de unicidad) y `name_en` (opcional; si falta, se muestra `name`).
   Dos columnas en vez de tabla de traducciones: solo hay dos idiomas.
 - **No se borra**: `active`. Desactivar una categoría con hijos activos → 409 `category.has_active_children`. Una categoría
@@ -76,7 +80,8 @@ El negocio deja de vender solo alimentos: también ropa (con talla y color, cada
 
 ### Recomendación: opción C
 - Enum `ProductType`: `FOOD`, `CLOTHING`, `APPLIANCE`, `OTHER` (`OTHER` para aseo, hogar, etc.; ver pregunta P-2).
-  Textos visibles en los archivos de traducción del frontend.
+  Textos visibles en los archivos de traducción del frontend; `OTHER` se muestra como «Aseo y hogar» / «Personal care &
+  home» (decisión D-1 de la supervisión, 2026-11-09).
 - `categories.product_type`: obligatorio al crear una **raíz**; los hijos lo copian de su padre (inmutable).
 - Cambiar un producto a una categoría de **otro tipo** está permitido salvo que tenga variantes y el nuevo tipo no las
   admita (hoy todos las admiten, así que no hay bloqueo). El servidor **no anula** atributos por su cuenta: el `PUT` es un
@@ -228,9 +233,11 @@ Diagrama: [er.md, sección «Propuesta ADR-003»](../diagrams/er.md#propuesta-ad
 1. Insertar las 4 raíces: `Alimentos`/`Food` (`FOOD`), `Ropa`/`Clothing` (`CLOTHING`),
    `Electrodomésticos`/`Appliances` (`APPLIANCE`) y `Aseo y hogar`/`Personal care & home` (`OTHER`, P-2), con
    `created_by = 'system'`.
-2. Para cada `products.category` distinto (sin distinguir mayúsculas, `GROUP BY LOWER(category)`):
-   si coincide (sin distinguir mayúsculas) con el nombre es/en de una de las 4 raíces → esa raíz; si no → **subcategoría bajo `Alimentos`** (hasta hoy el negocio
-   solo vendía alimentos; ver P-8).
+2. Para cada `products.category` distinto (sin distinguir mayúsculas, `GROUP BY LOWER(TRIM(category))`):
+   si coincide con el nombre es/en de una de las 4 raíces **o con uno de sus alias** (lista corta y explícita en HU-15
+   CA-22: p. ej. `aseo`, `limpieza`, `higiene` → «Aseo y hogar»; `calzado` → «Ropa») → esa raíz; si no →
+   **subcategoría bajo `Alimentos`** (hasta hoy el negocio solo vendía alimentos; ver P-8). Los alias evitan que el
+   texto «Aseo» de HU-02 acabe como `Alimentos › Aseo` con tipo `FOOD`.
 3. `products.category_id` según el paso 2; los que no tenían categoría → `Alimentos`. Luego `category_id NOT NULL` y
    `DROP COLUMN category`.
 
