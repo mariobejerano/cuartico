@@ -29,5 +29,5 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | ADR-003 | [Categorías con jerarquía, tipos de producto y variantes](adr/ADR-003-categories-types-variants.md) | Aceptado (2026-11-09) |
 
 ## Diagramas
-- [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003, aceptado y pendiente de implementar en HU-15/HU-16)
+- [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003: V4 implementada en HU-15, sprint 2; V5 pendiente en HU-16)
 - [Sesión en `cuartico-web`: renovación y estados](diagrams/auth-session.md)

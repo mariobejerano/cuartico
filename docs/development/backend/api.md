@@ -1,5 +1,5 @@
 # API REST
-n> HU-15 cambió la forma de `category` y añadió campos: ver «Cambios en productos (HU-15)» más abajo.
+> HU-15 cambió la forma de `category` y añadió campos: ver «Cambios en productos (HU-15)» más abajo.
 
 Base: `/api/v1`. Estado: **endpoints de `develop`**. La versión de producción (v0.1.0) todavía sirve las rutas sin versión
 (`/api/auth/...`, `/api/users/...`); `/api/v1` llega con la próxima release (ver [sprint 0](../../scrum/sprints/00.md)).
@@ -21,8 +21,8 @@ Los errores siguen el formato de [errors.md](errors.md). Las peticiones de ejemp
 | GET | `/api/v1/users/{id}` | `ADMIN` | 200 | Detalle de un usuario. |
 | PUT | `/api/v1/users/{id}` | `ADMIN` | 200 | Cambia nombre completo, rol y estado (`active`). Desactivar un usuario cierra sus sesiones. Un admin no puede desactivarse ni quitarse el rol `ADMIN`. |
 | POST | `/api/v1/users/{id}/reset-password` | `ADMIN` | 204 | Restablece la contraseña de otro usuario y cierra sus sesiones. |
-| GET | `/api/v1/products` | `ADMIN`, `OPERATOR` | 200 | Listado paginado `PageResponse<ProductResponse>`. Parámetros: `q` (nombre o SKU, sin distinguir mayúsculas, `%` y `_` literales), `active`, `category` (exacta, sin distinguir mayúsculas), `page` (desde 0), `size` (1-100, 20 por defecto), `sort` (`name`, `sku`, `category`, `createdAt` + `,asc`/`,desc`; por defecto `name,asc`). `size`/`page` fuera de rango o de tipo inválido: 400 `validation.failed` con `errors`; `sort` no permitido: 400 `request.invalid_sort`. |
-| GET | `/api/v1/products/categories` | `ADMIN`, `OPERATOR` | 200 | `List<String>` con las categorías distintas no nulas, ordenadas sin distinguir mayúsculas. |
+| GET | `/api/v1/products` | `ADMIN`, `OPERATOR` | 200 | Listado paginado `PageResponse<ProductResponse>`. Parámetros: `q` (nombre o SKU, sin distinguir mayúsculas, `%` y `_` literales), `active`, `categoryId` (incluye las subcategorías; inexistente → lista vacía), `type` (`FOOD|CLOTHING|APPLIANCE|OTHER`; desconocido → 400 `validation.failed`), `page` (desde 0), `size` (1-100, 20 por defecto), `sort` (`name`, `sku`, `createdAt` + `,asc`/`,desc`; por defecto `name,asc`). `size`/`page` fuera de rango o de tipo inválido: 400 `validation.failed` con `errors`; `sort` no permitido: 400 `request.invalid_sort`. |
+| GET | `/api/v1/products/categories` | (retirado) | 404 | Eliminado en HU-15 (`request.not_found`); usar `GET /api/v1/categories`. |
 | GET | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Detalle. 404 `product.not_found`. |
 | POST | `/api/v1/products` | `ADMIN`, `OPERATOR` | 201 | Crea el producto (y su fila `product_stock` en ceros). Cabecera `Location`. 400 `validation.failed`, `product.price_currency_mismatch`, `product.currency_unsupported`; 409 `product.sku_conflict`. |
 | PUT | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Edita (también inactivos). Exige `version`; si no coincide, 409 `resource.version_conflict`. Además los errores del alta y 404. |
@@ -66,7 +66,7 @@ Monedas admitidas desde configuración: `app.currencies.supported` (`CUP`, `USD`
 Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`.
 
 **`CreateProductRequest`** (POST): `name` (obligatorio, 1-120), `sku` (opcional, 1-50, `[A-Za-z0-9._-]`; se guarda recortado y en mayúsculas, vacío → `null`, único entre activos e inactivos),
-`unit` (`UNIT|KG|LB|G|L|ML`, obligatorio), `salePrice` (opcional, >= 0, máx. 10 enteros y 2 decimales),
+`unit` (`UNIT|KG|LB|G|L|ML`, obligatorio; solo `UNIT` si el tipo es `CLOTHING` o `APPLIANCE`), `categoryId` (obligatorio), `brand` (opcional, ≤ 80), `model` y `warrantyMonths` (opcionales, solo `APPLIANCE`; `warrantyMonths` entero 0-120), `salePrice` (opcional, >= 0, máx. 10 enteros y 2 decimales),
 `salePriceCurrency` (obligatoria si hay `salePrice`, y nula si no lo hay), `minStock` (obligatorio, >= 0, máx. 9 enteros y 3 decimales).
 **`UpdateProductRequest`** (PUT): los mismos campos más `version` (obligatorio). La normalización (recortar, SKU en mayúsculas) ocurre en el constructor compacto del record, antes de validar.
 `active`, `stock` y cualquier otro campo del cuerpo se ignoran.
@@ -74,7 +74,9 @@ Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`
 **`ProductResponse`** (los decimales viajan como número JSON con escala fija: precio 2, cantidades 3, costo 4):
 ```json
 {
-  "id": 1, "name": "Arroz", "sku": "ARR-001", "unit": "KG", "type": "FOOD", "category": { "id": 1, "name": "Alimentos", "path": "Alimentos" },
+  "id": 1, "name": "Arroz", "sku": "ARR-001", "unit": "KG", "type": "FOOD",
+  "category": { "id": 1, "name": "Alimentos", "nameEn": "Food", "path": "Alimentos", "pathEn": "Food", "active": true },
+  "brand": null, "model": null, "warrantyMonths": null,
   "salePrice": 2.50, "salePriceCurrency": "USD", "minStock": 5.000, "active": true,
   "stock": { "onHand": 0.000, "reserved": 0.000, "available": 0.000, "averageCost": null, "costCurrency": null },
   "lowStock": true, "version": 0,
@@ -82,7 +84,7 @@ Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`
   "updatedAt": "2026-11-07T16:41:31.739103Z", "updatedBy": "admin"
 }
 ```
-`salePrice`, `salePriceCurrency` y `sku` son `null` si no hay valor. `lowStock = active && minStock > 0 && available <= minStock`.
+`salePrice`, `salePriceCurrency`, `sku`, `brand`, `model` y `warrantyMonths` son `null` si no hay valor. `lowStock = active && minStock > 0 && available <= minStock`.
 
 **`PageResponse<T>`**: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0, "totalPages": 0 }`. Una página más allá del final devuelve `content` vacío.
 

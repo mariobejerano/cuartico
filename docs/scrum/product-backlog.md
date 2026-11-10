@@ -16,7 +16,7 @@ ambos y su QA deben estar terminados (vertical slice).
 | ID | Prioridad | Historia | Estado | Notas |
 |---|---|---|---|---|
 | HU-01 | 1 | Acceso al panel: login, sesión, roles `ADMIN` / `OPERATOR` | Hecho | Sprint 1. PR #9 (`0446197`). Backend con ventana de gracia y panel `cuartico-web`. Pendientes manuales en staging: M-1..M-3 de `docs/qa/stories/HU-01.md`. |
-| HU-02 | 2 | Catálogo de productos | Hecho | Sprint 1. PR #10 (`a64da9f`). Categoría como texto libre (se sustituye según ADR-003). Pendiente manual: CA-27 en móvil real. |
+| HU-02 | 2 | Catálogo de productos | Hecho | Sprint 1. PR #10 (`a64da9f`). La categoría era texto libre; HU-15 la sustituye por `categoryId` (árbol de categorías, ADR-003). Pendiente manual: CA-27 en móvil real. |
 | HU-15 | 2.1 | Categorías con jerarquía (4 raíces: Alimentos, Ropa, Electrodomésticos, Aseo y hogar) y atributos por tipo (marca, modelo, garantía) | En curso | Sprint 2. ADR-003. [Historia](../analysis/stories/HU-15-categories-and-type-attributes.md). Migración V4; rehace parte de HU-02. Prototipo aprobado (2026-11-09). Antes de HU-04. |
 | HU-16 | 2.2 | Variantes de producto (talla × color, cada una con SKU y stock) | En curso | Sprint 2. ADR-003. [Historia](../analysis/stories/HU-16-product-variants.md). Migración V5; `variant_stock` sustituye a `product_stock`. Prototipo aprobado (2026-11-09). Antes de HU-04. |
 | HU-03 | 3 | Proveedores | Pendiente | Necesario para las compras. |
