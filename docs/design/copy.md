@@ -330,8 +330,6 @@ CA-21); alternativa «Tiene variantes» / "Has variants" (más corta, pero «var
 | `categories.deactivate_body` | No se podrá elegir en productos nuevos ni al cambiar la categoría de uno. Los productos que ya la tienen la conservan. Puedes volver a activarla cuando quieras. | It can't be chosen for new products or when changing a product's category. Products that already have it keep it. You can activate it again at any time. |
 | `categories.deactivate_products_one` | 1 producto conserva esta categoría. | 1 product keeps this category. |
 | `categories.deactivate_products_other` | {{count}} productos conservan esta categoría. | {{count}} products keep this category. |
-
-> `categories.deactivate_products_*` (aprobado por la supervisión, 2026-11-10): se muestra en el diálogo de desactivar, antes de `categories.deactivate_body`, solo si `productCount` > 0 (HU-15 CA-12).
 | `categories.deactivating` | Desactivando… | Deactivating… |
 | `categories.deactivated` | «{{name}}» desactivada. | "{{name}}" deactivated. |
 | `categories.activated` | «{{name}}» activada. | "{{name}}" activated. |
@@ -340,6 +338,8 @@ CA-21); alternativa «Tiene variantes» / "Has variants" (más corta, pero «var
 | `categories.and_more` | {{list}} y {{count}} más | {{list}} and {{count}} more |
 | `categories.blocked_parent_title` | Primero activa «{{parent}}» | First activate "{{parent}}" |
 | `categories.blocked_parent_body` | Una subcategoría no puede estar activa si su categoría superior está desactivada. | A subcategory can't be active while its parent category is inactive. |
+
+> `categories.deactivate_products_*` (aprobado por la supervisión, 2026-11-10): se muestra en el diálogo de desactivar, antes de `categories.deactivate_body`, solo si `productCount` > 0 (HU-15 CA-12).
 
 ### Errores mostrados por el frontend (con datos que ya tiene)
 

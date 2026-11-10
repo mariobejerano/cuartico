@@ -66,7 +66,7 @@ garantía).
   por `path` (sin distinguir mayúsculas), sin paginar, con `id, parentId, name, nameEn, productType, depth, active,
   path, pathEn, productCount, version`. `pathEn` usa `nameEn` de cada nivel o, si falta, `name`. `productCount` = número
   de productos (activos e inactivos) asignados **directamente** a esa categoría (sin descendientes); lo usa el diálogo de
-  desactivar («12 productos la conservan»). Una consulta `GROUP BY category_id`.
+  desactivar («12 productos conservan esta categoría.»). Una consulta `GROUP BY category_id`.
 
 ### Productos
 - **CA-13 Categoría obligatoria.** Alta o edición de producto sin `categoryId` → **400** `validation.failed`
