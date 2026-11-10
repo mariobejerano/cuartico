@@ -4,6 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Locale;
 
+import com.cuartico.category.CategoryTree;
+import com.cuartico.category.ProductType;
+import com.cuartico.category.dto.CategoryDtos.CategoryRef;
 import com.cuartico.common.Normalize;
 import com.cuartico.product.Product;
 import com.cuartico.product.ProductStock;
@@ -26,9 +29,17 @@ public final class ProductDtos {
 	private ProductDtos() {
 	}
 
+	/**
+	 * Strips and upper-cases a SKU. The upper-casing is applied only to a value that is already valid:
+	 * otherwise it could turn an invalid SKU into a valid one (TT-14: "ß".toUpperCase() is "SS", dotless
+	 * "ı" becomes "I"). An invalid value is left untouched so the pattern validation answers 400.
+	 */
 	static String normalizeSku(String sku) {
 		String value = Normalize.blankToNull(sku);
-		return value == null ? null : value.toUpperCase(Locale.ROOT);
+		if (value == null || !value.matches(SKU_REGEX)) {
+			return value;
+		}
+		return value.toUpperCase(Locale.ROOT);
 	}
 
 	/*
@@ -40,7 +51,10 @@ public final class ProductDtos {
 			@NotBlank @Size(max = 120) String name,
 			@Size(max = 50) @Pattern(regexp = SKU_REGEX, message = "{product.sku.pattern}") String sku,
 			@NotNull UnitOfMeasure unit,
-			@Size(max = 50) String category,
+			@NotNull Long categoryId,
+			@Size(max = 80) String brand,
+			@Size(max = 80) String model,
+			@Min(0) @Max(120) Integer warrantyMonths,
 			@DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal salePrice,
 			String salePriceCurrency,
 			@NotNull @DecimalMin("0") @Digits(integer = 9, fraction = 3) BigDecimal minStock) {
@@ -48,7 +62,8 @@ public final class ProductDtos {
 		public CreateProductRequest {
 			name = name == null ? null : name.strip();
 			sku = normalizeSku(sku);
-			category = Normalize.blankToNull(category);
+			brand = Normalize.blankToNull(brand);
+			model = Normalize.blankToNull(model);
 		}
 
 	}
@@ -57,7 +72,10 @@ public final class ProductDtos {
 			@NotBlank @Size(max = 120) String name,
 			@Size(max = 50) @Pattern(regexp = SKU_REGEX, message = "{product.sku.pattern}") String sku,
 			@NotNull UnitOfMeasure unit,
-			@Size(max = 50) String category,
+			@NotNull Long categoryId,
+			@Size(max = 80) String brand,
+			@Size(max = 80) String model,
+			@Min(0) @Max(120) Integer warrantyMonths,
 			@DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal salePrice,
 			String salePriceCurrency,
 			@NotNull @DecimalMin("0") @Digits(integer = 9, fraction = 3) BigDecimal minStock,
@@ -66,7 +84,8 @@ public final class ProductDtos {
 		public UpdateProductRequest {
 			name = name == null ? null : name.strip();
 			sku = normalizeSku(sku);
-			category = Normalize.blankToNull(category);
+			brand = Normalize.blankToNull(brand);
+			model = Normalize.blankToNull(model);
 		}
 
 	}
@@ -75,7 +94,8 @@ public final class ProductDtos {
 	public record ProductQuery(
 			@Size(max = 100) String q,
 			Boolean active,
-			@Size(max = 50) String category,
+			Long categoryId,
+			ProductType type,
 			@Min(0) Integer page,
 			@Min(1) @Max(100) Integer size,
 			String sort) {
@@ -84,7 +104,6 @@ public final class ProductDtos {
 
 		public ProductQuery {
 			q = Normalize.blankToNull(q);
-			category = Normalize.blankToNull(category);
 			sort = Normalize.blankToNull(sort);
 		}
 
@@ -112,18 +131,20 @@ public final class ProductDtos {
 
 	}
 
-	public record ProductResponse(Long id, String name, String sku, UnitOfMeasure unit, String category,
-			BigDecimal salePrice, String salePriceCurrency, BigDecimal minStock, boolean active, StockSummary stock,
-			boolean lowStock, long version, Instant createdAt, String createdBy, Instant updatedAt,
-			String updatedBy) {
+	public record ProductResponse(Long id, String name, String sku, UnitOfMeasure unit, ProductType type,
+			CategoryRef category, String brand, String model, Integer warrantyMonths, BigDecimal salePrice,
+			String salePriceCurrency, BigDecimal minStock, boolean active, StockSummary stock, boolean lowStock,
+			long version, Instant createdAt, String createdBy, Instant updatedAt, String updatedBy) {
 
-		public static ProductResponse from(Product p) {
+		public static ProductResponse from(Product p, CategoryTree tree) {
 			ProductStock s = p.getStock();
 			boolean low = p.isActive() && p.getMinStock().signum() > 0
 					&& s.available().compareTo(p.getMinStock()) <= 0;
-			return new ProductResponse(p.getId(), p.getName(), p.getSku(), p.getUnit(), p.getCategory(),
-					p.getSalePrice(), p.getSalePriceCurrency(), p.getMinStock(), p.isActive(), StockSummary.from(s),
-					low, p.getVersion(), p.getCreatedAt(), p.getCreatedBy(), p.getUpdatedAt(), p.getUpdatedBy());
+			Long categoryId = p.getCategory().getId();
+			return new ProductResponse(p.getId(), p.getName(), p.getSku(), p.getUnit(), tree.typeOf(categoryId),
+					tree.ref(categoryId), p.getBrand(), p.getModel(), p.getWarrantyMonths(), p.getSalePrice(),
+					p.getSalePriceCurrency(), p.getMinStock(), p.isActive(), StockSummary.from(s), low, p.getVersion(),
+					p.getCreatedAt(), p.getCreatedBy(), p.getUpdatedAt(), p.getUpdatedBy());
 		}
 
 	}

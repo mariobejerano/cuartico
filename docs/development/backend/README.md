@@ -14,6 +14,7 @@ Paquetes por módulo, no por capa. Lo transversal va en `config/` y `common/`.
 | `com.cuartico.auth` | Login, refresh tokens (rotación), emisión de JWT de acceso, limpieza nocturna. DTOs en `auth/dto/AuthDtos.java`. |
 | `com.cuartico.user` | Usuarios y roles (`Role`: `ADMIN`, `OPERATOR`), administración de usuarios, admin inicial. DTOs en `user/dto/UserDtos.java`. |
 | `com.cuartico.product` | Catálogo de productos (HU-02): `Product`, `ProductStock` (caché 1:1 de stock y costo, ADR-002), `UnitOfMeasure`, `ProductService`, `ProductController`. DTOs en `product/dto/ProductDtos.java`. |
+| `com.cuartico.category` | Categorías en árbol (HU-15): `Category`, `ProductType`, `CategoryTree` (rutas y descendientes en memoria), `CategoryService`, `CategoryController`. DTOs en `category/dto/CategoryDtos.java`. |
 | `com.cuartico.common` | `ApiException` (y fábricas), `GlobalExceptionHandler`, `ProblemFactory`, `AuditableEntity`. |
 | `com.cuartico.config` | Seguridad, JWT, CORS, i18n de mensajes, OpenAPI, propiedades `app.*` (`AppProperties`), `Clock`, auditoría JPA. |
 
@@ -98,6 +99,7 @@ Ver también la [API](api.md) para el detalle de cada endpoint.
   - `V1__users_and_refresh_tokens.sql`: tablas `users` (con auditoría) y `refresh_tokens` (con índice por usuario).
   - `V2__refresh_token_grace.sql`: `refresh_tokens.revoked_reason`, `replaced_by_id` (FK a sí misma, `ON DELETE SET NULL`) e índice `idx_refresh_tokens_replaced_by`.
   - `V3__products.sql`: `products` (SKU único `uk_products_sku`, checks de precio/moneda y cantidades, `version` para bloqueo optimista) y `product_stock` (1:1, PK = `product_id`, creada con ceros; ver ADR-002). Moneda como `VARCHAR(3)`.
+  - `V4__categories.sql` (HU-15): `categories` (árbol; `uk_categories_parent_name` = `UNIQUE NULLS NOT DISTINCT (parent_id, name_key)`), 4 raíces sembradas, migración del texto `products.category` (alias de CA-22) a `category_id NOT NULL`, columnas `brand`/`model`/`warranty_months` y `DROP COLUMN category`.
 - Al arrancar con la tabla `users` vacía, `AdminInitializer` crea el administrador inicial con `APP_ADMIN_USERNAME` /
   `APP_ADMIN_PASSWORD`. Si faltan, avisa en el log y no se crea nadie: como crear usuarios exige ser ADMIN, sin
 administrador inicial no hay forma de entrar por la API.
@@ -134,6 +136,7 @@ Detalle completo en [errors.md](errors.md).
   - `auth/AuthFlowIntegrationTests`: login, `/me`, rotación y detección de reutilización, logout, gestión de usuarios por roles.
   - `common/ErrorHandlingIntegrationTests`: códigos y traducción de errores, 400/401/403/404/405/415/500.
   - `product/ProductIntegrationTests`: HU-02 completa (alta, normalización, SKU duplicado y en carrera, validación y errores de tipo, moneda, edición, versión, activar/desactivar, listado, búsqueda, paginación, orden, categorías, roles, i18n es/en).
+  - `category/CategoryIntegrationTests`, `category/CategoryMigrationTests` (V4 con datos sembrados, Flyway `target 3`) y `product/ProductCategoryTypeTests` (HU-15 productos y TT-14).
   - `common/MessageBundlesTests`: `messages_es` y `messages_en` tienen las mismas claves y ninguna vacía.
   - `config/OpenApiIntegrationTests`: documentación pública y rutas antiguas sin versión.
   - `config/ApiDocsDisabledIntegrationTests`: documentación cerrada cuando springdoc está desactivado.
@@ -150,3 +153,20 @@ Detalle completo en [errors.md](errors.md).
 - **Escalas**: precio 2 decimales, cantidades 3, costo 4; las entidades fijan la escala para que el JSON sea estable (`0.000`).
 - **Monedas**: `app.currencies.supported` y `app.currencies.reference` (`AppProperties.Currencies`, validado al arrancar: la de referencia debe estar entre las admitidas).
 - Una edición que no cambia ningún valor no genera `UPDATE` y por tanto no incrementa `version` (comportamiento de JPA con entidades sin cambios).
+
+## Categorías y tipos (HU-15, ADR-003): decisiones de implementación
+
+- **Normalización en un solo sitio, la BD**: `name_key = LOWER(TRIM(name))`. La migración V4 lo calcula en SQL y la entidad lo escribe con `@ColumnTransformer(write = "lower(trim(?))")`; el Service comprueba duplicados con `lower(trim(:name))` en la consulta. `Lacteos` y `Lácteos` no chocan (LOWER no quita tildes; el frontend avisa). Requisito en Neon: `SHOW lc_ctype` distinto de `C`/`POSIX`.
+- **Unicidad**: `UNIQUE NULLS NOT DISTINCT` cubre también las raíces. Comprobación previa para un 409 claro y `saveAndFlush` capturando `uk_categories_parent_name` (la restricción es la garantía en carrera).
+- **Concurrencia**: renombrar usa bloqueo optimista (`@Version`, como productos). Crear hija, desactivar y activar usan **bloqueo pesimista** (`PESSIMISTIC_WRITE`) sobre la fila del padre / de la propia categoría, siempre padre antes que hijo (sin deadlock): cierra la carrera «alguien crea una hija activa mientras otro desactiva al padre», que ninguna restricción puede expresar. Son operaciones raras.
+- **Árbol en memoria**: `CategoryService.tree()` carga todas las categorías (decenas) y `CategoryTree` calcula `path`/`pathEn`, el tipo, los descendientes (filtro `categoryId`) y el orden del listado (por niveles, sin distinguir mayúsculas, para que el padre preceda siempre a sus hijas). `ProductService` lo usa en vez de un `JOIN FETCH` de la categoría: la respuesta solo necesita su id (`getId()` de un proxy no la carga), así que tampoco hay N+1.
+- **`productCount`**: una consulta `GROUP BY category_id` (`CategoryRepository.countProductsByCategory`; referencia `Product` solo por nombre en JPQL: el módulo `category` no importa `product`).
+- **Tipo derivado**: no se guarda en el producto; `ProductResponse.type` sale de la categoría. Las reglas por tipo (`ProductType.allowsModelAndWarranty()`, `requiresUnitOnly()`) viven en el enum; el Service valida y **nunca anula atributos por su cuenta**.
+- **Categoría inactiva**: se rechaza al crear o al cambiar a ella (`category.inactive`); un producto que ya está en una inactiva se puede editar si no cambia de categoría.
+- **`GET /products/categories` retirado**: un manejador `@Hidden` responde 404 `request.not_found`; sin él la ruta caería en `/{id}` y daría 400 por «id no numérico».
+- **Orden**: `sort` admite `name`, `sku`, `createdAt` (CA-20 conserva `sku`; solo se retira `category`).
+- **Enteros estrictos**: `spring.jackson.deserialization.accept-float-as-int=false`; `warrantyMonths: 1.5` es 400 y no se trunca a 1.
+
+### TT-14
+- **SKU**: se pasa a mayúsculas **solo si el valor ya es válido** (`[A-Za-z0-9._-]*`). Si no, se deja tal cual y falla el `@Pattern`: `ß` (que sería `SS`), `ı` (`I`) o `ſ` (`S`) dan 400 `validation.failed` (`errors.sku`) en lugar de colarse como SKU válidos.
+- **Activar/desactivar idempotente también en carrera** (productos): `setActive` corre sin transacción y cada intento usa su propio `TransactionTemplate`; quien pierde la carrera optimista reintenta (máx. 3) y lee el estado ya cambiado: 200 sin nueva versión. Las categorías lo resuelven con el bloqueo pesimista.

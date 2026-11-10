@@ -2,6 +2,7 @@ package com.cuartico.product;
 
 import java.math.BigDecimal;
 
+import com.cuartico.category.Category;
 import com.cuartico.common.AuditableEntity;
 
 import jakarta.persistence.CascadeType;
@@ -13,6 +14,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -39,8 +42,20 @@ public class Product extends AuditableEntity {
 	@Column(nullable = false, length = 10)
 	private UnitOfMeasure unit;
 
-	@Column(length = 50)
-	private String category;
+	/** The product type is the one of its category (ADR-003): it is derived, not stored here. */
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "category_id", nullable = false)
+	private Category category;
+
+	@Column(length = 80)
+	private String brand;
+
+	/** Appliances only (validated by the service). */
+	@Column(length = 80)
+	private String model;
+
+	/** Appliances only; informative. */
+	private Integer warrantyMonths;
 
 	@Column(precision = 12, scale = 2)
 	private BigDecimal salePrice;
@@ -66,17 +81,20 @@ public class Product extends AuditableEntity {
 		// JPA
 	}
 
-	public Product(String name, String sku, UnitOfMeasure unit, String category, BigDecimal salePrice,
-			String salePriceCurrency, BigDecimal minStock) {
-		update(name, sku, unit, category, salePrice, salePriceCurrency, minStock);
+	public Product(String name, String sku, UnitOfMeasure unit, Category category, String brand, String model,
+			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency, BigDecimal minStock) {
+		update(name, sku, unit, category, brand, model, warrantyMonths, salePrice, salePriceCurrency, minStock);
 	}
 
-	public void update(String name, String sku, UnitOfMeasure unit, String category, BigDecimal salePrice,
-			String salePriceCurrency, BigDecimal minStock) {
+	public void update(String name, String sku, UnitOfMeasure unit, Category category, String brand, String model,
+			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency, BigDecimal minStock) {
 		this.name = name;
 		this.sku = sku;
 		this.unit = unit;
 		this.category = category;
+		this.brand = brand;
+		this.model = model;
+		this.warrantyMonths = warrantyMonths;
 		// Fixed scales (Digits validation guarantees no rounding is needed) so JSON is stable
 		this.salePrice = salePrice == null ? null : salePrice.setScale(PRICE_SCALE);
 		this.salePriceCurrency = salePriceCurrency;
@@ -107,8 +125,20 @@ public class Product extends AuditableEntity {
 		return unit;
 	}
 
-	public String getCategory() {
+	public Category getCategory() {
 		return category;
+	}
+
+	public String getBrand() {
+		return brand;
+	}
+
+	public String getModel() {
+		return model;
+	}
+
+	public Integer getWarrantyMonths() {
+		return warrantyMonths;
 	}
 
 	public BigDecimal getSalePrice() {

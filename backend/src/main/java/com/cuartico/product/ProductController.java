@@ -1,14 +1,15 @@
 package com.cuartico.product;
 
 import java.net.URI;
-import java.util.List;
 
+import com.cuartico.common.ApiException;
 import com.cuartico.common.dto.PageResponse;
 import com.cuartico.product.dto.ProductDtos.CreateProductRequest;
 import com.cuartico.product.dto.ProductDtos.ProductQuery;
 import com.cuartico.product.dto.ProductDtos.ProductResponse;
 import com.cuartico.product.dto.ProductDtos.UpdateProductRequest;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 
 import org.springframework.http.ResponseEntity;
@@ -40,9 +41,11 @@ public class ProductController {
 		return productService.search(query);
 	}
 
+	/** Retired by HU-15 (replaced by GET /api/v1/categories). Kept so it answers 404 and not "id is not a number". */
+	@Hidden
 	@GetMapping("/categories")
-	public List<String> categories() {
-		return productService.categories();
+	public void retiredCategories() {
+		throw ApiException.notFound("request.not_found");
 	}
 
 	@GetMapping("/{id}")

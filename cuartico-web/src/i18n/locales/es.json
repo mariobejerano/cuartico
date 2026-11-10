@@ -23,7 +23,8 @@
     "clear_filters": "Limpiar filtros",
     "offline": "Sin conexión. Los cambios no se guardarán hasta que vuelvas a tener internet.",
     "skip_to_content": "Saltar al contenido",
-    "not_set": "Sin definir"
+    "not_set": "Sin definir",
+    "got_it": "Entendido"
   },
   "validation": {
     "required": "Este campo es obligatorio.",
@@ -61,7 +62,10 @@
     "products": "Productos",
     "account": "Cuenta de {{name}}",
     "account_short": "Cuenta",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "categories": "Categorías",
+    "more": "Más",
+    "manage": "Gestión"
   },
   "role": {
     "ADMIN": "Administrador",
@@ -93,7 +97,6 @@
     "sort_by_name": "Ordenar por nombre",
     "sku_inline": "SKU {{sku}}",
     "no_sku": "Sin SKU",
-    "no_category": "Sin categoría",
     "no_price": "—",
     "badge_inactive": "Inactivo",
     "badge_low_stock": "Stock bajo",
@@ -117,7 +120,7 @@
     "name_help": "Incluye la presentación si importa: «Aceite de girasol 1 L».",
     "sku": "SKU",
     "sku_help": "Código interno único. Letras, números, punto, guion y guion bajo.",
-    "category_help": "Elige una existente o escribe una nueva.",
+    "category_help": "El tipo sale de la categoría y decide qué datos se piden.",
     "unit": "Unidad de medida",
     "unit_placeholder": "Elige una unidad",
     "unit_help": "Cómo se cuenta el stock de este producto.",
@@ -157,12 +160,29 @@
     "deactivate_stock": "Todavía tiene stock: {{onHand}} físico y {{reserved}} reservado.",
     "deactivating": "Desactivando…",
     "deactivated": "«{{name}}» desactivado.",
-    "activated": "«{{name}}» activado."
+    "activated": "«{{name}}» activado.",
+    "type": "Tipo",
+    "all_types": "Todos",
+    "col_category": "Categoría",
+    "category_inactive_suffix": "{{path}} (inactiva)",
+    "category_placeholder": "Elige una categoría",
+    "type_tag": "Tipo: {{type}}",
+    "type_change_attrs": "Este tipo no usa modelo ni garantía: no se guardarán.",
+    "type_change_unit": "La unidad pasa a «{{unit}}»: {{type}} se cuenta por unidades.",
+    "brand": "Marca",
+    "model": "Modelo",
+    "model_help": "Como aparece en la caja o la etiqueta: «RC-18».",
+    "warranty": "Garantía",
+    "months": "meses",
+    "warranty_help": "En meses, de 0 a 120. Es informativa: se muestra al vender.",
+    "unit_locked_help": "Fija: {{type}} se cuenta por unidades.",
+    "section_inventory": "Inventario"
   },
   "product": {
     "sku_pattern": "Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_).",
     "price_format": "Escribe un número igual o mayor que 0, con hasta 2 decimales.",
-    "min_stock_format": "Escribe un número igual o mayor que 0, con hasta 3 decimales."
+    "min_stock_format": "Escribe un número igual o mayor que 0, con hasta 3 decimales.",
+    "warranty_format": "Escribe un número entero de 0 a 120."
   },
   "unit": {
     "UNIT": "Unidad (u)",
@@ -185,5 +205,79 @@
     "title": "Esta página no existe",
     "body": "Puede que el enlace esté mal escrito.",
     "home_link": "Ir al inicio"
+  },
+  "forbidden": {
+    "title": "No tienes acceso a esta página",
+    "body": "Solo un administrador puede gestionar las categorías. Si lo necesitas, pídeselo a uno.",
+    "go_products": "Ir a productos"
+  },
+  "product_type": {
+    "FOOD": "Alimentos",
+    "CLOTHING": "Ropa",
+    "APPLIANCE": "Electrodomésticos",
+    "OTHER": "Aseo y hogar"
+  },
+  "categories": {
+    "page_title": "Cuartico · Categorías",
+    "title": "Categorías",
+    "intro": "Organiza el catálogo en categorías y subcategorías (hasta 3 niveles). El tipo de la categoría principal decide qué datos pide cada producto.",
+    "new": "Nueva categoría",
+    "show_inactive": "Mostrar inactivas ({{count}})",
+    "type_tag": "Tipo: {{type}}",
+    "badge_inactive": "Inactiva",
+    "other_lang_name": "EN: {{name}}",
+    "missing_other_lang": "Sin nombre en inglés",
+    "add_sub": "Añadir subcategoría",
+    "rename": "Renombrar",
+    "deactivate": "Desactivar",
+    "activate": "Activar",
+    "actions_for": "Acciones de «{{name}}»",
+    "max_level_note": "Último nivel: no admite subcategorías.",
+    "inactive_note": "Inactiva: actívala para añadirle subcategorías.",
+    "load_error_title": "No se pudieron cargar las categorías",
+    "form_new_title": "Nueva categoría",
+    "form_rename_title": "Renombrar «{{name}}»",
+    "parent": "Categoría superior",
+    "parent_none": "Ninguna (categoría principal)",
+    "parent_help": "Solo aparecen las activas de los niveles 1 y 2: el máximo son 3 niveles.",
+    "type": "Tipo de producto",
+    "type_placeholder": "Elige un tipo",
+    "type_help": "Decide qué datos pide cada producto. No se puede cambiar después.",
+    "type_inherited": "Tipo: {{type}} (lo hereda de «{{root}}»)",
+    "name_es": "Nombre en español",
+    "name_en": "Nombre en inglés",
+    "name_en_help": "Si lo dejas vacío, en inglés se muestra el nombre en español.",
+    "rename_note": "No se puede mover a otra categoría ni cambiar su tipo.",
+    "create": "Crear categoría",
+    "save_name": "Guardar nombre",
+    "created": "Categoría «{{name}}» creada.",
+    "renamed": "Categoría renombrada.",
+    "similar_warning": "Se parece a «{{name}}», que ya existe aquí. Si es la misma, no la crees otra vez.",
+    "version_conflict_title": "Otra persona cambió esta categoría mientras la editabas",
+    "version_conflict_body": "Tu cambio no se ha guardado. Recarga para ver el nombre actual y vuelve a intentarlo.",
+    "reload": "Recargar categoría",
+    "deactivate_title": "¿Desactivar «{{name}}»?",
+    "deactivate_body": "No se podrá elegir en productos nuevos ni al cambiar la categoría de uno. Los productos que ya la tienen la conservan. Puedes volver a activarla cuando quieras.",
+    "deactivating": "Desactivando…",
+    "deactivated": "«{{name}}» desactivada.",
+    "activated": "«{{name}}» activada.",
+    "blocked_children_title": "Todavía no se puede desactivar «{{name}}»",
+    "blocked_children_body": "Primero desactiva sus subcategorías activas: {{list}}.",
+    "and_more": "{{list}} y {{count}} más",
+    "quoted": "«{{name}}»",
+    "blocked_parent_title": "Primero activa «{{parent}}»",
+    "blocked_parent_body": "Una subcategoría no puede estar activa si su categoría superior está desactivada.",
+    "deactivate_products_one": "1 producto conserva esta categoría.",
+    "deactivate_products_other": "{{count}} productos conservan esta categoría."
+  },
+  "api": {
+    "category": {
+      "name_conflict": "Ya existe «{{name}}» dentro de «{{parent}}».",
+      "name_conflict_root": "Ya existe una categoría principal llamada «{{name}}».",
+      "max_depth": "No se puede crear aquí: el máximo son 3 niveles. Elige otra categoría superior.",
+      "parent_inactive": "La categoría superior está desactivada. Actívala primero o elige otra.",
+      "has_active_children": "Tiene subcategorías activas. Desactívalas primero.",
+      "inactive": "Esta categoría se ha desactivado. Elige otra."
+    }
   }
 }

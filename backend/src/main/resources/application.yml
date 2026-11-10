@@ -3,6 +3,10 @@ spring:
     name: cuartico
   profiles:
     default: dev
+  jackson:
+    deserialization:
+      # 1.5 for an integer field (warrantyMonths) is an error, not a silent truncation to 1
+      accept-float-as-int: false
   jpa:
     open-in-view: false
     hibernate:

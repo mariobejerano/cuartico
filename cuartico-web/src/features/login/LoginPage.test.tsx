@@ -92,7 +92,7 @@ describe('Login (HU-01)', () => {
     installFakeApi()
       .on('POST /api/v1/auth/login', () => json(200, tokenPair(1)))
       .on('GET /api/v1/products', () => json(200, { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }))
-      .on('GET /api/v1/products/categories', () => json(200, []))
+      .on('GET /api/v1/categories', () => json(200, []))
     const { router } = renderApp('/products?q=arroz')
     await screen.findByRole('heading', { name: 'Inicia sesión' })
     expect(router.state.location.pathname).toBe('/login')

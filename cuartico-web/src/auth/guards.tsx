@@ -40,9 +40,10 @@ export function GuestOnly({ children }: { children: ReactNode }) {
  * Guarda por rol (CA-25): como `@PreAuthorize("hasRole('ADMIN')")`, pero solo para la interfaz.
  * Con `children` envuelve un trozo de pantalla (lo oculta); sin `children` protege rutas hijas.
  */
-export function RequireRole({ roles, children }: { roles: Role[]; children?: ReactNode }) {
+export function RequireRole({ roles, children, fallback }: { roles: Role[]; children?: ReactNode; fallback?: ReactNode }) {
   const state = useSession()
   const user = state.status === 'authenticated' ? state.user : null
-  if (!hasRole(user, ...roles)) return children ? null : <Navigate to="/" replace />
+  // Con `fallback`, quien no tiene el rol ve eso en su lugar (p. ej. «No tienes acceso», HU-15 CA-25).
+  if (!hasRole(user, ...roles)) return fallback ?? (children ? null : <Navigate to="/" replace />)
   return children ?? <Outlet />
 }

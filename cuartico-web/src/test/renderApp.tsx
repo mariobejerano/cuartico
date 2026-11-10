@@ -8,12 +8,13 @@ import { AuthProvider } from '../auth/AuthProvider'
 /** Monta la app completa en una ruta concreta, con un router en memoria (sin barra de direcciones). */
 export function renderApp(path = '/') {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
+  const queryClient = createQueryClient()
   const utils = render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RouterProvider router={router} />
       </AuthProvider>
     </QueryClientProvider>,
   )
-  return { router, ...utils }
+  return { router, queryClient, ...utils }
 }

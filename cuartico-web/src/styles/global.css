@@ -222,10 +222,13 @@ a { color: var(--color-link); text-decoration: underline; text-underline-offset:
 
 /* ===== Productos: filtros y metadatos ===== */
 .page-head h1 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+/* Filtros (HU-15, prototipo products-v2): buscador + Tipo + Categoría + Estado. Las rutas son largas: la categoría
+   ocupa todo el ancho en móvil; en >= 1024 px van los 4 en una fila. */
 .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
-.toolbar .c-field:first-child { grid-column: 1 / -1; }
+.toolbar .f-q, .toolbar .f-cat { grid-column: 1 / -1; }
 .toolbar .c-label { font-size: var(--text-sm); }
-@media (min-width: 768px) { .toolbar { grid-template-columns: minmax(0, 1fr) 13rem 10rem; align-items: end; } .toolbar .c-field:first-child { grid-column: auto; } }
+@media (min-width: 768px) { .toolbar { grid-template-columns: minmax(0, 1fr) 11rem; } .toolbar .f-q { grid-column: 1 / -1; } .toolbar .f-cat { grid-column: auto; } }
+@media (min-width: 1024px) { .toolbar { grid-template-columns: minmax(12rem, 1fr) 10rem minmax(12rem, 16rem) 9rem; align-items: end; } .toolbar .f-q, .toolbar .f-cat { grid-column: auto; } }
 .list-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); min-height: var(--control-height-sm); }
 
 /* ===== Tabla (≥ 768 px) ===== */
@@ -304,3 +307,48 @@ legend { padding: 0; font-weight: var(--font-weight-medium); margin-bottom: var(
 .c-toast > .icon { color: var(--color-success-text); }
 .c-toast--danger { border-left-color: var(--color-danger-text); }
 .c-toast--danger > .icon { color: var(--color-danger-text); }
+
+/* ===== HU-15: columna «Categoría» solo >= 1024 px; por debajo, la ruta va en la línea secundaria ===== */
+.c-table .col-cat { display: none; color: var(--color-text); max-width: 16rem; overflow-wrap: anywhere; }
+@media (min-width: 1024px) { .c-table .col-cat { display: table-cell; } .cat-inline { display: none; } }
+
+/* ===== HU-15: formulario de producto (tipo derivado, avisos) ===== */
+.type-line { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.c-alert--sm { padding: var(--space-2) var(--space-3); font-size: var(--text-sm); }
+.plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.c-warn { font-size: var(--text-sm); color: var(--color-warning-text); display: flex; gap: var(--space-1); align-items: flex-start; }
+.c-warn .icon { width: 16px; height: 16px; margin-top: 3px; }
+.c-check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--touch-target-min); cursor: pointer; font-weight: var(--font-weight-medium); }
+.c-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--color-action-primary-bg); }
+.inherited { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; padding: var(--space-3); border-radius: var(--radius-md); background: var(--color-bg); border: var(--border-width) solid var(--color-border); }
+.c-modal { max-height: calc(100dvh - 2rem); overflow: auto; }
+
+/* ===== HU-15: árbol de categorías (lista anidada, no role=tree) ===== */
+.intro { color: var(--color-text-muted); max-width: 44rem; }
+.tree-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tree-roots { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.root-card { background: var(--color-surface); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.tree { list-style: none; margin: 0; padding: 0; }
+.tree .tree { margin-left: var(--space-5); border-left: 2px solid var(--color-border); } /* guía vertical = profundidad */
+@media (min-width: 768px) { .tree .tree { margin-left: var(--space-8); } }
+.node-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-4); border-top: var(--border-width) solid var(--color-border); }
+.root-card > .node-row { border-top: 0; background: var(--color-bg); }
+.node-main { flex: 1 1 12rem; min-width: 0; }
+.node-name { font-size: var(--text-md); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.root-card > .node-row .node-name { font-size: var(--text-lg); }
+.node-sub { font-size: var(--text-sm); color: var(--color-text-muted); overflow-wrap: anywhere; }
+.node-sub.is-missing { font-style: italic; }
+.node.is-inactive > .node-row .node-name > .nm { color: var(--color-text-muted); }
+.node-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-end; }
+@media (hover: hover) { .tree .node-row:hover { background: var(--color-surface-hover); } }
+.node-row.is-new { animation: flash 1.6s var(--easing-standard); }
+@keyframes flash { from { background: var(--color-brand-subtle); } }
+@media (prefers-reduced-motion: reduce) { .node-row.is-new { animation: none; background: var(--color-brand-subtle); } }
+
+/* ===== HU-15: hojas («Más» y acciones de una categoría) ===== */
+.sheet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.sheet-list a, .sheet-list button { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--touch-target-min); padding: 0 var(--space-2); color: var(--color-text); text-decoration: none; background: none; border: 0; font: inherit; border-radius: var(--radius-md); cursor: pointer; text-align: left; }
+.sheet-list a[aria-current="page"] { color: var(--color-brand); font-weight: var(--font-weight-semibold); }
+@media (hover: hover) { .sheet-list a:hover, .sheet-list button:hover { background: var(--color-surface-hover); } }
+.sheet-section { font-size: var(--text-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-muted); margin-top: var(--space-2); }
+.sheet-note { font-size: var(--text-sm); color: var(--color-text-muted); padding: 0 var(--space-2); }

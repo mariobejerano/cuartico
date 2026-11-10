@@ -23,7 +23,8 @@
     "clear_filters": "Clear filters",
     "offline": "You're offline. Changes won't be saved until you're back online.",
     "skip_to_content": "Skip to content",
-    "not_set": "Not set"
+    "not_set": "Not set",
+    "got_it": "Got it"
   },
   "validation": {
     "required": "This field is required.",
@@ -61,7 +62,10 @@
     "products": "Products",
     "account": "{{name}}'s account",
     "account_short": "Account",
-    "logout": "Log out"
+    "logout": "Log out",
+    "categories": "Categories",
+    "more": "More",
+    "manage": "Management"
   },
   "role": {
     "ADMIN": "Administrator",
@@ -93,7 +97,6 @@
     "sort_by_name": "Sort by name",
     "sku_inline": "SKU {{sku}}",
     "no_sku": "No SKU",
-    "no_category": "No category",
     "no_price": "—",
     "badge_inactive": "Inactive",
     "badge_low_stock": "Low stock",
@@ -117,7 +120,7 @@
     "name_help": "Include the size if it matters: \"Sunflower oil 1 L\".",
     "sku": "SKU",
     "sku_help": "Unique internal code. Letters, numbers, dot, hyphen and underscore.",
-    "category_help": "Pick an existing one or type a new one.",
+    "category_help": "The type comes from the category and decides which details are needed.",
     "unit": "Unit of measure",
     "unit_placeholder": "Choose a unit",
     "unit_help": "How this product's stock is counted.",
@@ -157,12 +160,29 @@
     "deactivate_stock": "It still has stock: {{onHand}} on hand and {{reserved}} reserved.",
     "deactivating": "Deactivating…",
     "deactivated": "\"{{name}}\" deactivated.",
-    "activated": "\"{{name}}\" activated."
+    "activated": "\"{{name}}\" activated.",
+    "type": "Type",
+    "all_types": "All",
+    "col_category": "Category",
+    "category_inactive_suffix": "{{path}} (inactive)",
+    "category_placeholder": "Choose a category",
+    "type_tag": "Type: {{type}}",
+    "type_change_attrs": "This type doesn't use model or warranty: they won't be saved.",
+    "type_change_unit": "The unit changes to \"{{unit}}\": {{type}} is counted in pieces.",
+    "brand": "Brand",
+    "model": "Model",
+    "model_help": "As shown on the box or label: \"RC-18\".",
+    "warranty": "Warranty",
+    "months": "months",
+    "warranty_help": "In months, from 0 to 120. For information only: shown when selling.",
+    "unit_locked_help": "Fixed: {{type}} is counted in pieces.",
+    "section_inventory": "Inventory"
   },
   "product": {
     "sku_pattern": "Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_).",
     "price_format": "Enter a number of 0 or more, with up to 2 decimals.",
-    "min_stock_format": "Enter a number of 0 or more, with up to 3 decimals."
+    "min_stock_format": "Enter a number of 0 or more, with up to 3 decimals.",
+    "warranty_format": "Enter a whole number from 0 to 120."
   },
   "unit": {
     "UNIT": "Piece (pcs)",
@@ -185,5 +205,79 @@
     "title": "This page doesn't exist",
     "body": "The link may be mistyped.",
     "home_link": "Go to Home"
+  },
+  "forbidden": {
+    "title": "You don't have access to this page",
+    "body": "Only an administrator can manage categories. If you need it, ask one.",
+    "go_products": "Go to Products"
+  },
+  "product_type": {
+    "FOOD": "Food",
+    "CLOTHING": "Clothing",
+    "APPLIANCE": "Appliances",
+    "OTHER": "Personal care & home"
+  },
+  "categories": {
+    "page_title": "Cuartico · Categories",
+    "title": "Categories",
+    "intro": "Organize the catalog into categories and subcategories (up to 3 levels). The main category's type decides which details each product needs.",
+    "new": "New category",
+    "show_inactive": "Show inactive ({{count}})",
+    "type_tag": "Type: {{type}}",
+    "badge_inactive": "Inactive",
+    "other_lang_name": "ES: {{name}}",
+    "missing_other_lang": "No English name",
+    "add_sub": "Add subcategory",
+    "rename": "Rename",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "actions_for": "Actions for \"{{name}}\"",
+    "max_level_note": "Last level: it can't have subcategories.",
+    "inactive_note": "Inactive: activate it to add subcategories.",
+    "load_error_title": "We couldn't load the categories",
+    "form_new_title": "New category",
+    "form_rename_title": "Rename \"{{name}}\"",
+    "parent": "Parent category",
+    "parent_none": "None (main category)",
+    "parent_help": "Only active categories from levels 1 and 2 are listed: 3 levels is the maximum.",
+    "type": "Product type",
+    "type_placeholder": "Choose a type",
+    "type_help": "Decides which details each product needs. It can't be changed later.",
+    "type_inherited": "Type: {{type}} (inherited from \"{{root}}\")",
+    "name_es": "Name in Spanish",
+    "name_en": "Name in English",
+    "name_en_help": "If left empty, the Spanish name is shown in English.",
+    "rename_note": "It can't be moved to another category or change its type.",
+    "create": "Create category",
+    "save_name": "Save name",
+    "created": "Category \"{{name}}\" created.",
+    "renamed": "Category renamed.",
+    "similar_warning": "Looks like \"{{name}}\", which already exists here. If it's the same one, don't create it again.",
+    "version_conflict_title": "Someone else changed this category while you were editing",
+    "version_conflict_body": "Your change wasn't saved. Reload to see the current name and try again.",
+    "reload": "Reload category",
+    "deactivate_title": "Deactivate \"{{name}}\"?",
+    "deactivate_body": "It can't be chosen for new products or when changing a product's category. Products that already have it keep it. You can activate it again at any time.",
+    "deactivating": "Deactivating…",
+    "deactivated": "\"{{name}}\" deactivated.",
+    "activated": "\"{{name}}\" activated.",
+    "blocked_children_title": "\"{{name}}\" can't be deactivated yet",
+    "blocked_children_body": "First deactivate its active subcategories: {{list}}.",
+    "and_more": "{{list}} and {{count}} more",
+    "quoted": "\"{{name}}\"",
+    "blocked_parent_title": "First activate \"{{parent}}\"",
+    "blocked_parent_body": "A subcategory can't be active while its parent category is inactive.",
+    "deactivate_products_one": "1 product keeps this category.",
+    "deactivate_products_other": "{{count}} products keep this category."
+  },
+  "api": {
+    "category": {
+      "name_conflict": "\"{{name}}\" already exists in \"{{parent}}\".",
+      "name_conflict_root": "There's already a main category called \"{{name}}\".",
+      "max_depth": "It can't be created here: 3 levels is the maximum. Choose another parent category.",
+      "parent_inactive": "The parent category is inactive. Activate it first or choose another one.",
+      "has_active_children": "It has active subcategories. Deactivate them first.",
+      "inactive": "This category has been deactivated. Choose another one."
+    }
   }
 }
