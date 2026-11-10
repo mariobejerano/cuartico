@@ -35,7 +35,7 @@ antes de que HU-04 empiece a registrar movimientos.
 - **CA-1 Alta simple.** Dado un `POST /products` con `hasVariants` ausente o `false`, `sku` y `minStock`, entonces
   **201** con `hasVariants = false`, `variantCount = 1`, `sku`, `minStock` y `stock` como en HU-02, y existen una fila en
   `product_variants` (sin talla ni color) y su fila en `variant_stock` con ceros.
-- **CA-2 Edición simple.** `PUT /products/{id}` de un producto simple con `sku` y `minStock` actualiza su variante.
+- **CA-2 Edición simple.** `PUT /products/{id}` de un producto simple con `sku` y `minStock` actualiza su variante (también sube la `version` de esa variante oculta; el cliente no la gestiona).
   Las reglas de SKU de HU-02 (normalización, único entre todas las variantes activas e inactivas, carrera → 409
   `product.sku_conflict`) se mantienen.
 - **CA-3 Endpoints de variantes en un simple.** Crear, editar, activar o desactivar variantes de un producto simple
