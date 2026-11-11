@@ -4,7 +4,8 @@ interface ConfirmDialogProps {
   open: boolean
   title: ReactNode
   children?: ReactNode
-  cancelLabel: string
+  /** Sin `cancelLabel` es un diálogo informativo: un solo botón (p. ej. «Entendido»). Escape sigue llamando a `onCancel`. */
+  cancelLabel?: string
   confirmLabel: ReactNode
   onCancel: () => void
   onConfirm: () => void
@@ -54,9 +55,11 @@ export function ConfirmDialog({ open, title, children, cancelLabel, confirmLabel
         )}
       </div>
       <div className="c-modal__actions btn-bar">
-        <button type="button" className="c-btn c-btn--secondary" onClick={onCancel} disabled={busy}>
-          {cancelLabel}
-        </button>
+        {cancelLabel && (
+          <button type="button" className="c-btn c-btn--secondary" onClick={onCancel} disabled={busy}>
+            {cancelLabel}
+          </button>
+        )}
         <button
           type="button"
           className="c-btn c-btn--primary"

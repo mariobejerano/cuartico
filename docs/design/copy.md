@@ -259,7 +259,7 @@ CA-21); alternativa «Tiene variantes» / "Has variants" (más corta, pero «var
 | `nav.more` | Más | More |
 | `nav.manage` | Gestión | Management |
 | `forbidden.title` | No tienes acceso a esta página | You don't have access to this page |
-| `forbidden.body` | Solo un administrador puede gestionar las categorías. Si lo necesitas, pídeselo a uno. | Only an administrator can manage categories. If you need it, ask one. |
+| `forbidden.body` | Solo un administrador puede ver esta página. Si la necesitas, pídeselo a uno. | Only an administrator can view this page. If you need it, ask one. |
 | `forbidden.go_products` | Ir a productos | Go to Products |
 | `common.got_it` | Entendido | Got it |
 

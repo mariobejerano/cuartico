@@ -1,9 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { json, networkError, problem } from '../../test/fakeApi'
-import { loggedInWithProducts, page, product } from '../../test/productFixtures'
+import { loggedInWithProducts, page, product, ref } from '../../test/productFixtures'
 import { renderApp } from '../../test/renderApp'
+import { productKeys } from './queries'
 
 const LIST = 'GET /api/v1/products'
 
@@ -37,7 +38,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     await u.type(screen.getByLabelText('Importe'), '3,555')
     await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
     expect(await screen.findByText('Escribe un número igual o mayor que 0, con hasta 2 decimales.')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getAllByText('Este campo es obligatorio.')).toHaveLength(2)) // nombre y unidad
+    await waitFor(() => expect(screen.getAllByText('Este campo es obligatorio.')).toHaveLength(3)) // nombre, categoría y unidad
     expect(name).toHaveFocus() // foco en el primer error
     expect(api.calls('POST /api/v1/products')).toHaveLength(0)
 
@@ -55,6 +56,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     await u.click((await screen.findAllByRole('link', { name: 'Nuevo producto' }))[0])
     await u.type(await screen.findByLabelText(/^Nombre/), '  Arroz 1 kg ')
     await u.type(screen.getByLabelText(/^SKU/), ' arr-001 ')
+    await u.selectOptions(screen.getByLabelText(/^Categoría/), 'Alimentos › Granos')
     await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'KG')
     await u.clear(screen.getByLabelText(/^Stock mínimo/))
     await u.type(screen.getByLabelText(/^Stock mínimo/), '2,5')
@@ -65,7 +67,10 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
       name: 'Arroz 1 kg',
       sku: 'ARR-001',
       unit: 'KG',
-      category: null,
+      categoryId: 5,
+      brand: null,
+      model: null,
+      warrantyMonths: null,
       minStock: 2.5,
       salePrice: null,
       salePriceCurrency: null,
@@ -82,6 +87,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     const u = userEvent.setup()
     await u.type(await screen.findByLabelText(/^Nombre/), 'Arroz')
     await u.type(screen.getByLabelText(/^SKU/), 'ARR-001')
+    await u.selectOptions(await screen.findByLabelText(/^Categoría/), 'Alimentos › Granos')
     await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'UNIT')
     await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
 
@@ -97,6 +103,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     renderApp('/products/new')
     const u = userEvent.setup()
     await u.type(await screen.findByLabelText(/^Nombre/), 'Arroz')
+    await u.selectOptions(await screen.findByLabelText(/^Categoría/), 'Alimentos › Granos')
     await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'UNIT')
     await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
     expect(await screen.findByText('valor no válido')).toBeInTheDocument()
@@ -110,6 +117,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     renderApp('/products/new')
     const u = userEvent.setup()
     await u.type(await screen.findByLabelText(/^Nombre/), 'Arroz')
+    await u.selectOptions(await screen.findByLabelText(/^Categoría/), 'Alimentos › Granos')
     await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'UNIT')
     await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
 
@@ -250,5 +258,101 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
     expect(await screen.findByLabelText(/^Unit of measure/)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Piece (pcs)' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save product' })).toBeInTheDocument()
+  })
+
+  it('HU-15 CA-26: selector con rutas de las activas, tipo debajo; la inactiva actual aparece marcada', async () => {
+    loggedInWithProducts().on('GET /api/v1/products/1', () => json(200, product({ category: ref(7) })))
+    renderApp('/products/1/edit')
+    const select = await screen.findByLabelText(/^Categoría/)
+    await waitFor(() => expect(within(select).getByRole('option', { name: 'Electrodomésticos › Cocina' })).toBeInTheDocument())
+    expect(select).toHaveValue('7')
+    expect(within(select).getByRole('option', { name: 'Alimentos › Confituras (inactiva)' })).toBeInTheDocument()
+    expect(within(select).queryByRole('option', { name: /Mermeladas/ })).not.toBeInTheDocument() // otra inactiva: no
+    expect(screen.getByText('Tipo: Alimentos')).toBeInTheDocument()
+  })
+
+  it('HU-15 CA-16/17/26: electrodoméstico pide modelo y garantía con unidad fija; al pasar a alimentos avisa y no los envía', async () => {
+    const api = loggedInWithProducts()
+      .on(LIST, () => json(200, page([])))
+      .on('POST /api/v1/products', () => json(201, product({ id: 3, name: 'Olla' })))
+    renderApp('/products/new')
+    const u = userEvent.setup()
+    await u.type(await screen.findByLabelText(/^Nombre/), 'Olla')
+    await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'KG')
+    expect(screen.queryByLabelText(/^Modelo/)).not.toBeInTheDocument()
+
+    await u.selectOptions(screen.getByLabelText(/^Categoría/), 'Electrodomésticos › Cocina')
+    expect(screen.getByText('Tipo: Electrodomésticos')).toBeInTheDocument()
+    expect(await screen.findByText('La unidad pasa a «Unidad (u)»: Electrodomésticos se cuenta por unidades.')).toBeInTheDocument()
+    const unit = screen.getByLabelText(/^Unidad de medida/)
+    expect(unit).toBeDisabled()
+    expect(unit).toHaveValue('UNIT')
+    expect(screen.getByText('Fija: Electrodomésticos se cuenta por unidades.')).toBeInTheDocument()
+
+    await u.type(screen.getByLabelText(/^Modelo/), 'RC-18')
+    await u.type(screen.getByLabelText(/^Garantía/), '150')
+    await u.tab()
+    expect(await screen.findByText('Escribe un número entero de 0 a 120.')).toBeInTheDocument()
+    await u.clear(screen.getByLabelText(/^Garantía/))
+    await u.type(screen.getByLabelText(/^Garantía/), '12')
+
+    await u.selectOptions(screen.getByLabelText(/^Categoría/), 'Alimentos › Granos')
+    expect(await screen.findByText('Este tipo no usa modelo ni garantía: no se guardarán.')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Modelo/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/^Unidad de medida/)).toBeEnabled()
+
+    await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
+    await screen.findByText('Producto «Olla» creado.')
+    expect(api.calls('POST /api/v1/products')[0].body).toMatchObject({
+      categoryId: 5,
+      unit: 'UNIT',
+      model: null,
+      warrantyMonths: null,
+    })
+  })
+
+  it('HU-15 CA-26: en electrodomésticos se envían modelo, garantía y marca', async () => {
+    const api = loggedInWithProducts()
+      .on(LIST, () => json(200, page([])))
+      .on('POST /api/v1/products', () => json(201, product({ id: 3, name: 'Olla' })))
+    renderApp('/products/new')
+    const u = userEvent.setup()
+    await u.type(await screen.findByLabelText(/^Nombre/), 'Olla')
+    await u.selectOptions(screen.getByLabelText(/^Categoría/), 'Electrodomésticos › Cocina')
+    await u.type(screen.getByLabelText(/^Marca/), ' Royal ')
+    await u.type(screen.getByLabelText(/^Modelo/), 'RC-18')
+    await u.type(screen.getByLabelText(/^Garantía/), '12')
+    await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
+    await screen.findByText('Producto «Olla» creado.')
+    expect(api.calls('POST /api/v1/products')[0].body).toMatchObject({
+      categoryId: 10,
+      brand: 'Royal',
+      model: 'RC-18',
+      warrantyMonths: 12,
+      unit: 'UNIT',
+    })
+  })
+
+  it('HU-15 CA-13: 400 category.inactive se muestra en el campo Categoría', async () => {
+    loggedInWithProducts().on('POST /api/v1/products', () => problem(400, 'category.inactive', 'La categoría está desactivada.'))
+    renderApp('/products/new')
+    const u = userEvent.setup()
+    await u.type(await screen.findByLabelText(/^Nombre/), 'Arroz')
+    await u.selectOptions(await screen.findByLabelText(/^Categoría/), 'Alimentos › Granos')
+    await u.selectOptions(screen.getByLabelText(/^Unidad de medida/), 'KG')
+    await u.click(screen.getByRole('button', { name: 'Guardar producto' }))
+    expect(await screen.findByText('Esta categoría se ha desactivado. Elige otra.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Categoría/)).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('TT-14: si falla un refetch en segundo plano, el formulario NO se desmonta ni pierde lo escrito', async () => {
+    loggedInWithProducts().on('GET /api/v1/products/1', () => json(200, product()), networkError)
+    const { queryClient } = renderApp('/products/1/edit')
+    const u = userEvent.setup()
+    await u.type(await screen.findByLabelText(/^Nombre/), ' 2')
+    // Simula el refetch en segundo plano (p. ej. al recuperar la conexión) y que falle.
+    await act(() => queryClient.refetchQueries({ queryKey: productKeys.detail(1) }))
+    expect(queryClient.getQueryState(productKeys.detail(1))?.status).toBe('error')
+    expect(screen.getByLabelText(/^Nombre/)).toHaveValue('Arroz blanco 2')
   })
 })

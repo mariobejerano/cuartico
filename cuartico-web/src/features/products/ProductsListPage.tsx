@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useSearchParams } from 'react-router'
-import { isApiError } from '../../api/errors'
-import type { PageResponse, ProductResponse } from '../../api/types'
+import { PRODUCT_TYPES, type PageResponse, type ProductResponse, type ProductType } from '../../api/types'
 import { hasRole } from '../../auth/roles'
 import { useCurrentUser } from '../../auth/useSession'
 import { Icon } from '../../components/Icon'
+import { LoadError } from '../../components/LoadError'
 import { DESKTOP_QUERY, useMediaQuery } from '../../components/useMediaQuery'
 import { useDocumentTitle } from '../../components/useDocumentTitle'
+import { useCategories } from '../categories/queries'
+import { categoryPath, filterOptions } from '../categories/tree'
 import {
   hasFilters,
   parseListQuery,
@@ -19,7 +21,7 @@ import {
 import type { ListReturnState } from './navigation'
 import { MoneyValue } from './MoneyValue'
 import { ProductBadges } from './ProductBadges'
-import { useCategories, useProductList } from './queries'
+import { useProductList } from './queries'
 import { useProductFormat } from './useProductFormat'
 import { useToggleActive } from './useToggleActive'
 
@@ -40,9 +42,10 @@ function useListQuery() {
   return [query, update] as const
 }
 
-/** Listado de productos (HU-02 CA-17 a CA-22, CA-24, CA-26, CA-27). */
+/** Listado de productos (HU-02 CA-17 a CA-22, CA-24, CA-26, CA-27; HU-15 CA-19, CA-27). */
 export default function ProductsListPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language || 'es'
   useDocumentTitle('products.page_title')
   const location = useLocation()
   const isDesktop = useMediaQuery(DESKTOP_QUERY)
@@ -77,9 +80,29 @@ export default function ProductsListPage() {
     if (outOfRange) update({ page: Math.max(1, data.totalPages) }, { replace: true })
   }, [outOfRange, data, update])
 
+  // ----- Categoría de la URL que no existe o no es del tipo elegido (enlace manipulado o viejo): se quita, en vez
+  // de filtrar por algo que el selector no puede mostrar -----
+  const unknownCat =
+    !!query.cat &&
+    !!categories.data &&
+    !categories.data.some((c) => String(c.id) === query.cat && (!query.type || c.productType === query.type))
+  useEffect(() => {
+    if (unknownCat) update({ cat: '', page: 1 }, { replace: true })
+  }, [unknownCat, update])
+
   const clearFilters = () => {
     setText('')
-    update({ q: '', cat: '', status: 'active', page: 1 })
+    update({ q: '', type: '', cat: '', status: 'active', page: 1 })
+  }
+
+  /**
+   * SELECTS DEPENDIENTES: el Tipo acota las opciones de Categoría. Si la categoría elegida no es del tipo nuevo,
+   * se quita (CA-27): si no, el filtro combinado daría siempre «sin resultados».
+   */
+  const changeType = (type: ProductType | '') => {
+    const selected = categories.data?.find((c) => String(c.id) === query.cat)
+    const keepCat = !type || !selected || selected.productType === type
+    update({ type, cat: keepCat ? query.cat : '', page: 1 })
   }
 
   const goToPage = (page: number) => {
@@ -88,13 +111,18 @@ export default function ProductsListPage() {
     document.getElementById('main')?.focus({ preventScroll: true }) // el foco vuelve arriba del listado
   }
 
-  const categoryOptions = useMemo(() => {
-    const list = categories.data ?? []
-    return query.cat && !list.some((c) => c.toLowerCase() === query.cat.toLowerCase()) ? [query.cat, ...list] : list
-  }, [categories.data, query.cat])
+  // Todas las categorías (las inactivas marcadas), acotadas por el tipo elegido y ordenadas por ruta (CA-27).
+  const categoryOptions = useMemo(
+    () =>
+      filterOptions(categories.data ?? [], query.type, lang).map((c) => ({
+        id: String(c.id),
+        label: c.active ? categoryPath(c, lang) : t('products.category_inactive_suffix', { path: categoryPath(c, lang) }),
+      })),
+    [categories.data, query.type, lang, t],
+  )
 
   const loading = list.isPending || outOfRange
-  const ids = { q: useId(), cat: useId(), status: useId() }
+  const ids = { q: useId(), type: useId(), cat: useId(), status: useId() }
 
   return (
     <>
@@ -109,7 +137,7 @@ export default function ProductsListPage() {
       </div>
 
       <form className="toolbar" role="search" onSubmit={(e) => e.preventDefault()}>
-        <div className="c-field">
+        <div className="c-field f-q">
           <label className="c-label" htmlFor={ids.q}>
             {t('products.search_label')}
           </label>
@@ -127,25 +155,43 @@ export default function ProductsListPage() {
             />
           </div>
         </div>
-        <div className="c-field">
+        <div className="c-field f-type">
+          <label className="c-label" htmlFor={ids.type}>
+            {t('products.type')}
+          </label>
+          <select
+            id={ids.type}
+            className="c-select"
+            value={query.type}
+            onChange={(e) => changeType(e.target.value as ProductType | '')}
+          >
+            <option value="">{t('products.all_types')}</option>
+            {PRODUCT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {t(`product_type.${type}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="c-field f-cat">
           <label className="c-label" htmlFor={ids.cat}>
             {t('products.category')}
           </label>
           <select
             id={ids.cat}
             className="c-select"
-            value={query.cat}
+            value={categoryOptions.some((c) => c.id === query.cat) ? query.cat : ''}
             onChange={(e) => update({ cat: e.target.value, page: 1 })}
           >
             <option value="">{t('products.all_categories')}</option>
             {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c.id} value={c.id}>
+                {c.label}
               </option>
             ))}
           </select>
         </div>
-        <div className="c-field">
+        <div className="c-field f-status">
           <label className="c-label" htmlFor={ids.status}>
             {t('products.status')}
           </label>
@@ -175,7 +221,7 @@ export default function ProductsListPage() {
         {loading ? (
           <ListSkeleton desktop={isDesktop} />
         ) : list.isError ? (
-          <ListError error={list.error} onRetry={() => void list.refetch()} />
+          <LoadError error={list.error} titleKey="products.load_error_title" onRetry={() => void list.refetch()} />
         ) : data && data.totalElements === 0 ? (
           hasFilters(query) ? (
             <section className="c-empty">
@@ -248,13 +294,14 @@ interface RowsProps {
   onToggle: (p: ProductResponse) => void
 }
 
-/** «SKU ARR-001 · Granos» debajo del nombre. */
-function useSubLine() {
-  const { t } = useTranslation()
-  return (p: ProductResponse) =>
-    [p.sku ? t('products.sku_inline', { sku: p.sku }) : t('products.no_sku'), p.category || t('products.no_category')].join(
-      ' · ',
-    )
+/** «SKU ARR-001» (o «Sin SKU») y la ruta de la categoría en el idioma de la interfaz (HU-15 CA-27). */
+function useRowText() {
+  const { t, i18n } = useTranslation()
+  const lang = i18n.language || 'es'
+  return {
+    sku: (p: ProductResponse) => (p.sku ? t('products.sku_inline', { sku: p.sku }) : t('products.no_sku')),
+    path: (p: ProductResponse) => categoryPath(p.category, lang),
+  }
 }
 
 /** Botones de una fila. Llevan el nombre del producto oculto para lectores («Editar Arroz blanco»). */
@@ -279,7 +326,7 @@ function RowActions({ product, isAdmin, returnState, onToggle, size }: Omit<Rows
 function ProductTable({ page, query, onSort, ...rest }: RowsProps & { query: ListQuery; onSort: () => void }) {
   const { t } = useTranslation()
   const fmt = useProductFormat()
-  const subLine = useSubLine()
+  const text = useRowText()
   const asc = query.sort === 'name,asc'
   return (
     <div className="table-wrap">
@@ -295,6 +342,9 @@ function ProductTable({ page, query, onSort, ...rest }: RowsProps & { query: Lis
                 <span className="sr-only">, {t('products.sort_by_name')}</span>
                 <Icon name={asc ? 'up' : 'down'} />
               </button>
+            </th>
+            <th scope="col" className="col-cat">
+              {t('products.col_category')}
             </th>
             <th scope="col" className="r">
               {t('products.col_price')}
@@ -313,8 +363,13 @@ function ProductTable({ page, query, onSort, ...rest }: RowsProps & { query: Lis
             <tr key={p.id} className={p.active ? undefined : 'is-inactive'}>
               <td className="cell-title">
                 {p.name}
-                <span className="sub">{subLine(p)}</span>
+                {/* Entre 768 y 1023 px la ruta va aquí; desde 1024 px tiene columna propia (lo decide el CSS) */}
+                <span className="sub">
+                  {text.sku(p)}
+                  <span className="cat-inline"> · {text.path(p)}</span>
+                </span>
               </td>
+              <td className="col-cat">{text.path(p)}</td>
               <td className="r"><MoneyValue amount={p.salePrice} currency={p.salePriceCurrency} /></td>
               <td className="r">{fmt.quantity(p.stock.available, p.unit)}</td>
               <td>
@@ -335,7 +390,7 @@ function ProductTable({ page, query, onSort, ...rest }: RowsProps & { query: Lis
 function ProductCards({ page, ...rest }: RowsProps) {
   const { t } = useTranslation()
   const fmt = useProductFormat()
-  const subLine = useSubLine()
+  const text = useRowText()
   return (
     <ul className="card-list" aria-label={t('products.title')}>
       {page.content.map((p) => (
@@ -344,7 +399,7 @@ function ProductCards({ page, ...rest }: RowsProps) {
             <div className="p-card-head">
               <div>
                 <h2 id={`pc-${p.id}`}>{p.name}</h2>
-                <p className="small muted">{subLine(p)}</p>
+                <p className="small muted">{`${text.sku(p)} · ${text.path(p)}`}</p>
               </div>
               <ProductBadges product={p} />
             </div>
@@ -423,21 +478,3 @@ function ListSkeleton({ desktop }: { desktop: boolean }) {
   )
 }
 
-/** Error al cargar: de red (icono sin conexión) o del servidor (con `detail` y código para soporte). */
-function ListError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
-  const { t } = useTranslation()
-  const network = !isApiError(error) || error.kind === 'network'
-  return (
-    <section className="c-empty is-error">
-      <Icon name={network ? 'cloud-off' : 'alert'} />
-      <h2>{t(network ? 'net.unreachable_title' : 'products.load_error_title')}</h2>
-      <p>{network ? t('net.unreachable_body') : (isApiError(error) && error.detail) || t('net.unexpected_generic')}</p>
-      {!network && isApiError(error) && error.code && (
-        <p className="code">{t('products.error_code', { code: error.code })}</p>
-      )}
-      <button type="button" className="c-btn c-btn--secondary" onClick={onRetry}>
-        {t('common.retry')}
-      </button>
-    </section>
-  )
-}

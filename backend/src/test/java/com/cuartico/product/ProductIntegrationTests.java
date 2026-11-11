@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cuartico.category.CategoryFixtures;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +47,12 @@ class ProductIntegrationTests {
 
 	private static String operatorToken;
 
+	private static long foodId;
+
+	private static long clothingId;
+
+	private static long applianceId;
+
 	@Autowired
 	MockMvc mvc;
 
@@ -55,6 +62,9 @@ class ProductIntegrationTests {
 	@BeforeAll
 	static void tokens(@Autowired MockMvc mvc) throws Exception {
 		adminToken = login(mvc, "admin", "Admin123!test");
+		foodId = CategoryFixtures.rootId(mvc, adminToken, "FOOD");
+		clothingId = CategoryFixtures.rootId(mvc, adminToken, "CLOTHING");
+		applianceId = CategoryFixtures.rootId(mvc, adminToken, "APPLIANCE");
 		mvc.perform(post("/api/v1/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -69,7 +79,7 @@ class ProductIntegrationTests {
 	@Test
 	void createReturns201WithZeroStockAndStockRow() throws Exception {
 		String sku = unique("CRE");
-		MvcResult r = create(adminToken, body("Arroz", sku, "KG", "Granos", "2.50", "USD", "5"))
+		MvcResult r = create(adminToken, body("Arroz", sku, "KG", foodId, "2.50", "USD", "5"))
 			.andExpect(status().isCreated())
 			.andReturn();
 		// Location points to the new resource
@@ -82,7 +92,11 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.name").value("Arroz"))
 			.andExpect(jsonPath("$.sku").value(sku))
 			.andExpect(jsonPath("$.unit").value("KG"))
-			.andExpect(jsonPath("$.category").value("Granos"))
+			.andExpect(jsonPath("$.type").value("FOOD"))
+			.andExpect(jsonPath("$.category.id").value(foodId))
+			.andExpect(jsonPath("$.category.path").value("Alimentos"))
+			.andExpect(jsonPath("$.category.pathEn").value("Food"))
+			.andExpect(jsonPath("$.brand").doesNotExist())
 			.andExpect(jsonPath("$.salePrice").value(2.5))
 			.andExpect(jsonPath("$.salePriceCurrency").value("USD"))
 			.andExpect(jsonPath("$.minStock").value(5))
@@ -119,21 +133,20 @@ class ProductIntegrationTests {
 		String sku = unique("NRM");
 		String longName = "x".repeat(120);
 		create(adminToken, """
-				{"name":"  Arroz 1 kg  ","sku":" %s ","unit":"KG","category":"  ","minStock":0}
+				{"name":"  Arroz 1 kg  ","sku":" %s ","categoryId":@C,"unit":"KG","minStock":0}
 				""".formatted(sku.toLowerCase()))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.name").value("Arroz 1 kg"))
-			.andExpect(jsonPath("$.sku").value(sku))
-			.andExpect(jsonPath("$.category").doesNotExist());
+			.andExpect(jsonPath("$.sku").value(sku));
 
 		create(adminToken, """
-				{"name":"  %s  ","unit":"KG","minStock":0}
+				{"name":"  %s  ","categoryId":@C,"unit":"KG","minStock":0}
 				""".formatted(longName))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.name").value(longName));
 
 		create(adminToken, """
-				{"name":"   ","unit":"KG","minStock":0}
+				{"name":"   ","categoryId":@C,"unit":"KG","minStock":0}
 				""")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation.failed"))
@@ -208,6 +221,7 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.code").value("validation.failed"))
 			.andExpect(jsonPath("$.errors.name").value("no puede estar vacío"))
 			.andExpect(jsonPath("$.errors.unit").value("es obligatorio"))
+			.andExpect(jsonPath("$.errors.categoryId").value("es obligatorio"))
 			.andExpect(jsonPath("$.errors.minStock").value("debe ser mayor o igual que 0"))
 			.andExpect(jsonPath("$.errors.salePrice").value("debe ser mayor o igual que 0.00"))
 			.andExpect(jsonPath("$.errors.sku")
@@ -216,9 +230,9 @@ class ProductIntegrationTests {
 		mvc.perform(post(PRODUCTS).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
 				.header(HttpHeaders.ACCEPT_LANGUAGE, "en")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("""
-						{"name":"A","unit":"KG","minStock":0,"salePrice":1.234,"salePriceCurrency":"USD"}
-						"""))
+				.content(fix("""
+						{"name":"A","categoryId":@C,"unit":"KG","minStock":0,"salePrice":1.234,"salePriceCurrency":"USD"}
+						""")))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors.salePrice")
 				.value("number out of range (at most 10 integer digits and 2 decimals)"));
@@ -227,22 +241,22 @@ class ProductIntegrationTests {
 	@Test
 	void typeErrorsAreValidationFailedWithInvalidValue() throws Exception {
 		create(adminToken, """
-				{"name":"A","unit":"BOX","minStock":"abc","salePrice":true,"salePriceCurrency":"USD"}
+				{"name":"A","categoryId":@C,"unit":"BOX","minStock":"abc","salePrice":true,"salePriceCurrency":"USD"}
 				""")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation.failed"));
 		// Jackson reports one type error at a time: check each field on its own
-		create(adminToken, "{\"name\":\"A\",\"unit\":\"BOX\",\"minStock\":0}")
+		create(adminToken, "{\"name\":\"A\",\"categoryId\":@C,\"unit\":\"BOX\",\"minStock\":0}")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation.failed"))
 			.andExpect(jsonPath("$.errors.unit").value("valor no válido"));
-		create(adminToken, "{\"name\":\"A\",\"unit\":\"KG\",\"minStock\":\"abc\"}")
+		create(adminToken, "{\"name\":\"A\",\"categoryId\":@C,\"unit\":\"KG\",\"minStock\":\"abc\"}")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors.minStock").value("valor no válido"));
 		mvc.perform(post(PRODUCTS).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
 				.header(HttpHeaders.ACCEPT_LANGUAGE, "en")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"name\":\"A\",\"unit\":\"KG\",\"minStock\":0,\"salePrice\":true,\"salePriceCurrency\":\"USD\"}"))
+				.content(fix("{\"name\":\"A\",\"categoryId\":@C,\"unit\":\"KG\",\"minStock\":0,\"salePrice\":true,\"salePriceCurrency\":\"USD\"}")))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("validation.failed"))
 			.andExpect(jsonPath("$.errors.salePrice").value("invalid value"));
@@ -284,7 +298,7 @@ class ProductIntegrationTests {
 	@Test
 	void readOnlyFieldsInBodyAreIgnored() throws Exception {
 		create(adminToken, """
-				{"name":"Ignora","unit":"KG","minStock":0,"active":false,
+				{"name":"Ignora","categoryId":@C,"unit":"KG","minStock":0,"active":false,
 				 "stock":{"onHand":99},"onHand":99,"averageCost":5,"version":7}
 				""")
 			.andExpect(status().isCreated())
@@ -300,7 +314,7 @@ class ProductIntegrationTests {
 	void updateBumpsVersionAndRecordsUpdater() throws Exception {
 		int id = id(create(adminToken, body("Antes", unique("UPD"), "UNIT", null, null, null, "0")));
 		putJson(id, adminToken, """
-				{"name":" Despues ","sku":null,"unit":"KG","category":"Cat","salePrice":3,"salePriceCurrency":"CUP",
+				{"name":" Despues ","sku":null,"categoryId":@C,"unit":"KG","salePrice":3,"salePriceCurrency":"CUP",
 				 "minStock":2.5,"version":0}
 				""")
 			.andExpect(status().isOk())
@@ -314,7 +328,7 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.updatedBy").value("admin"));
 
 		putJson(id, operatorToken, """
-				{"name":"Por operador","unit":"KG","minStock":2.5,"version":1}
+				{"name":"Por operador","categoryId":@C,"unit":"KG","minStock":2.5,"version":1}
 				""")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.version").value(2))
@@ -326,13 +340,13 @@ class ProductIntegrationTests {
 	void updateWithStaleVersionIsConflict() throws Exception {
 		int id = id(create(adminToken, body("Concurrente", null, "UNIT", null, null, null, "0")));
 		putJson(id, adminToken, """
-				{"name":"Primero","unit":"UNIT","minStock":0,"version":0}
+				{"name":"Primero","categoryId":@C,"unit":"UNIT","minStock":0,"version":0}
 				""").andExpect(status().isOk());
 
 		mvc.perform(put(PRODUCTS + "/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken)
 				.header(HttpHeaders.ACCEPT_LANGUAGE, "en")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"name\":\"Segundo\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}"))
+				.content(fix("{\"name\":\"Segundo\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}")))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("resource.version_conflict"))
 			.andExpect(jsonPath("$.detail")
@@ -346,22 +360,22 @@ class ProductIntegrationTests {
 	void updateValidationAndNormalizationApplyToo() throws Exception {
 		int id = id(create(adminToken, body("Val", null, "UNIT", null, null, null, "0")));
 		putJson(id, adminToken, """
-				{"name":"   ","unit":"UNIT","minStock":0,"version":0}
+				{"name":"   ","categoryId":@C,"unit":"UNIT","minStock":0,"version":0}
 				""")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors.name").value("no puede estar vacío"));
 		putJson(id, adminToken, """
-				{"name":"Val","unit":"UNIT","minStock":0}
+				{"name":"Val","categoryId":@C,"unit":"UNIT","minStock":0}
 				""")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors.version").value("es obligatorio"));
 		putJson(id, adminToken, """
-				{"name":"Val","sku":" abc-1 ","unit":"UNIT","minStock":0,"version":0,"salePrice":1}
+				{"name":"Val","sku":" abc-1 ","categoryId":@C,"unit":"UNIT","minStock":0,"version":0,"salePrice":1}
 				""")
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("product.price_currency_mismatch"));
 		putJson(id, adminToken, """
-				{"name":"Val","sku":" %s ","unit":"UNIT","minStock":0,"version":0}
+				{"name":"Val","sku":" %s ","categoryId":@C,"unit":"UNIT","minStock":0,"version":0}
 				""".formatted(unique("n").toLowerCase()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.sku").value(org.hamcrest.Matchers.matchesPattern("^N-[A-Z0-9]+$")));
@@ -377,7 +391,7 @@ class ProductIntegrationTests {
 		mvc.perform(get(url).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
 				.header(HttpHeaders.ACCEPT_LANGUAGE, "en"))
 			.andExpect(jsonPath("$.detail").value("Product 999999 doesn't exist."));
-		putJson(999999, adminToken, "{\"name\":\"X\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}")
+		putJson(999999, adminToken, "{\"name\":\"X\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}")
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("product.not_found"));
 		postAction(url + "/deactivate", adminToken).andExpect(status().isNotFound())
@@ -401,11 +415,11 @@ class ProductIntegrationTests {
 		int a = id(create(adminToken, body("A", skuA, "UNIT", null, null, null, "0")));
 		create(adminToken, body("B", skuB, "UNIT", null, null, null, "0")).andExpect(status().isCreated());
 
-		putJson(a, adminToken, "{\"name\":\"A\",\"sku\":\"%s\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}"
+		putJson(a, adminToken, "{\"name\":\"A\",\"sku\":\"%s\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}"
 			.formatted(skuB.toLowerCase()))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("product.sku_conflict"));
-		putJson(a, adminToken, "{\"name\":\"A2\",\"sku\":\"%s\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}"
+		putJson(a, adminToken, "{\"name\":\"A2\",\"sku\":\"%s\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}"
 			.formatted(skuA))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.version").value(1));
@@ -415,7 +429,7 @@ class ProductIntegrationTests {
 	void inactiveProductCanBeEditedWithoutReactivating() throws Exception {
 		int id = id(create(adminToken, body("Viejo", null, "UNIT", null, null, null, "0")));
 		postAction(PRODUCTS + "/" + id + "/deactivate", adminToken).andExpect(status().isOk());
-		putJson(id, operatorToken, "{\"name\":\"Corregido\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":1}")
+		putJson(id, operatorToken, "{\"name\":\"Corregido\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":1}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.name").value("Corregido"))
 			.andExpect(jsonPath("$.active").value(false));
@@ -482,12 +496,12 @@ class ProductIntegrationTests {
 
 	@Test
 	void listDefaultsToAllProductsSortedByNameIgnoringCaseWithEnvelope() throws Exception {
-		String cat = unique("LST");
+		Long cat = newSub("LST");
 		create(adminToken, body("banana", null, "UNIT", cat, null, null, "0"));
 		create(adminToken, body("Cereal", null, "UNIT", cat, null, null, "0"));
 		create(adminToken, body("Aceite", null, "UNIT", cat, null, null, "0"));
 
-		list("category=" + cat)
+		list("categoryId=" + cat)
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content[*].name").value(contains("Aceite", "banana", "Cereal")))
 			.andExpect(jsonPath("$.page").value(0))
@@ -496,7 +510,7 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.totalPages").value(1))
 			.andExpect(jsonPath("$.content[0].stock.available").value(0));
 
-		list("category=" + cat + "&sort=name,desc")
+		list("categoryId=" + cat + "&sort=name,desc")
 			.andExpect(jsonPath("$.content[*].name").value(contains("Cereal", "banana", "Aceite")));
 	}
 
@@ -523,32 +537,32 @@ class ProductIntegrationTests {
 
 	@Test
 	void filterByActiveAndCategoryIgnoringCase() throws Exception {
-		String cat = unique("FLT");
+		Long cat = newSub("FLT");
 		int a = id(create(adminToken, body("Activo", null, "UNIT", cat, null, null, "0")));
 		int b = id(create(adminToken, body("Inactivo", null, "UNIT", cat, null, null, "0")));
 		postAction(PRODUCTS + "/" + b + "/deactivate", adminToken).andExpect(status().isOk());
 
-		list("category=" + cat.toLowerCase()).andExpect(jsonPath("$.totalElements").value(2));
-		list("category=" + cat + "&active=true").andExpect(jsonPath("$.totalElements").value(1))
+		list("categoryId=" + cat).andExpect(jsonPath("$.totalElements").value(2));
+		list("categoryId=" + cat + "&active=true").andExpect(jsonPath("$.totalElements").value(1))
 			.andExpect(jsonPath("$.content[0].id").value(a));
-		list("category=" + cat + "&active=false").andExpect(jsonPath("$.totalElements").value(1))
+		list("categoryId=" + cat + "&active=false").andExpect(jsonPath("$.totalElements").value(1))
 			.andExpect(jsonPath("$.content[0].id").value(b))
 			.andExpect(jsonPath("$.content[0].lowStock").value(false));
 	}
 
 	@Test
 	void paginationAndOutOfRangePage() throws Exception {
-		String cat = unique("PAG");
+		Long cat = newSub("PAG");
 		for (int i = 1; i <= 5; i++) {
 			create(adminToken, body("P" + i, null, "UNIT", cat, null, null, "0"));
 		}
-		list("category=" + cat + "&size=2&page=1")
+		list("categoryId=" + cat + "&size=2&page=1")
 			.andExpect(jsonPath("$.content[*].name").value(contains("P3", "P4")))
 			.andExpect(jsonPath("$.page").value(1))
 			.andExpect(jsonPath("$.size").value(2))
 			.andExpect(jsonPath("$.totalElements").value(5))
 			.andExpect(jsonPath("$.totalPages").value(3));
-		list("category=" + cat + "&size=2&page=9")
+		list("categoryId=" + cat + "&size=2&page=9")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.content").isEmpty())
 			.andExpect(jsonPath("$.totalElements").value(5));
@@ -589,33 +603,23 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.code").value("request.invalid_sort"));
 		list("sort=password").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("request.invalid_sort"));
-		for (String ok : List.of("name", "sku,asc", "category,desc", "createdAt,desc")) {
+		for (String ok : List.of("name", "sku,asc", "name,desc", "createdAt,desc")) {
 			list("sort=" + ok).andExpect(status().isOk());
 		}
 		// Same name: ties are broken by id
-		String cat = unique("STB");
+		Long cat = newSub("STB");
 		int first = id(create(adminToken, body("Igual", null, "UNIT", cat, null, null, "0")));
 		int second = id(create(adminToken, body("Igual", null, "UNIT", cat, null, null, "0")));
-		list("category=" + cat + "&sort=name,asc")
+		list("categoryId=" + cat + "&sort=name,asc")
 			.andExpect(jsonPath("$.content[0].id").value(first))
 			.andExpect(jsonPath("$.content[1].id").value(second));
 	}
 
 	@Test
-	void categoriesAreDistinctNonNullSorted() throws Exception {
-		String suffix = UUID.randomUUID().toString().substring(0, 6);
-		create(adminToken, body("c1", null, "UNIT", "Zeta" + suffix, null, null, "0"));
-		create(adminToken, body("c2", null, "UNIT", "alfa" + suffix, null, null, "0"));
-		create(adminToken, body("c3", null, "UNIT", "alfa" + suffix, null, null, "0"));
-		create(adminToken, body("c4", null, "UNIT", null, null, null, "0"));
-
-		MvcResult r = mvc.perform(get(PRODUCTS + "/categories").header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$[?(@ == 'alfa" + suffix + "')]").value(contains("alfa" + suffix)))
-			.andReturn();
-		List<String> cats = JsonPath.read(r.getResponse().getContentAsString(), "$");
-		org.junit.jupiter.api.Assertions.assertTrue(cats.indexOf("alfa" + suffix) < cats.indexOf("Zeta" + suffix));
-		org.junit.jupiter.api.Assertions.assertFalse(cats.contains(null));
+	void retiredCategoriesEndpointIs404() throws Exception {
+		mvc.perform(get(PRODUCTS + "/categories").header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("request.not_found"));
 	}
 
 	@Test
@@ -655,7 +659,7 @@ class ProductIntegrationTests {
 			.andExpect(status().isOk());
 		mvc.perform(get(PRODUCTS + "/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + operatorToken))
 			.andExpect(status().isOk());
-		putJson(id, operatorToken, "{\"name\":\"Editado\",\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}")
+		putJson(id, operatorToken, "{\"name\":\"Editado\",\"categoryId\":@C,\"unit\":\"UNIT\",\"minStock\":0,\"version\":0}")
 			.andExpect(status().isOk());
 	}
 
@@ -669,14 +673,23 @@ class ProductIntegrationTests {
 		return JsonPath.read(r.getResponse().getContentAsString(), "$.accessToken");
 	}
 
+	/** Replaces the @C placeholder with the id of the seeded FOOD root. */
+	private static String fix(String json) {
+		return json.replace("@C", String.valueOf(foodId));
+	}
+
+	private Long newSub(String prefix) throws Exception {
+		return CategoryFixtures.createChild(mvc, adminToken, foodId, prefix);
+	}
+
 	private static String unique(String prefix) {
 		return (prefix + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10)).toUpperCase();
 	}
 
-	private static String body(String name, String sku, String unit, String category, String price, String currency,
+	private static String body(String name, String sku, String unit, Long categoryId, String price, String currency,
 			String minStock) {
-		return "{\"name\":%s,\"sku\":%s,\"unit\":%s,\"category\":%s,\"salePrice\":%s,\"salePriceCurrency\":%s,\"minStock\":%s}"
-			.formatted(str(name), str(sku), str(unit), str(category), price == null ? "null" : price, str(currency),
+		return "{\"name\":%s,\"sku\":%s,\"unit\":%s,\"categoryId\":%s,\"salePrice\":%s,\"salePriceCurrency\":%s,\"minStock\":%s}"
+			.formatted(str(name), str(sku), str(unit), categoryId == null ? foodId : categoryId, price == null ? "null" : price, str(currency),
 					minStock);
 	}
 
@@ -687,13 +700,13 @@ class ProductIntegrationTests {
 	private ResultActions create(String token, String json) throws Exception {
 		return mvc.perform(post(PRODUCTS).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
 			.contentType(MediaType.APPLICATION_JSON)
-			.content(json));
+			.content(fix(json)));
 	}
 
 	private ResultActions putJson(int id, String token, String json) throws Exception {
 		return mvc.perform(put(PRODUCTS + "/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
 			.contentType(MediaType.APPLICATION_JSON)
-			.content(json));
+			.content(fix(json)));
 	}
 
 	private ResultActions postAction(String url, String token) throws Exception {

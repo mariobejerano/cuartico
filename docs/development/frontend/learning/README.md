@@ -23,6 +23,11 @@ Se amplía con cada historia. Orden recomendado de lectura: de arriba abajo.
 | 16 | [Estado en la URL (búsqueda, filtros, página)](#16-estado-en-la-url-búsqueda-filtros-página) | 1 (HU-02) |
 | 17 | [Formularios de verdad: validación, errores del servidor y «¿descartar?»](#17-formularios-de-verdad-validación-errores-del-servidor-y-descartar) | 1 (HU-02) |
 | 18 | [Contexto: los avisos (toasts)](#18-contexto-los-avisos-toasts) | 1 (HU-02) |
+| 19 | [Componentes recursivos: el árbol de categorías](#19-componentes-recursivos-el-árbol-de-categorías) | 2 (HU-15) |
+| 20 | [Selects dependientes: un campo decide los demás](#20-selects-dependientes-un-campo-decide-los-demás) | 2 (HU-15) |
+| 21 | [Validación que depende del contexto (esquemas "fábrica")](#21-validación-que-depende-del-contexto-esquemas-fábrica) | 2 (HU-15) |
+| 22 | [Diálogos que se montan al abrirse](#22-diálogos-que-se-montan-al-abrirse) | 2 (HU-15) |
+| 23 | [Permisos en la interfaz: «No tienes acceso»](#23-permisos-en-la-interfaz-no-tienes-acceso) | 2 (HU-15) |
 
 ---
 
@@ -344,6 +349,116 @@ después de volver al listado.
 **Cuándo NO usar contexto.** Para datos de la API (eso es TanStack Query) ni para estado que solo usa un componente
 (`useState`). El contexto es para cosas transversales: sesión, idioma, avisos.
 
+## 19. Componentes recursivos: el árbol de categorías
+**Qué es.** Un componente que, para pintar a sus hijos, **se usa a sí mismo**. Es lo mismo que un método recursivo en Java
+que recorre un árbol.
+
+Ejemplo mínimo (fuera del proyecto):
+```tsx
+type Node = { name: string; children: Node[] }
+function Tree({ node }: { node: Node }) {
+  return (
+    <li>
+      {node.name}
+      {node.children.length > 0 && (
+        <ul>{node.children.map((c) => <Tree key={c.name} node={c} />)}</ul>   {/* ← se llama a sí mismo */}
+      )}
+    </li>
+  )
+}
+```
+Equivalente Java: `void print(Node n) { System.out.println(n.name); n.children.forEach(this::print); }`.
+**¿Cuándo para?** Cuando un nodo no tiene hijos: no se pinta la `<ul>` y no hay más llamadas (como el caso base).
+
+**Por qué aquí.** La API devuelve las categorías como **lista plana** (cada una con su `parentId`), igual que una tabla
+SQL con clave foreign a sí misma. En `features/categories/tree.ts`, `indexCategories` construye una vez un índice
+«hijas de X» (un `Map<parentId, List<Category>>`, como harías en un Service) y `CategoryNode.tsx` lo recorre
+recursivamente. Las props se pasan tal cual al hijo con `{...props}` cambiando solo `category`.
+
+**Detalles que importan.**
+- La `key` de cada hijo es su `id`: React la usa para saber qué fila es cuál al repintar (como el `equals` de una entidad).
+- Encabezados `h2` (raíz) y `h3` (resto) dentro de listas `<ul>` anidadas: el lector de pantalla anuncia «lista, nivel 2»
+  sin necesidad de `role="tree"` (que obligaría a navegar con flechas; decisión de Lienzo).
+
+**En el código.** `features/categories/CategoryNode.tsx`, `tree.ts` (lógica pura con tests en `tree.test.ts`).
+
+## 20. Selects dependientes: un campo decide los demás
+**Qué es.** Formularios donde el valor de un campo cambia qué otros campos hay o qué opciones ofrecen. En Cuartico:
+- **Producto**: la *categoría* decide el *tipo*; el tipo decide si se ven «Modelo» y «Garantía» y si la unidad queda fija.
+- **Listado**: el filtro *Tipo* limita las opciones de *Categoría*; si la elegida no es del tipo nuevo, se quita.
+- **Diálogo de categoría**: el *padre* decide si se pide el tipo (raíz) o se muestra heredado (hija).
+
+**Cómo se hace en React.** No hay "listeners" que enseñen u oculten cosas a mano (como en jQuery). Se **lee** el valor y
+se **deriva** lo demás en cada pintada:
+```tsx
+const categoryId = useWatch({ control, name: 'categoryId' })   // se repinta cuando cambia
+const type = typeOf(categoryId)                                 // valor DERIVADO: no es estado
+{type === 'APPLIANCE' && <ModelAndWarrantyFields />}            // se ve o no según el tipo
+<select disabled={isUnitLocked(type)} …>
+```
+Regla de oro: **no guardes en estado lo que puedes calcular** (como no guardarías en la BD una columna que es la suma de
+otras). Solo es estado lo que el usuario hace (el valor de la categoría) o lo que pasó (el aviso «este tipo no usa
+modelo…», que guardamos como *qué ocurrió*, no como texto, para que cambie con el idioma).
+
+**Truco del "valor anterior".** En `onCategoryChange` (`ProductFormPage.tsx`), la variable `type` aún es la de la
+pintada anterior: la función se creó antes del cambio. Así comparamos «antes» y «después» sin guardar nada extra.
+
+**Los datos ocultos no se pierden pero tampoco se envían.** Si cambias un electrodoméstico a alimento, el modelo sigue en
+el formulario (si vuelves, reaparece), pero `toRequest(values, type)` lo manda como `null`: el servidor nunca borra
+atributos por su cuenta (ADR-003), así que lo hace el frontend.
+
+## 21. Validación que depende del contexto (esquemas "fábrica")
+**Problema.** Algunas reglas no se pueden decidir mirando un campo solo: «la garantía es obligatoria de 0 a 120 *si* el
+tipo es electrodoméstico», «el nombre no puede repetirse *entre las hermanas del padre elegido*».
+
+**Solución.** En vez de un esquema fijo, una **función que construye el esquema** con lo que necesita saber:
+```ts
+export function buildCategorySchema(ctx: { index, lang, editing }) {
+  return z.object({ name: z.string().trim().min(1, …), … })
+    .superRefine((values, issues) => {               // validación "a nivel de clase"
+      if (findNameConflict(siblingsOf(ctx.index, parentId), values.name))
+        issues.addIssue({ code: 'custom', path: ['name'], message: msg('api.category.name_conflict', …) })
+    })
+}
+```
+**Analogía.** Un `ConstraintValidator` a nivel de clase en Bean Validation (`@ScriptAssert`, o uno propio) al que le
+inyectas un repositorio. `useMemo` evita reconstruirlo en cada pintada: solo cuando cambia el contexto.
+
+**Por qué comprobar el duplicado en el navegador.** El árbol ya está cargado: el error sale al salir del campo, sin esperar
+al servidor. Pero **la garantía sigue siendo la BD** (restricción única → 409): si dos personas crean «Granos» a la vez,
+el 409 se pinta en el mismo campo con el mismo texto.
+
+**Aviso no bloqueante.** «Lacteos» y «Lácteos» no chocan en la BD (`LOWER` no quita tildes). Lo detectamos con
+`normalize('NFD')` (separa «á» en «a» + tilde) y quitando las marcas, y mostramos un aviso ámbar que **no** impide guardar.
+
+## 22. Diálogos que se montan al abrirse
+**Dos maneras de tener un diálogo.**
+1. Siempre montado y con una prop `open` (`ConfirmDialog`): sirve para diálogos sin formulario.
+2. **Montado solo mientras está abierto** (`CategoryDialog`, `ActionsSheet`): `{form && <CategoryDialog … />}`.
+   Al montarse llama a `showModal()`; al cerrarse, el evento `close` avisa al padre, que pone el estado a `null` y
+   React lo desmonta. Ventaja: **cada apertura empieza limpia** (el formulario se crea de nuevo con sus valores iniciales),
+   sin tener que "resetear" nada. Analogía: un bean con *scope prototype* frente a uno *singleton*.
+
+**Encadenar diálogos (móvil).** En la hoja «⋯» se elige «Renombrar»: guardamos la acción en un `useRef`, cerramos la
+hoja y, en su evento `close`, lanzamos la acción. Así el diálogo nuevo no se abre encima del anterior y, al terminar, el
+navegador devuelve el foco al botón «⋯».
+
+**Una regla del linter que aparece aquí.** `react-hooks/refs` prohíbe leer `ref.current` en lo que se prepara durante
+el render (p. ej. dentro de `handleSubmit(onSubmit)`). Por eso, tras guardar, ponemos `saved = true` y un **efecto**
+cierra el diálogo: los refs se tocan en efectos y en manejadores de eventos, nunca al pintar.
+
+## 23. Permisos en la interfaz: «No tienes acceso»
+`RequireRole` (en `auth/guards.tsx`) es el `@PreAuthorize` de la interfaz. Con la prop `fallback` muestra algo en lugar
+de la página:
+```tsx
+<RequireRole roles={['ADMIN']} fallback={<ForbiddenPage />}>
+  <CategoriesPage />
+</RequireRole>
+```
+Como `CategoriesPage` se carga con `lazy()`, un OPERATOR **ni siquiera descarga su código**. Pero recuerda: esto solo
+**esconde**; la seguridad real es el 403 del backend. El menú también depende del rol (`layout/navItems.ts`): el ADMIN ve
+«Categorías» en la barra lateral y la pestaña «Cuenta» del móvil pasa a «Más» con una sección «Gestión».
+
 ---
 
 ## Mini-ejercicios opcionales
@@ -355,3 +470,8 @@ después de volver al listado.
 5. Busca algo en Productos, pasa a la página 2, entra a editar un producto y pulsa «Volver a productos»: fíjate en la URL.
    Después recarga la página: la vista se conserva (tema 16).
 6. Abre el mismo producto en dos pestañas, guarda en una y luego en la otra: verás el aviso de conflicto de versión (tema 17).
+7. (HU-15) En `CategoryNode.tsx` añade `console.count(c.name)` temporalmente, abre Categorías y mira cuántas veces se pinta
+   cada nodo (y bórralo: `console.log` está prohibido en el código). Es la recursión en directo.
+8. (HU-15) En un producto nuevo elige «Electrodomésticos › Cocina», escribe un modelo y cambia a «Alimentos › Granos»: lee el
+   aviso ámbar; vuelve a Cocina y comprueba que el modelo sigue ahí (tema 20).
+9. (HU-15) En la página de categorías, intenta crear «lacteos» dentro de Alimentos (aviso) y «LÁCTEOS» (error) (tema 21).

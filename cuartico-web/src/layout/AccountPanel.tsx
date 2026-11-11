@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { UserResponse } from '../api/types'
 import { session } from '../auth/session'
@@ -9,7 +10,18 @@ import { LanguageSwitch } from '../components/LanguageSwitch'
  * La usan la barra lateral (escritorio) y la hoja inferior (móvil/tablet).
  * `nameId` permite que en la hoja el nombre sea el título (`h2`) del diálogo.
  */
-export function AccountPanel({ user, nameId, onLogout }: { user: UserResponse; nameId?: string; onLogout?: () => void }) {
+export function AccountPanel({
+  user,
+  nameId,
+  onLogout,
+  children,
+}: {
+  user: UserResponse
+  nameId?: string
+  onLogout?: () => void
+  /** Lo que va entre el nombre y el idioma (en la hoja «Más»: la sección «Gestión»). */
+  children?: ReactNode
+}) {
   const { t } = useTranslation()
   const logout = () => {
     onLogout?.()
@@ -27,6 +39,7 @@ export function AccountPanel({ user, nameId, onLogout }: { user: UserResponse; n
         )}
         <span className="c-tag">{t(`role.${user.role}`)}</span>
       </div>
+      {children}
       <LanguageSwitch variant="select" />
       <button type="button" className="c-btn c-btn--secondary" onClick={logout}>
         <Icon name="logout" />

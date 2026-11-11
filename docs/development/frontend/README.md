@@ -1,6 +1,6 @@
 # Frontend: desarrollo
 
-Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el login, la sesión y el layout del panel (HU-01) y el catálogo de productos (HU-02).
+Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el login, la sesión y el layout del panel (HU-01), el catálogo de productos (HU-02) y las categorías con atributos por tipo (HU-15, Sprint 2).
 `combazo-web/` llegará en la fase 2.
 
 | Documento | Para qué |
@@ -86,15 +86,16 @@ cuartico-web/
 └── src/
     ├── main.tsx            Punto de entrada (como el main de Spring Boot)
     ├── app/                App (providers), tabla de rutas y "wiring" (conexión entre piezas)
-    ├── config/env.ts       Lectura de VITE_* (un único sitio)
+    ├── config/             env.ts (lectura de VITE_*) y currencies.ts (monedas admitidas, un único sitio)
     ├── api/                SIN React: cliente HTTP, errores, tipos de la API, endpoints
     ├── auth/               Sesión (sin React) + hooks y guardas de rutas (con React)
     ├── i18n/               i18next y locales/es.json, en.json
     ├── components/         Piezas de UI reutilizables (Alert, Icon, ConfirmDialog, toast, OfflineNotice, useMediaQuery…)
-    ├── layout/             Esqueleto del panel: barra lateral, barra inferior, hoja de cuenta
+    ├── layout/             Esqueleto del panel: barra lateral, barra inferior, hoja «Cuenta»/«Más», navItems.ts (menú por rol)
     ├── features/login/     La pantalla de login y su esquema de validación
-    ├── features/products/  Catálogo de productos (HU-02): ver la tabla «Productos» más abajo
-    ├── pages/              Páginas simples (Inicio, 404)
+    ├── features/products/  Catálogo de productos (HU-02, HU-15): ver la tabla «Productos» más abajo
+    ├── features/categories/ Categorías (HU-15): ver «Categorías» más abajo
+    ├── pages/              Páginas simples (Inicio, 404, «No tienes acceso»)
     ├── styles/             tokens.css (copia de docs/design) y global.css
     └── test/               Utilidades de test (API falsa, renderApp)
 ```
@@ -139,10 +140,11 @@ Rutas: `/products` (listado), `/products/new` y `/products/:id/edit` (formulario
 | Archivo (`src/`) | Responsabilidad |
 |---|---|
 | `api/types.ts` | Tipos del contrato: `ProductResponse`, `StockSummary`, `Create/UpdateProductRequest`, `ProductListParams`, `PageResponse<T>`, `UNITS` |
-| `api/products.ts` | Endpoints (`list`, `get`, `categories`, `create`, `update`, `activate`, `deactivate`). Sin React |
-| `features/products/queries.ts` | TanStack Query: claves de caché (`productKeys`), `useProductList`, `useProduct`, `useCategories`, `useSaveProduct`, `useSetProductActive` |
-| `features/products/listQuery.ts` | Estado del listado en la URL (`?q=&cat=&status=&page=&sort=`) ⇄ parámetros de la API. Puro |
-| `features/products/productSchema.ts` | Esquema Zod del formulario (mismas reglas que la API), valores iniciales y `toRequest` (normaliza como el backend) |
+| `api/products.ts` | Endpoints (`list`, `get`, `create`, `update`, `activate`, `deactivate`). Sin React. `GET /products/categories` ya no existe (HU-15) |
+| `features/products/queries.ts` | TanStack Query: claves de caché (`productKeys`), `useProductList`, `useProduct`, `useSaveProduct`, `useSetProductActive` |
+| `features/products/listQuery.ts` | Estado del listado en la URL (`?q=&type=&cat=<id>&status=&page=&sort=`) ⇄ parámetros de la API (`type`, `categoryId`). `page` > 1 000 000 → 1 (TT-14). Puro |
+| `features/products/productSchema.ts` | Esquema Zod del formulario como **fábrica** (`buildProductFormSchema(typeOf)`: reglas según el tipo), valores iniciales y `toRequest(values, type)` (normaliza como el backend; modelo/garantía `null` fuera de electrodomésticos, unidad `UNIT` en ropa y electrodomésticos) |
+| `features/products/typeRules.ts` | Reglas por tipo (CA-16, CA-17) y avisos al cambiar de tipo. Puro |
 | `features/products/format.ts` | `Intl`: importes («3,50 USD»), cantidades («12,5 kg»), fechas, coma/punto decimal. Puro |
 | `features/products/stockBadge.ts` + `features.ts` | Etiquetas «Sin stock»/«Stock bajo» completas pero **apagadas** con `SHOW_STOCK_BADGES = false` hasta HU-04 |
 | `features/products/navigation.ts` | «Volver al listado» con la misma búsqueda, filtros y página (`state.listSearch` en el historial) |
@@ -151,7 +153,7 @@ Rutas: `/products` (listado), `/products/new` y `/products/:id/edit` (formulario
 | `features/products/ProductFormPage.tsx` | Alta/edición: validación, errores del servidor en su campo, conflicto de versión, «¿Descartar los cambios?» (`useBlocker`) |
 
 Decisiones de implementación:
-- **Contrato**: el de la historia, verificado contra el real de Forja-Back (2026-11-07): sin diferencias.
+- **Contrato**: HU-02 verificado contra el real de Forja-Back (2026-11-07) y HU-15 (2026-11-10): sin diferencias.
 - **Una sola vista por tamaño**: `useMediaQuery('(min-width: 768px)')` pinta la tabla **o** las tarjetas (no ambas ocultando una con CSS): menos DOM y sin duplicados para lectores de pantalla.
 - **Caché**: tras guardar se invalida `['products']` (listados, detalle, categorías). Tras activar/desactivar se escribe el detalle con la respuesta y se invalidan solo listados y categorías, para no repintar un formulario abierto.
 - **Versión en la edición**: el formulario edita contra la versión que cargó; activar/desactivar desde el formulario actualiza esa versión con la respuesta (no se pierde lo escrito ni se provoca un 409 propio). Un 409 `resource.version_conflict` ofrece «Recargar producto» (se pierde lo escrito, aceptado en Sprint 1).
@@ -161,5 +163,44 @@ Decisiones de implementación:
 - **Claves i18n**: las de `copy.md`, con dos ajustes técnicos: el plural es `products.results_one` / `products.results_other` (formato de plurales de i18next) y se añadieron `products.no_price` («—») y `products.sku` («SKU»). Los mensajes de Zod se guardan como `clave|{"max":120}` y se traducen al pintar.
 - **Tests**: `features/products/logic.test.ts` (funciones puras), `ProductsListPage.test.tsx` y `ProductFormPage.test.tsx` (flujos con la API falsa; datos en `test/productFixtures.ts`). Para ver la tabla en un test se simula `matchMedia`.
 
-Pendiente / mejoras futuras: `SHOW_STOCK_BADGES = true` con HU-04; mostrar ambas versiones en un conflicto de edición; tipos generados desde `/v3/api-docs`; la lista de monedas (`CURRENCIES` en `productSchema.ts`) está duplicada a mano respecto a `app.currencies.supported`: si se amplía, leerla de la API.
+Pendiente / mejoras futuras: `SHOW_STOCK_BADGES = true` con HU-04; mostrar ambas versiones en un conflicto de edición; tipos generados desde `/v3/api-docs`; monedas desde la API cuando exista `GET /api/v1/config` (hoy `config/currencies.ts` es la única lista del frontend, debe coincidir con `app.currencies.supported`).
+
+### Cambios de HU-15 en productos
+- **Formulario**: selector de categoría obligatorio con la ruta completa (activas + la actual si está inactiva, marcada
+  «(inactiva)»); debajo «Tipo: …». Marca siempre; Modelo y Garantía (meses, 0–120) solo en electrodomésticos; unidad fija y
+  deshabilitada en ropa y electrodomésticos. Al cambiar a otro tipo, aviso ámbar (`role="status"`) si se pierden modelo/garantía
+  o cambia la unidad; los valores ocultos se conservan en pantalla pero no se envían. SKU y Stock mínimo pasan a la tarjeta
+  «Inventario» (donde HU-16 pondrá «Tiene tallas o colores»).
+- **Errores**: `product.category_not_found` / `category.inactive` → campo Categoría («Esta categoría se ha desactivado…») y
+  se recargan las categorías; `product.attribute_not_allowed` / `unit_not_allowed` → alerta genérica (la UI no los provoca).
+- **Listado**: filtros Tipo y Categoría (todas, inactivas marcadas; con tipo, solo las suyas; si la elegida no es del tipo, se
+  quita). Un `cat` de texto (enlaces viejos) o un id inexistente se ignora. Columna «Categoría» desde 1024 px; por debajo la ruta va
+  en la línea secundaria (CSS `.col-cat` / `.cat-inline`).
+- **TT-14**: `page` absurda → página 1; el formulario de edición no se desmonta si falla un refetch en segundo plano (se
+  comprueba `product.data` antes que `isError`); monedas en `config/currencies.ts`.
+- **Textos que no se cambiaron todavía**: `products.sale_price_help` y `api.product.sku_conflict` tienen versión nueva en
+  `copy.md` §9 que habla de tallas/colores y variantes: se aplicarán con HU-16.
+
+## Categorías (HU-15)
+
+Ruta `/categories`, solo ADMIN (`RequireRole` con `fallback` → `pages/ForbiddenPage.tsx` para un OPERATOR que llega por
+URL). Entrada en la barra lateral debajo de Productos (solo ADMIN) y, en móvil, en la hoja «Más» (sección «Gestión»); para
+OPERATOR la pestaña sigue siendo «Cuenta» (D-4).
+
+| Archivo (`src/`) | Responsabilidad |
+|---|---|
+| `api/categories.ts` | Endpoints (`list`, `get`, `create`, `update`, `activate`, `deactivate`). Sin React |
+| `features/categories/tree.ts` | Lógica pura: índice por padre, nombre/ruta por idioma (`nameEn ?? name`), normalización (`nameKey` = `LOWER(TRIM)`, `looseKey` sin tildes para el aviso), duplicados, opciones de padre/filtro/selector, acciones por fila |
+| `features/categories/queries.ts` | `categoryKeys`, `useCategories` (una sola lista, todas, 5 min en caché; la comparten árbol, filtro y formulario), mutaciones que actualizan la caché con la respuesta e invalidan categorías **y productos** (las rutas cambian al renombrar) |
+| `features/categories/categorySchema.ts` | Esquema-fábrica del diálogo (tipo obligatorio en raíz, duplicado local con el mismo texto que el 409) y cuerpos `POST`/`PUT` (`productType` solo en raíz) |
+| `features/categories/CategoriesPage.tsx` | Página: carga/error, «Mostrar inactivas (n)», raíces como tarjetas, «Nueva categoría» (botón o FAB), fila nueva iluminada |
+| `features/categories/CategoryNode.tsx` | Nodo **recursivo** del árbol; acciones en la fila (≥ 768 px) o botón «⋯» (móvil) |
+| `features/categories/ActionsSheet.tsx` | Hoja de acciones del móvil con notas «Último nivel…» / «Inactiva…» |
+| `features/categories/CategoryDialog.tsx` | Crear/renombrar: padre (activas de nivel 1–2), tipo o tipo heredado con candado, nombres es/en, errores en su campo, aviso de tildes, conflicto de versión con «Recargar categoría», aviso de servidor dormido dentro del diálogo |
+| `features/categories/useCategoryToggle.tsx` | Desactivar (bloqueo si hay hijas activas, confirmación con «N productos conservan esta categoría» si `productCount` > 0, «Deshacer») y activar (bloqueo si la superior está inactiva) |
+| `features/categories/keys.ts` | Claves de caché de categorías (archivo aparte para que `products/queries.ts` las invalide sin import circular): alta, cambio de categoría y activar/desactivar un producto invalidan las categorías y así `productCount` no queda desfasado (test en `features/products/queries.test.tsx`) |
+
+Decisiones: los bloqueos (hijas activas, superior inactiva, padre inválido, duplicado) se detectan en el navegador con el
+árbol cargado, pero los 409/400 por carrera se tratan igual (campo o aviso de error) y recargan el árbol. Tests:
+`tree.test.ts` (lógica y esquema) y `CategoriesPage.test.tsx` (flujos); navegación y «Sin acceso» en `layout/AppLayout.test.tsx`.
 

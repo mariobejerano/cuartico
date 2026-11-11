@@ -1,7 +1,9 @@
 # Modelo entidad-relación
 
-Estado propuesto al cerrar el sprint 1: V1 + productos ([HU-02](../stories/HU-02-products.md)) + ventana de gracia del
-refresh ([HU-01](../stories/HU-01-panel-access.md) CA-28 a CA-33). Se amplía con cada historia.
+Sprint 1: V1 + productos ([HU-02](../stories/HU-02-products.md)) + ventana de gracia del refresh
+([HU-01](../stories/HU-01-panel-access.md) CA-28 a CA-33), en el primer diagrama. Sprint 2: **V4 implementada**
+([HU-15](../stories/HU-15-categories-and-type-attributes.md), rama `feature/hu-15-categories`, pendiente de merge) y V5
+pendiente ([HU-16](../stories/HU-16-product-variants.md)), en la sección de ADR-003. Se amplía con cada historia.
 
 ```mermaid
 erDiagram
@@ -60,10 +62,11 @@ erDiagram
 Notas: `refresh_tokens` y `product_stock` no extienden `AuditableEntity` (no las edita un usuario). Índices: los `UK`
 (`username`, `token_hash`, `sku`), `idx_refresh_tokens_user` e `idx_refresh_tokens_replaced_by` (nuevo); productos no lleva índices de búsqueda (ver HU-02, migración).
 
-## Propuesta ADR-003 (no implementada)
+## Modelo ADR-003 (V4 implementada, V5 pendiente)
 
-> **Aceptado, aún no implementado**: [ADR-003](../adr/ADR-003-categories-types-variants.md) (2026-11-09), se
-> implementa en HU-15 (V4) y HU-16 (V5). Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
+> [ADR-003](../adr/ADR-003-categories-types-variants.md) (aceptado 2026-11-09). **V4 implementada** (HU-15, sprint 2:
+> `categories`, `products.category_id`, `brand`, `model`, `warranty_months`; pendiente de merge). **V5 pendiente**
+> (HU-16: `product_variants`, `variant_stock`); hasta entonces sigue vigente `product_stock` del primer diagrama. Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
 > `products.category` (texto) por `categories` (árbol) y `product_stock` por `variant_stock` (1:1 con la variante).
 > Se quitan de `products`: `category`, `sku`, `min_stock` (pasan a categoría y variante).
 
