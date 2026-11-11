@@ -1,11 +1,11 @@
 package com.cuartico.product;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 import com.cuartico.category.Category;
 import com.cuartico.common.AuditableEntity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -16,17 +16,19 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+/**
+ * Catalog product. SKU, low-stock threshold and stock live in its variants (ADR-003, HU-16). There is no
+ * collection of variants here on purpose: variants are always read and written through
+ * {@link ProductVariantRepository}, so no variant operation can bump this entity's version by accident (CA-13b).
+ */
 @Entity
 @Table(name = "products")
 public class Product extends AuditableEntity {
 
 	private static final int PRICE_SCALE = 2;
-
-	private static final int QUANTITY_SCALE = 3;
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,9 +36,6 @@ public class Product extends AuditableEntity {
 
 	@Column(nullable = false, length = 120)
 	private String name;
-
-	@Column(length = 50)
-	private String sku;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)
@@ -63,8 +62,12 @@ public class Product extends AuditableEntity {
 	@Column(length = 3)
 	private String salePriceCurrency;
 
-	@Column(nullable = false, precision = 12, scale = 3)
-	private BigDecimal minStock;
+	/**
+	 * false: exactly one hidden variant holds SKU, threshold and stock; true: one or more variants with size and/or
+	 * color. Changing it bumps the version of the product (it changes what the product form accepts).
+	 */
+	@Column(nullable = false)
+	private boolean hasVariants;
 
 	@Column(nullable = false)
 	private boolean active = true;
@@ -73,36 +76,40 @@ public class Product extends AuditableEntity {
 	@Column(nullable = false)
 	private long version;
 
-	/** Read-only cache of stock and cost (ADR-002); its owner is the inventory module (HU-04). */
-	@OneToOne(mappedBy = "product", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER, optional = false)
-	private ProductStock stock;
-
 	protected Product() {
 		// JPA
 	}
 
-	public Product(String name, String sku, UnitOfMeasure unit, Category category, String brand, String model,
-			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency, BigDecimal minStock) {
-		update(name, sku, unit, category, brand, model, warrantyMonths, salePrice, salePriceCurrency, minStock);
+	public Product(String name, UnitOfMeasure unit, Category category, String brand, String model,
+			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency, boolean hasVariants) {
+		update(name, unit, category, brand, model, warrantyMonths, salePrice, salePriceCurrency);
+		this.hasVariants = hasVariants;
 	}
 
-	public void update(String name, String sku, UnitOfMeasure unit, Category category, String brand, String model,
-			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency, BigDecimal minStock) {
+	/** Returns true when some value actually changed (so the caller knows whether the row will be written). */
+	public boolean update(String name, UnitOfMeasure unit, Category category, String brand, String model,
+			Integer warrantyMonths, BigDecimal salePrice, String salePriceCurrency) {
+		// Fixed scales (Digits validation guarantees no rounding is needed) so JSON is stable
+		BigDecimal scaledPrice = salePrice == null ? null : salePrice.setScale(PRICE_SCALE);
+		boolean changed = !Objects.equals(this.name, name) || this.unit != unit
+				|| this.category == null || !Objects.equals(this.category.getId(), category.getId())
+				|| !Objects.equals(this.brand, brand) || !Objects.equals(this.model, model)
+				|| !Objects.equals(this.warrantyMonths, warrantyMonths)
+				|| (this.salePrice == null ? scaledPrice != null : scaledPrice == null || this.salePrice.compareTo(scaledPrice) != 0)
+				|| !Objects.equals(this.salePriceCurrency, salePriceCurrency);
 		this.name = name;
-		this.sku = sku;
 		this.unit = unit;
 		this.category = category;
 		this.brand = brand;
 		this.model = model;
 		this.warrantyMonths = warrantyMonths;
-		// Fixed scales (Digits validation guarantees no rounding is needed) so JSON is stable
-		this.salePrice = salePrice == null ? null : salePrice.setScale(PRICE_SCALE);
+		this.salePrice = scaledPrice;
 		this.salePriceCurrency = salePriceCurrency;
-		this.minStock = minStock.setScale(QUANTITY_SCALE);
+		return changed;
 	}
 
-	void attachStock(ProductStock stock) {
-		this.stock = stock;
+	void setHasVariants(boolean hasVariants) {
+		this.hasVariants = hasVariants;
 	}
 
 	public void setActive(boolean active) {
@@ -115,10 +122,6 @@ public class Product extends AuditableEntity {
 
 	public String getName() {
 		return name;
-	}
-
-	public String getSku() {
-		return sku;
 	}
 
 	public UnitOfMeasure getUnit() {
@@ -149,8 +152,8 @@ public class Product extends AuditableEntity {
 		return salePriceCurrency;
 	}
 
-	public BigDecimal getMinStock() {
-		return minStock;
+	public boolean hasVariants() {
+		return hasVariants;
 	}
 
 	public boolean isActive() {
@@ -159,10 +162,6 @@ public class Product extends AuditableEntity {
 
 	public long getVersion() {
 		return version;
-	}
-
-	public ProductStock getStock() {
-		return stock;
 	}
 
 }

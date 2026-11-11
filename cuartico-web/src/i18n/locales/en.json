@@ -24,7 +24,8 @@
     "offline": "You're offline. Changes won't be saved until you're back online.",
     "skip_to_content": "Skip to content",
     "not_set": "Not set",
-    "got_it": "Got it"
+    "got_it": "Got it",
+    "edit": "Edit"
   },
   "validation": {
     "required": "This field is required.",
@@ -129,7 +130,7 @@
     "sale_price": "Reference sale price",
     "amount": "Amount",
     "currency": "Currency",
-    "sale_price_help": "A guide only. The actual price is set by each combo or order.",
+    "sale_price_help": "A guide only, the same for all sizes and colors. The actual price is set by each combo or order.",
     "section_stock": "Stock and cost",
     "on_hand": "On hand",
     "reserved": "Reserved",
@@ -176,7 +177,12 @@
     "months": "months",
     "warranty_help": "In months, from 0 to 120. For information only: shown when selling.",
     "unit_locked_help": "Fixed: {{type}} is counted in pieces.",
-    "section_inventory": "Inventory"
+    "section_inventory": "Inventory",
+    "has_variants": "Has sizes or colors",
+    "has_variants_help": "Tick it if each size or color has its own SKU and stock. Ticked by default for clothing.",
+    "stock_new_note_variants": "Each variant's stock starts at 0 and is updated by purchases and sales.",
+    "variant_count_one": "1 variant",
+    "variant_count_other": "{{count}} variants"
   },
   "product": {
     "sku_pattern": "Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_).",
@@ -278,6 +284,84 @@
       "parent_inactive": "The parent category is inactive. Activate it first or choose another one.",
       "has_active_children": "It has active subcategories. Deactivate them first.",
       "inactive": "This category has been deactivated. Choose another one."
+    },
+    "product": {
+      "sku_conflict": "SKU {{sku}} is already used by another product or variant."
+    },
+    "variant": {
+      "options_conflict": "Variant {{options}} already exists in this product."
     }
+  },
+  "variants": {
+    "section": "Sizes and colors",
+    "title_count": "Sizes and colors ({{count}})",
+    "col_variant": "Variant",
+    "size": "Size",
+    "color": "Color",
+    "count_one": "1 variant",
+    "count_other": "{{count}} variants",
+    "count_inactive": "{{count}} inactive",
+    "badge_inactive": "Inactive",
+    "remove": "Remove {{name}}",
+    "required": "Add at least one variant: choose sizes or colors and press \"Add variants\".",
+    "max": "A product can have up to 100 variants.",
+    "add": "Add variants",
+    "immediate_note": "Each variant is saved with its own button, without \"Save product\".",
+    "total_title": "Total of all variants",
+    "total_note": "Sum of all variants, inactive ones included. Updated by purchases and sales.",
+    "save_row": "Save variant",
+    "saved": "Variant \"{{name}}\" saved.",
+    "staged_one": "1 variant to save",
+    "staged_other": "{{count}} variants to save",
+    "save_new_zero": "Save new variants",
+    "save_new_one": "Save 1 new variant",
+    "save_new_other": "Save {{count}} new variants",
+    "added_one": "1 variant added.",
+    "added_other": "{{count}} variants added.",
+    "deactivated": "Variant \"{{name}}\" deactivated.",
+    "activated": "Variant \"{{name}}\" activated.",
+    "version_conflict": "Someone else changed this variant. Your change wasn't saved.",
+    "reload_row": "Reload variant",
+    "simple_text": "This product has no sizes or colors: all its stock is counted together.",
+    "to_variants": "Convert to product with variants",
+    "convert": "Convert",
+    "enable_body": "The units you already have ({{onHand}}) become the first variant, keeping their SKU and minimum stock. What size or color are they? You can add the others afterwards.",
+    "enabled": "\"{{name}}\" now has sizes or colors. Add the other variants.",
+    "save_first_title": "Save the product changes first",
+    "save_first_body": "Converting is saved right away. To keep what you typed, save or discard the product changes and try again.",
+    "to_simple": "Convert to simple product",
+    "to_simple_hint": "It has a single variant: you can manage it as a simple product again.",
+    "to_simple_title": "Convert to a simple product?",
+    "to_simple_body": "\"{{name}}\" will no longer have a size or color. Its SKU, minimum stock and stock become the product's.",
+    "to_simple_body_inactive": "\"{{name}}\" will no longer have a size or color and will be activated again. Its SKU, minimum stock and stock become the product's.",
+    "disabled_done": "\"{{name}}\" is now a simple product."
+  },
+  "variant": {
+    "options_required": "Enter at least a size or a color.",
+    "sku_repeated": "This SKU is repeated in another variant.",
+    "similar_color": "\"{{color}}\" looks like \"{{other}}\". If it's the same color, write it the same way."
+  },
+  "gen": {
+    "title": "Generate combinations",
+    "sizes": "Sizes",
+    "colors": "Colors",
+    "add": "Add",
+    "presets": "Common:",
+    "sizes_help": "Type one or more, separated by commas, and press Enter. E.g.: M, 38, 10.",
+    "colors_help": "E.g.: White, Navy blue. Leave it empty if only the size changes.",
+    "chosen_sizes": "Chosen sizes",
+    "chosen_colors": "Chosen colors",
+    "remove_size": "Remove size {{v}}",
+    "remove_color": "Remove color {{v}}",
+    "prefix": "SKU prefix",
+    "prefix_help": "Suggests each SKU as PREFIX-SIZE-COLOR (e.g. TSH-M-WHI). You can change them afterwards.",
+    "min": "Minimum stock for each",
+    "preview_none": "Choose at least one size or color.",
+    "preview_one": "1 new combination.",
+    "preview_other": "{{count}} new combinations.",
+    "preview_skipped": "{{n}} already exist and are skipped.",
+    "apply_zero": "Add variants",
+    "apply_one": "Add 1 variant",
+    "apply_other": "Add {{count}} variants"
   }
 }

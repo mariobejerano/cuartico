@@ -28,6 +28,11 @@ Se amplía con cada historia. Orden recomendado de lectura: de arriba abajo.
 | 21 | [Validación que depende del contexto (esquemas "fábrica")](#21-validación-que-depende-del-contexto-esquemas-fábrica) | 2 (HU-15) |
 | 22 | [Diálogos que se montan al abrirse](#22-diálogos-que-se-montan-al-abrirse) | 2 (HU-15) |
 | 23 | [Permisos en la interfaz: «No tienes acceso»](#23-permisos-en-la-interfaz-no-tienes-acceso) | 2 (HU-15) |
+| 24 | [Listas dinámicas dentro de un formulario (`useFieldArray`)](#24-listas-dinámicas-dentro-de-un-formulario-usefieldarray) | 2 (HU-16) |
+| 25 | [Dos ritmos de guardado en la misma pantalla](#25-dos-ritmos-de-guardado-en-la-misma-pantalla) | 2 (HU-16) |
+| 26 | [Componentes de presentación y componentes con estado propio](#26-componentes-de-presentación-y-componentes-con-estado-propio) | 2 (HU-16) |
+| 27 | [Mover el foco después de pintar](#27-mover-el-foco-después-de-pintar) | 2 (HU-16) |
+| 28 | [«Deshacer» en vez de «¿Seguro?»](#28-deshacer-en-vez-de-seguro) | 2 (HU-16) |
 
 ---
 
@@ -459,6 +464,105 @@ Como `CategoriesPage` se carga con `lazy()`, un OPERATOR **ni siquiera descarga 
 **esconde**; la seguridad real es el 403 del backend. El menú también depende del rol (`layout/navItems.ts`): el ADMIN ve
 «Categorías» en la barra lateral y la pestaña «Cuenta» del móvil pasa a «Más» con una sección «Gestión».
 
+## 24. Listas dinámicas dentro de un formulario (`useFieldArray`)
+**El problema.** Hasta ahora cada formulario tenía campos fijos (nombre, categoría, precio…). Con HU-16, el alta de una
+camiseta tiene **N filas** (una por talla × color), cada una con su SKU y su stock mínimo, y el usuario añade y quita filas.
+
+**La analogía.** En Java, un DTO con una lista anidada y validación en cascada:
+```java
+record CreateProductRequest(String name, @Valid List<VariantRequest> variants) {}
+```
+En React Hook Form, la lista es un campo más (`variants`) y `useFieldArray` da las operaciones para manejarla:
+```tsx
+const { fields, replace, remove } = useFieldArray({ control, name: 'variants' })
+// cada fila se conecta con una "ruta" con índice, como en Bean Validation: variants[2].sku
+<input {...register(`variants.${i}.sku`)} />
+```
+- `fields` trae un `id` estable por fila: es la `key` que React necesita para no confundir filas al quitar una.
+- `replace(lista)` sustituye todas (lo usamos al generar: unimos, quitamos duplicados y ordenamos como la API).
+- `remove(i)` quita una.
+
+**Errores por fila.** El esquema Zod añade los errores con la ruta completa (`['variants', 2, 'sku']`) y aparecen en
+`errors.variants[2].sku`. Los del servidor llegan como `errors["variants[2].sku"]`; `rowErrorsFrom` (en `variants.ts`)
+los traduce a la ruta de React Hook Form y `setError` los pinta junto al campo. Un error de la lista entera («añade al
+menos una variante») vive en `errors.variants.root`: lo lee `listError` (`components/fieldMessage.tsx`).
+
+**Dónde.** `ProductFormPage.tsx` (alta), `AddVariantsPanel.tsx` («Añadir variantes»), `productSchema.ts` (`checkDraftRows`).
+
+## 25. Dos ritmos de guardado en la misma pantalla
+En la edición de un producto con variantes conviven:
+- El **formulario del producto** (nombre, precio…): se guarda con «Guardar producto» y lleva su `version`.
+- La **tarjeta «Tallas y colores»**: cada cambio de una variante se guarda **al momento**, con la `version` de la variante.
+
+Por eso la tarjeta está **fuera** del `<form>` del producto (como la tarjeta de Estado), y la fila en edición es su
+propio `<form>` pequeño: Intro guarda la variante, no el producto. (HTML no permite un `<form>` dentro de otro.)
+
+**La versión que no hay que tocar.** Cada operación de variante devuelve el producto completo. Si copiáramos su `version`
+en el formulario, un cambio que otra persona hizo en el producto mientras tanto se pisaría sin aviso (perderíamos el 409).
+`mergeVariantData` copia solo lo de las variantes (lista, contador, stock) y **conserva la versión del formulario**:
+es el equivalente a actualizar solo una colección hija sin tocar el `@Version` de la entidad padre.
+
+**Actualización funcional del estado.** Para guardar ese resultado usamos `setCurrent(c => mergeVariantData(c, fromApi))`
+en lugar de `setCurrent(mergeVariantData(current, fromApi))`. La forma con función recibe **el estado más reciente**:
+importa cuando la respuesta llega tarde (p. ej. el «Deshacer» de un aviso pulsado segundos después). Analogía: un
+`AtomicReference.updateAndGet(...)` frente a un `set(...)` con un valor que leíste antes.
+
+**Las conversiones sí cambian la versión** (simple ↔ con variantes cambian qué campos acepta el `PUT`). Por eso, si el
+formulario tiene cambios sin guardar, la interfaz pide guardarlos antes (`isDirty`), y después de convertir el
+formulario se recarga entero (`reset`).
+
+## 26. Componentes de presentación y componentes con estado propio
+Dos piezas nuevas se reutilizan en el alta y en «Añadir variantes», que son **formularios distintos**:
+- **`DraftVariantList`** (presentación): pinta las filas, pero no sabe de qué formulario son. Recibe funciones:
+  `registerField(i, 'sku')` para conectar cada input y `errorOf(i, 'sku')` para leer su error. Analogía: una interfaz
+  (`RowBinder`) que cada formulario implementa; la vista depende de la interfaz, no de la implementación.
+- **`VariantGenerator`** (estado propio): las tallas y colores elegidos, el prefijo y el mínimo viven **dentro** del
+  componente (`useState`), porque no se envían a la API. Hacia fuera solo sale el resultado, con `onApply(filas)`, como
+  un evento de dominio. Quien lo usa no ve sus detalles internos.
+
+Regla práctica: el estado vive en el componente más bajo que lo necesita. Si dos componentes lo necesitan, sube al padre
+común.
+
+**Valores derivados, no estado.** El resumen «6 combinaciones nuevas. 2 ya existen y se omiten.» y el aviso de tildes
+(«Marron» se parece a «Marrón») **se calculan** en cada pintada a partir de las tallas, los colores y las variantes que ya
+hay. No se guardan: así nunca se desincronizan (tema 20).
+
+## 27. Mover el foco después de pintar
+Con teclado o lector de pantalla, **dónde queda el foco** importa: si quitas una fila con su botón «×», ese botón
+desaparece y el foco se iría al principio de la página. Queremos llevarlo al «×» de la fila siguiente; tras generar
+filas, al SKU de la primera nueva; tras guardar una variante, a su botón «Editar».
+
+El problema: en el momento del clic el elemento de destino **todavía no existe** (o acaba de desaparecer). Hay que
+esperar a que React pinte. `components/useFocusAfterRender.ts` lo resuelve:
+```ts
+const focusAfter = useFocusAfterRender()
+onRemove(i)                                         // cambia el estado → habrá una pintada
+focusAfter(() => document.getElementById('…'))      // "cuando termines de pintar, enfoca esto"
+```
+Por dentro guarda la búsqueda en un **ref** (no en estado: guardarla no necesita repintar) y un efecto sin dependencias,
+que corre tras cada pintada, la aplica una vez.
+
+**Por qué no con estado.** La primera versión hacía `setPending(…)` y un efecto que enfocaba y hacía `setPending(null)`.
+El linter (reglas del React Compiler) lo rechaza: *poner estado dentro de un efecto* provoca una pintada extra en cadena.
+Los refs son la herramienta para "datos que no se pintan".
+
+## 28. «Deshacer» en vez de «¿Seguro?»
+Desactivar una variante no pide confirmación (decisión D-3): muestra un aviso «Variante «XL · Azul marino» desactivada.»
+con el botón **Deshacer**, que vuelve a activarla. Es mejor experiencia cuando la acción es **reversible y de alcance
+pequeño**: no interrumpe al que sabe lo que hace y arregla el despiste con un clic. El producto completo sí sigue
+pidiendo confirmación, porque afecta a todo.
+
+En código, el aviso (`toast`, tema 18) acepta una acción: `toast({ text, action: { label: t('common.undo'), run } })`.
+`run` llama a la misma mutación al revés. Ver `VariantsCard.tsx`.
+
+### Qué aprendiste hoy (HU-16)
+1. Un formulario puede tener **listas de filas** (`useFieldArray`), con errores por fila igual que `@Valid List<…>`.
+2. En una pantalla pueden convivir **dos ritmos de guardado**; cada uno con su `<form>` y su `version`.
+3. Tras una operación parcial, **no copies la versión** de la respuesta si protege otros datos (`mergeVariantData`), y
+   usa la **actualización funcional** del estado cuando la respuesta puede llegar tarde.
+4. Un componente de presentación recibe **funciones** para no depender de un formulario concreto.
+5. El foco se mueve **después** de pintar, con un ref y un efecto (nunca estado dentro de un efecto).
+
 ---
 
 ## Mini-ejercicios opcionales
@@ -475,3 +579,9 @@ Como `CategoriesPage` se carga con `lazy()`, un OPERATOR **ni siquiera descarga 
 8. (HU-15) En un producto nuevo elige «Electrodomésticos › Cocina», escribe un modelo y cambia a «Alimentos › Granos»: lee el
    aviso ámbar; vuelve a Cocina y comprueba que el modelo sigue ahí (tema 20).
 9. (HU-15) En la página de categorías, intenta crear «lacteos» dentro de Alimentos (aviso) y «LÁCTEOS» (error) (tema 21).
+10. (HU-16) Crea una camiseta: marca S y M, escribe «Blanco, Azul marino» y el prefijo «cam». Mira el resumen y los SKU
+    propuestos; vuelve a pulsar S y fíjate en que no se duplica nada (tema 24).
+11. (HU-16) Edita un producto con variantes, escribe algo en el nombre y edita una talla: el nombre sigue ahí y «Guardar
+    producto» no da conflicto (tema 25). Ahora intenta «Convertir en producto simple»: te pide guardar antes.
+12. (HU-16) Desactiva una variante y pulsa «Deshacer» en el aviso (tema 28). Navega con Tab por las filas y quita una con
+    el teclado: mira adónde va el foco (tema 27).

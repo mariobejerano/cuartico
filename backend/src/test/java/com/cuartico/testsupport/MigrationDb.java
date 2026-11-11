@@ -1,4 +1,4 @@
-package com.cuartico.category;
+package com.cuartico.testsupport;
 
 import java.util.UUID;
 
@@ -12,7 +12,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
  * PostgreSQL) or, by default, an in-memory H2 like application-test.yml. On PostgreSQL every test gets
  * its own schema, dropped on close, so it cannot disturb the tests that share the main schema.
  */
-final class MigrationDb implements AutoCloseable {
+public final class MigrationDb implements AutoCloseable {
 
 	private static final String H2_OPTIONS = ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1";
 
@@ -28,7 +28,7 @@ final class MigrationDb implements AutoCloseable {
 		this.schema = schema;
 	}
 
-	static MigrationDb create(String name) {
+	public static MigrationDb create(String name) {
 		String id = name.replaceAll("[^A-Za-z0-9]", "_") + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 		String url = System.getenv("SPRING_DATASOURCE_URL");
 		if (url == null || url.isBlank()) {
@@ -44,12 +44,12 @@ final class MigrationDb implements AutoCloseable {
 		return new MigrationDb(new DriverManagerDataSource(scoped, user, password), admin, schema);
 	}
 
-	JdbcTemplate jdbc() {
+	public JdbcTemplate jdbc() {
 		return new JdbcTemplate(ds);
 	}
 
 	/** Runs the migrations up to {@code target} (a version) or all of them when it is null. */
-	void migrate(String target) {
+	public void migrate(String target) {
 		var cfg = Flyway.configure().dataSource(ds).locations("classpath:db/migration");
 		if (target != null) {
 			cfg.target(target);

@@ -112,7 +112,7 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.createdAt").isNotEmpty());
 
 		Integer rows = jdbc.queryForObject(
-				"select count(*) from product_stock where product_id = ? and on_hand = 0 and reserved = 0", Integer.class,
+				"select count(*) from variant_stock s join product_variants v on v.id = s.variant_id where v.product_id = ? and s.on_hand = 0 and s.reserved = 0", Integer.class,
 				id);
 		org.junit.jupiter.api.Assertions.assertEquals(1, rows);
 	}
@@ -205,7 +205,7 @@ class ProductIntegrationTests {
 			org.junit.jupiter.api.Assertions.assertTrue(statuses.contains(201), statuses.toString());
 			org.junit.jupiter.api.Assertions.assertTrue(statuses.contains(409), statuses.toString());
 			org.junit.jupiter.api.Assertions.assertEquals(1,
-					jdbc.queryForObject("select count(*) from products where sku = ?", Integer.class, sku));
+					jdbc.queryForObject("select count(*) from product_variants where sku = ?", Integer.class, sku));
 		}
 		finally {
 			pool.shutdownNow();
@@ -462,7 +462,7 @@ class ProductIntegrationTests {
 	@Test
 	void deactivateWithStockIsAllowed() throws Exception {
 		int id = id(create(adminToken, body("ConStock", null, "UNIT", null, null, null, "0")));
-		jdbc.update("update product_stock set on_hand = 10, reserved = 4 where product_id = ?", id);
+		jdbc.update("update variant_stock set on_hand = 10, reserved = 4 where variant_id = (select id from product_variants where product_id = ?)", id);
 		postAction(PRODUCTS + "/" + id + "/deactivate", adminToken)
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.active").value(false))
@@ -603,7 +603,7 @@ class ProductIntegrationTests {
 			.andExpect(jsonPath("$.code").value("request.invalid_sort"));
 		list("sort=password").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("request.invalid_sort"));
-		for (String ok : List.of("name", "sku,asc", "name,desc", "createdAt,desc")) {
+		for (String ok : List.of("name", "name,desc", "createdAt,desc")) {
 			list("sort=" + ok).andExpect(status().isOk());
 		}
 		// Same name: ties are broken by id
@@ -625,10 +625,10 @@ class ProductIntegrationTests {
 	@Test
 	void lowStockFollowsMinStockAndActive() throws Exception {
 		int id = id(create(adminToken, body("Bajo", null, "UNIT", null, null, null, "5")));
-		jdbc.update("update product_stock set on_hand = 5 where product_id = ?", id);
+		jdbc.update("update variant_stock set on_hand = 5 where variant_id = (select id from product_variants where product_id = ?)", id);
 		mvc.perform(get(PRODUCTS + "/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
 			.andExpect(jsonPath("$.lowStock").value(true));
-		jdbc.update("update product_stock set on_hand = 6 where product_id = ?", id);
+		jdbc.update("update variant_stock set on_hand = 6 where variant_id = (select id from product_variants where product_id = ?)", id);
 		mvc.perform(get(PRODUCTS + "/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
 			.andExpect(jsonPath("$.lowStock").value(false));
 		int zero = id(create(adminToken, body("SinAlerta", null, "UNIT", null, null, null, "0")));

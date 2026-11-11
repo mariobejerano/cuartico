@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import java.util.Map;
 
+import com.cuartico.testsupport.MigrationDb;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,7 +40,7 @@ class CategoryMigrationTests {
 			jdbc.update("insert into product_stock (product_id, on_hand, reserved, updated_at) "
 					+ "select id, 3, 1, current_timestamp from products where name = ?", "p" + i);
 		}
-		Map<String, Object> before = jdbc.queryForMap("select id, sku, sale_price, unit from products where name = 'p4'");
+		Map<String, Object> before = jdbc.queryForMap("select id, sale_price, unit from products where name = 'p4'");
 
 		db.migrate(null);
 
@@ -75,9 +77,9 @@ class CategoryMigrationTests {
 		assertEquals("system", jdbc.queryForObject("select created_by from categories where name = 'Ropa'", String.class));
 
 		// Products keep id, price and stock; the old column is gone and the new one is NOT NULL
-		Map<String, Object> after = jdbc.queryForMap("select id, sku, sale_price, unit from products where name = 'p4'");
+		Map<String, Object> after = jdbc.queryForMap("select id, sale_price, unit from products where name = 'p4'");
 		assertEquals(before, after);
-		assertEquals(texts.length, jdbc.queryForObject("select count(*) from product_stock where on_hand = 3", Integer.class));
+		assertEquals(texts.length, jdbc.queryForObject("select count(*) from variant_stock where on_hand = 3", Integer.class));
 		assertEquals(0, jdbc.queryForObject(
 				"select count(*) from information_schema.columns where table_schema = current_schema() and table_name = 'products' and column_name = 'category'",
 				Integer.class));

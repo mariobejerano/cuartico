@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type ReactNode } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { Link, useBlocker, useNavigate, useParams } from 'react-router'
 import { isApiError } from '../../api/errors'
@@ -13,14 +13,17 @@ import { Alert } from '../../components/Alert'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { messageForError, type UiMessage } from '../../components/errorMessage'
-import { FieldErrorText, msg, useFieldErrorText } from '../../components/fieldMessage'
+import { FieldErrorText, listError, msg, useFieldErrorText } from '../../components/fieldMessage'
 import { Icon } from '../../components/Icon'
 import { useToast } from '../../components/toast'
 import { DESKTOP_QUERY } from '../../components/useMediaQuery'
 import { useDocumentTitle } from '../../components/useDocumentTitle'
+import { useFocusAfterRender } from '../../components/useFocusAfterRender'
 import { CURRENCIES } from '../../config/currencies'
 import { useCategories, useRefreshCategories } from '../categories/queries'
 import { categoryPath, productFormOptions } from '../categories/tree'
+import { ConvertToVariantsCard } from './ConvertToVariantsCard'
+import { DraftVariantList } from './DraftVariantList'
 import { MoneyValue } from './MoneyValue'
 import { useListPath } from './navigation'
 import {
@@ -28,6 +31,7 @@ import {
   isFormField,
   toFormValues,
   toRequest,
+  toUpdateRequest,
   type ProductFormField,
   type ProductFormValues,
 } from './productSchema'
@@ -35,6 +39,12 @@ import { productKeys, useProduct, useSaveProduct } from './queries'
 import { isUnitLocked, LOCKED_UNIT, typeChangeNotes, usesApplianceFields, type TypeChangeNotes } from './typeRules'
 import { useProductFormat } from './useProductFormat'
 import { useToggleActive } from './useToggleActive'
+import { VariantGenerator } from './VariantGenerator'
+import { VariantsCard } from './VariantsCard'
+import { generatorSizeId, firstAdded, mergeDrafts, mergeVariantData, rowErrorsFrom, type DraftVariant } from './variants'
+
+/** Id del generador del alta (su campo «Tallas» es `gen-new-size`). */
+const GEN_ID = 'gen-new'
 
 /** `/products/new` → `null`; `/products/12/edit` → 12; un id raro → `NaN` (se trata como «no existe»). */
 function parseId(raw: string | undefined): number | null {
@@ -122,6 +132,13 @@ function ProductForm({ product, listPath }: ProductFormProps) {
   /** Aviso del último cambio de tipo (se guarda QUÉ pasó, no el texto: así cambia con el idioma). */
   const [notes, setNotes] = useState<TypeChangeNotes>(NO_NOTES)
   const conflictRef = useRef<HTMLDivElement>(null)
+  /** HU-16 CA-21: la casilla «Tiene tallas o colores» sigue a la categoría (Ropa → marcada) hasta que el usuario la toca. */
+  const [hasVariantsTouched, setHasVariantsTouched] = useState(false)
+  /** Tras convertir un simple en «con variantes», se abre «Añadir variantes» (ux-notes products-v2 §4). */
+  const [openAddVariants, setOpenAddVariants] = useState(false)
+  /** Diálogo «Guarda antes los cambios del producto» (convertir con el formulario a medias). */
+  const [saveFirst, setSaveFirst] = useState(false)
+  const focusAfter = useFocusAfterRender()
 
   // ----- Opciones del selector de categoría (CA-26): activas + la actual si está inactiva -----
   const currentCategory = current?.category ?? null
@@ -146,7 +163,8 @@ function ProductForm({ product, listPath }: ProductFormProps) {
     [options],
   )
   // El esquema depende del tipo: se rehace solo cuando cambian las opciones (useMemo = "cachear un cálculo").
-  const resolver = useMemo(() => zodResolver(buildProductFormSchema(typeOf)), [typeOf])
+  const mode = product ? 'edit' : 'create'
+  const resolver = useMemo(() => zodResolver(buildProductFormSchema(typeOf, mode)), [typeOf, mode])
 
   // React Hook Form: el formulario. `mode: 'onTouched'` = valida al salir de cada campo y, desde entonces,
   // en cada cambio (el error se quita en cuanto el valor es válido). Al enviar valida todo y enfoca el primer error.
@@ -169,9 +187,15 @@ function ProductForm({ product, listPath }: ProductFormProps) {
   const unit = useWatch({ control, name: 'unit' })
   const currency = useWatch({ control, name: 'salePriceCurrency' })
   const categoryId = useWatch({ control, name: 'categoryId' })
+  const hasVariants = useWatch({ control, name: 'hasVariants' })
+  // CAMPOS DINÁMICOS (HU-16): las filas generadas del alta son una lista dentro del formulario. `fields` trae una
+  // clave estable por fila (`id`) para React; `useWatch` da sus valores actuales (lo escrito en cada SKU/mínimo).
+  const { fields: draftFields, replace: replaceDrafts, remove: removeDraft } = useFieldArray({ control, name: 'variants' })
+  const draftRows = useWatch({ control, name: 'variants' })
   const type = typeOf(categoryId)
   const unitLocked = isUnitLocked(type)
   const shownUnit = unitLocked ? LOCKED_UNIT : unit
+  const unitShort = shownUnit ? t(`unit_short.${shownUnit}`) : ''
 
   const save = useSaveProduct()
   const { toggle, dialog: toggleDialog } = useToggleActive((saved) => setCurrent(saved))
@@ -213,15 +237,39 @@ function ProductForm({ product, listPath }: ProductFormProps) {
       setValue('unit', LOCKED_UNIT, { shouldDirty: true })
       clearErrors('unit')
     }
+    // HU-16 CA-21: en un alta, la ropa viene con «Tiene tallas o colores» marcada… salvo que el usuario ya la tocara.
+    if (!current && !hasVariantsTouched) setValue('hasVariants', next === 'CLOTHING')
   }
 
+  /** El generador del alta añade filas: sin duplicar, en el orden de la API, y el foco a la primera nueva. */
+  const onGenerate = (added: DraftVariant[]) => {
+    const merged = mergeDrafts(getValues('variants'), added)
+    replaceDrafts(merged)
+    const first = firstAdded(merged, added)
+    focusAfter(() => document.getElementById(`draft-${first?.key}-sku`))
+  }
+  const focusGenerator = useCallback(() => document.getElementById(generatorSizeId(GEN_ID))?.focus(), [])
+
   /** Errores del servidor → en su campo cuando se puede (CA-25), si no, alerta arriba. */
-  const handleSaveError = (e: unknown) => {
+  const handleSaveError = (e: unknown, values: ProductFormValues) => {
     if (isApiError(e) && e.kind === 'http') {
       const serverError = (field: ProductFormField, message: string | undefined, focus = true) =>
         setError(field, { type: 'server', message: message ?? t('net.unexpected_generic') }, { shouldFocus: focus })
+      // HU-16 CA-21: alta con variantes → el error va a la fila que lo provocó, si se puede saber.
+      if (!current && values.hasVariants) {
+        const rows = rowErrorsFrom(e, values.variants)
+        rows.forEach((r, i) =>
+          setError(
+            `variants.${r.index}.${r.field === 'options' ? 'size' : r.field}`,
+            { type: 'server', message: r.message || t('net.unexpected_generic') },
+            { shouldFocus: i === 0 && r.field !== 'options' },
+          ),
+        )
+        if (rows.length > 0) return
+      }
       switch (e.code) {
         case 'product.sku_conflict':
+          if (values.hasVariants) break // con variantes no hay campo SKU del producto: alerta arriba
           return serverError('sku', e.detail)
         case 'resource.version_conflict':
           return setVersionConflict(true)
@@ -247,18 +295,27 @@ function ProductForm({ product, listPath }: ProductFormProps) {
     if (save.isPending) return // un doble clic no guarda dos veces
     setSubmitError(null)
     setVersionConflict(false)
+    const valuesType = typeOf(values.categoryId)
     save.mutate(
-      { id: current?.id ?? null, body: toRequest(values, typeOf(values.categoryId)), version: current?.version },
+      current
+        ? { id: current.id, body: toUpdateRequest(values, valuesType, current.version) }
+        : { id: null, body: toRequest(values, valuesType) },
       {
         onSuccess: (saved) => {
           toast({ text: current ? t('products.saved') : t('products.created', { name: saved.name }) })
           navigate(listPath, { state: { saved: true } })
         },
-        onError: handleSaveError,
+        onError: (e) => handleSaveError(e, values),
       },
     )
   }
-  const submit = handleSubmit(onSubmit)
+  /** Si el único error es «añade al menos una variante», no hay campo que enfocar: el foco va a «Tallas». */
+  const onInvalid = (formErrors: FieldErrors<ProductFormValues>) => {
+    const keys = Object.keys(formErrors)
+    const v = formErrors.variants
+    if (keys.length === 1 && keys[0] === 'variants' && (v?.root || v?.message)) focusGenerator()
+  }
+  const submit = handleSubmit(onSubmit, onInvalid)
 
   /** CA-9: tras un conflicto de versión, recargar el producto (lo escrito se pierde, aceptado en Sprint 1). */
   const reload = async () => {
@@ -269,15 +326,29 @@ function ProductForm({ product, listPath }: ProductFormProps) {
         queryFn: ({ signal }) => productsApi.get(current.id, signal),
         staleTime: 0,
       })
-      setCurrent(fresh)
-      reset(toFormValues(fresh, lang))
-      setNotes(NO_NOTES)
-      setVersionConflict(false)
-      setSubmitError(null)
+      replaceProduct(fresh)
     } catch (e) {
       setSubmitError(messageForError(e))
     }
   }
+
+  /** El producto cambió de versión (recarga o conversión): estado y formulario empiezan de nuevo con él. */
+  const replaceProduct = (fresh: ProductResponse, openAdd = false) => {
+    setCurrent(fresh)
+    reset(toFormValues(fresh, lang))
+    setNotes(NO_NOTES)
+    setVersionConflict(false)
+    setSubmitError(null)
+    setOpenAddVariants(openAdd)
+  }
+  /** Convertido simple ↔ con variantes (CA-12/13): la versión subió y el formulario estaba sin cambios. */
+  const onConverted = (fresh: ProductResponse) => replaceProduct(fresh, fresh.hasVariants)
+  /**
+   * Respuesta de una operación de VARIANTE: lista, contador y stock al día, pero la versión del formulario NO cambia
+   * (CA-13b). Actualización FUNCIONAL (`c => …`): parte del estado más reciente aunque la respuesta llegue tarde
+   * (p. ej. el «Deshacer» de un aviso).
+   */
+  const onVariantResult = (fromApi: ProductResponse) => setCurrent((c) => (c ? mergeVariantData(c, fromApi) : c))
 
   /** Atributos de accesibilidad de un campo: error marcado y ayuda + error leídos por el lector de pantalla. */
   const a11y = (name: ProductFormField, describedBy: string[] = [`f-${name}-help`]) => ({
@@ -487,10 +558,69 @@ function ProductForm({ product, listPath }: ProductFormProps) {
           </div>
         </div>
 
-        {/* «Inventario» (prototipo products-v2): SKU y stock mínimo. Con HU-16 aquí irá «Tiene tallas o colores». */}
+        {/* «Inventario» (prototipo products-v2): SKU y stock mínimo, o (alta con variantes) el generador y sus filas.
+            Un producto con variantes en edición no la tiene: sus variantes van en su propia tarjeta (CA-22). */}
+        {!(current && current.hasVariants) && (
         <div className="card">
           <h2>{t('products.section_inventory')}</h2>
           <div className="fields">
+            {!current && (
+              // Casilla nativa, no interruptor: el cambio se aplica al «Guardar», no al tocarla (ux-notes §4).
+              <div className="c-field">
+                <label className="c-check">
+                  <input
+                    type="checkbox"
+                    aria-describedby="f-hasVariants-help"
+                    {...register('hasVariants', { onChange: () => setHasVariantsTouched(true) })}
+                  />{' '}
+                  <span>{t('products.has_variants')}</span>
+                </label>
+                <p className="c-help" id="f-hasVariants-help">
+                  {t('products.has_variants_help')}
+                </p>
+              </div>
+            )}
+            {hasVariants ? (
+              // Las filas generadas no se pierden si se desmarca y se vuelve a marcar (solo se envían si está marcada).
+              <div>
+                <VariantGenerator
+                  idPrefix={GEN_ID}
+                  existing={draftRows ?? []}
+                  takenSkus={(draftRows ?? []).map((r) => r.sku)}
+                  unitShort={unitShort}
+                  onApply={onGenerate}
+                />
+                <div className="v-count">
+                  <span role="status">{draftFields.length > 0 ? t('variants.count', { count: draftFields.length }) : ''}</span>
+                </div>
+                <DraftVariantList
+                  idPrefix="draft"
+                  rows={draftFields.map((f, i) => ({ ...(draftRows?.[i] ?? f), fieldId: f.id }))}
+                  label={t('variants.count', { count: draftFields.length })}
+                  unitShort={unitShort}
+                  registerField={(i, field) =>
+                    register(`variants.${i}.${field}`, {
+                      onBlur:
+                        field === 'sku'
+                          ? (e: FocusEvent<HTMLInputElement>) =>
+                              setValue(`variants.${i}.sku`, e.target.value.trim().toUpperCase(), {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                              })
+                          : undefined,
+                    })
+                  }
+                  errorOf={(i, field) => errorText(errors.variants?.[i]?.[field === 'options' ? 'size' : field])}
+                  onRemove={removeDraft}
+                  focusWhenEmpty={focusGenerator}
+                />
+                <FieldErrorText
+                  id="f-variants-error"
+                  text={errorText(listError(errors.variants))}
+                />
+                <p className="c-help">{t('products.stock_new_note_variants')}</p>
+              </div>
+            ) : (
             <div className="grid-2">
               <div className="c-field">
                 <label className="c-label" htmlFor="f-sku">
@@ -531,11 +661,13 @@ function ProductForm({ product, listPath }: ProductFormProps) {
                 {fieldError('minStock')}
               </div>
             </div>
-            {!current && <p className="c-help">{t('products.stock_new_note')}</p>}
+            )}
+            {!current && !hasVariants && <p className="c-help">{t('products.stock_new_note')}</p>}
           </div>
         </div>
+        )}
 
-        {current && (
+        {current && !current.hasVariants && (
           // Solo lectura: texto, nunca inputs, para que nadie intente cambiarlo (CA-7, CA-25).
           <div className="card">
             <h2>{t('products.section_stock')}</h2>
@@ -575,6 +707,29 @@ function ProductForm({ product, listPath }: ProductFormProps) {
         </div>
       </form>
 
+      {/* HU-16: tallas y colores. Fuera del formulario: se guarda al momento, como el estado del producto. */}
+      {current &&
+        (current.hasVariants ? (
+          <VariantsCard
+            product={current}
+            isAdmin={isAdmin}
+            formDirty={isDirty}
+            openAddOnMount={openAddVariants}
+            onVariantResult={onVariantResult}
+            onConverted={onConverted}
+            onStale={() => void reload()}
+            onSaveFirst={() => setSaveFirst(true)}
+          />
+        ) : (
+          <ConvertToVariantsCard
+            product={current}
+            formDirty={isDirty}
+            onConverted={onConverted}
+            onStale={() => void reload()}
+            onSaveFirst={() => setSaveFirst(true)}
+          />
+        ))}
+
       {current && isAdmin && (
         // Separado del formulario: cambiar el estado no depende de «Guardar» (CA-24: solo ADMIN).
         <div className="card status-card">
@@ -611,6 +766,16 @@ function ProductForm({ product, listPath }: ProductFormProps) {
         onConfirm={() => blocker.proceed?.()}
       >
         <p>{t('products.discard_body')}</p>
+      </ConfirmDialog>
+      {/* Convertir con cambios sin guardar: la conversión recargaría el producto y se perdería lo escrito (CA-22) */}
+      <ConfirmDialog
+        open={saveFirst}
+        title={t('variants.save_first_title')}
+        confirmLabel={t('common.got_it')}
+        onCancel={() => setSaveFirst(false)}
+        onConfirm={() => setSaveFirst(false)}
+      >
+        <p>{t('variants.save_first_body')}</p>
       </ConfirmDialog>
     </div>
   )

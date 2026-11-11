@@ -31,6 +31,15 @@ export function useFieldErrorText() {
   }
 }
 
+/**
+ * Error de una LISTA de campos (`useFieldArray`), p. ej. «Añade al menos una variante». React Hook Form lo guarda en
+ * `errors.variants.root` (si viene del esquema) o en `errors.variants` (si lo pone `setError`): devolvemos el que haya.
+ */
+export function listError(e: { root?: RhfFieldError; message?: string; type?: string } | undefined): RhfFieldError | undefined {
+  if (e?.root) return e.root
+  return e?.message ? { type: e.type ?? 'validate', message: e.message } : undefined
+}
+
 /** El párrafo rojo bajo un campo. `id` debe coincidir con el `aria-describedby` del campo. */
 export function FieldErrorText({ id, text }: { id: string; text: string | null }) {
   if (!text) return null

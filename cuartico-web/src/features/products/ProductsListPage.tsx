@@ -294,12 +294,20 @@ interface RowsProps {
   onToggle: (p: ProductResponse) => void
 }
 
-/** «SKU ARR-001» (o «Sin SKU») y la ruta de la categoría en el idioma de la interfaz (HU-15 CA-27). */
+/**
+ * «SKU ARR-001» (o «Sin SKU»), o «8 variantes» si tiene tallas/colores (HU-16 CA-23), y la ruta de la categoría en el
+ * idioma de la interfaz (HU-15 CA-27). El disponible de un producto con variantes ya llega sumado de la API (CA-15).
+ */
 function useRowText() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language || 'es'
   return {
-    sku: (p: ProductResponse) => (p.sku ? t('products.sku_inline', { sku: p.sku }) : t('products.no_sku')),
+    sku: (p: ProductResponse) =>
+      p.hasVariants
+        ? t('products.variant_count', { count: p.variantCount })
+        : p.sku
+          ? t('products.sku_inline', { sku: p.sku })
+          : t('products.no_sku'),
     path: (p: ProductResponse) => categoryPath(p.category, lang),
   }
 }

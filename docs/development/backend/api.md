@@ -1,5 +1,5 @@
 # API REST
-> HU-15 cambió la forma de `category` y añadió campos: ver «Cambios en productos (HU-15)» más abajo.
+> HU-15 cambió la forma de `category` (ver «Cambios en productos (HU-15)»). HU-16 mueve `sku`, `minStock` y el stock a las variantes: ver «Variantes (HU-16)» al final.
 
 Base: `/api/v1`. Estado: **endpoints de `develop`**. La versión de producción (v0.1.0) todavía sirve las rutas sin versión
 (`/api/auth/...`, `/api/users/...`); `/api/v1` llega con la próxima release (ver [sprint 0](../../scrum/sprints/00.md)).
@@ -21,13 +21,17 @@ Los errores siguen el formato de [errors.md](errors.md). Las peticiones de ejemp
 | GET | `/api/v1/users/{id}` | `ADMIN` | 200 | Detalle de un usuario. |
 | PUT | `/api/v1/users/{id}` | `ADMIN` | 200 | Cambia nombre completo, rol y estado (`active`). Desactivar un usuario cierra sus sesiones. Un admin no puede desactivarse ni quitarse el rol `ADMIN`. |
 | POST | `/api/v1/users/{id}/reset-password` | `ADMIN` | 204 | Restablece la contraseña de otro usuario y cierra sus sesiones. |
-| GET | `/api/v1/products` | `ADMIN`, `OPERATOR` | 200 | Listado paginado `PageResponse<ProductResponse>`. Parámetros: `q` (nombre o SKU, sin distinguir mayúsculas, `%` y `_` literales), `active`, `categoryId` (incluye las subcategorías; inexistente → lista vacía), `type` (`FOOD|CLOTHING|APPLIANCE|OTHER`; desconocido → 400 `validation.failed`), `page` (desde 0), `size` (1-100, 20 por defecto), `sort` (`name`, `sku`, `createdAt` + `,asc`/`,desc`; por defecto `name,asc`). `size`/`page` fuera de rango o de tipo inválido: 400 `validation.failed` con `errors`; `sort` no permitido: 400 `request.invalid_sort`. |
+| GET | `/api/v1/products` | `ADMIN`, `OPERATOR` | 200 | Listado paginado `PageResponse<ProductResponse>`. Parámetros: `q` (nombre o SKU de alguna variante, sin distinguir mayúsculas, `%` y `_` literales), `active`, `categoryId` (incluye las subcategorías; inexistente → lista vacía), `type` (`FOOD|CLOTHING|APPLIANCE|OTHER`; desconocido → 400 `validation.failed`), `page` (desde 0), `size` (1-100, 20 por defecto), `sort` (`name`, `createdAt` + `,asc`/`,desc`; por defecto `name,asc`; `sku` retirado). `size`/`page` fuera de rango o de tipo inválido: 400 `validation.failed` con `errors`; `sort` no permitido: 400 `request.invalid_sort`. |
 | GET | `/api/v1/products/categories` | (retirado) | 404 | Eliminado en HU-15 (`request.not_found`); usar `GET /api/v1/categories`. |
 | GET | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Detalle. 404 `product.not_found`. |
-| POST | `/api/v1/products` | `ADMIN`, `OPERATOR` | 201 | Crea el producto (y su fila `product_stock` en ceros). Cabecera `Location`. 400 `validation.failed`, `product.price_currency_mismatch`, `product.currency_unsupported`; 409 `product.sku_conflict`. |
+| POST | `/api/v1/products` | `ADMIN`, `OPERATOR` | 201 | Crea el producto simple o con variantes (cada variante con su fila `variant_stock` en ceros). Cabecera `Location`. 400 `validation.failed`, `product.price_currency_mismatch`, `product.currency_unsupported`; 409 `product.sku_conflict`. |
 | PUT | `/api/v1/products/{id}` | `ADMIN`, `OPERATOR` | 200 | Edita (también inactivos). Exige `version`; si no coincide, 409 `resource.version_conflict`. Además los errores del alta y 404. |
 | POST | `/api/v1/products/{id}/deactivate` | `ADMIN` | 200 | `active = false`. Idempotente (sin nueva versión si ya estaba inactivo). 403 para `OPERATOR`. |
 | POST | `/api/v1/products/{id}/activate` | `ADMIN` | 200 | `active = true`. Idempotente. |
+| POST | `/api/v1/products/{id}/variants` | `ADMIN`, `OPERATOR` | 201 | Añade 1-100 variantes (todo o nada). Devuelve el producto completo. |
+| PUT | `/api/v1/products/{id}/variants/{variantId}` | `ADMIN`, `OPERATOR` | 200 | Edita una variante (`version` de la variante). Devuelve el producto. |
+| POST | `/api/v1/products/{id}/variants/{variantId}/deactivate` · `/activate` | `ADMIN` | 200 | Idempotentes. Devuelven el producto. |
+| POST | `/api/v1/products/{id}/variants/enable` · `/disable` | `ADMIN`, `OPERATOR` | 200 | Convierte simple ↔ con variantes (sube la `version` del producto). |
 | GET | `/actuator/health` | público | 200 | Estado de la aplicación. Lo usa Render como health check. |
 | GET | `/actuator/info` | autenticado | 200 | Información de la aplicación. |
 | GET | `/v3/api-docs`, `/swagger-ui.html` | público solo si springdoc está activo | 200 | OpenAPI JSON y Swagger UI. Activos en `dev`/`test` y en staging (`SPRINGDOC_ENABLED=true`). En producción: anónimo → 401; autenticado → 404. |
@@ -125,6 +129,41 @@ Las 4 raíces sembradas por V4: Alimentos/Food (`FOOD`), Ropa/Clothing (`CLOTHIN
   "brand": "LG", "model": "GR-1", "warrantyMonths": 24, "salePrice": 250.00, "...": "..." }
 ```
 - **Filtros** de `GET /products`: `categoryId` (incluye descendientes; inexistente → lista vacía) y `type`; combinables con `q` y `active`. `type` desconocido → 400 `validation.failed` (`errors.type`).
-- **Orden**: `sort` = `name`, `sku` o `createdAt`; `category` → 400 `request.invalid_sort`.
+- **Orden**: `sort` = `name` o `createdAt`; `category` y `sku` → 400 `request.invalid_sort`.
 - **Retirado**: `GET /api/v1/products/categories` → 404 `request.not_found`.
 - Activar/desactivar un producto es idempotente (200 aunque ya esté en ese estado o en carrera). Un SKU cuyo valor cambiaría al pasar a mayúsculas (`ß`) → 400 `errors.sku`.
+
+## Variantes (HU-16)
+
+El SKU, el umbral y el stock viven en la **variante**. Un producto simple (`hasVariants = false`) tiene exactamente una, sin talla ni color, que la API oculta: `sku`, `minStock` y `stock` del producto son los de esa variante. Un producto con variantes (`hasVariants = true`) devuelve `sku` y `minStock` en `null`, `stock` agregado y `variants[]`. No hay precio por variante. Los endpoints de variantes devuelven el **producto completo** (`ProductResponse`).
+
+**Entrada**
+- `POST /products`: los de HU-02/HU-15 más `hasVariants` (ausente = `false`) y `variants` (1-100). Simple: `sku` opcional y `minStock` obligatorio (si falta: 400 `errors.minStock`), `variants` ausente o vacía. Con variantes: `sku`/`minStock` del producto deben ir `null` y `variants` no vacía; si no, 400 `product.variant_fields_not_allowed` (`variants` vacía: 400 `validation.failed` con `errors.variants`).
+- `PUT /products/{id}`: `sku` y `minStock` opcionales según el tipo (en un producto con variantes no nulos → 400 `product.variant_fields_not_allowed`); no admite `hasVariants` ni `variants`.
+- `VariantRequest`: `{ "sku": null|"CAM-M-BLA", "size": "M", "color": "Blanco", "minStock": 2 }`. `sku` como en productos (único entre **todas** las variantes, activas o no). `size`: recortada y en mayúsculas, ≤ 20; `color`: recortado, ≤ 30; vacíos → `null`; al menos uno de los dos (400 `variant.options_required`). `minStock` obligatorio (≥ 0, 9 enteros y 3 decimales). Errores por campo con ruta indexada: `errors["variants[2].size"]`.
+- `UpdateVariantRequest`: lo mismo más `version` (la de la variante). `AddVariantsRequest`: `{ "variants": [ ... ] }`. `EnableVariantsRequest`: `{ "size": "M", "color": null }` (al menos uno).
+- Opciones duplicadas (misma talla y color sin distinguir mayúsculas, contra las existentes activas o no, o en la propia petición): 409 `variant.options_conflict` (`{0}` = opciones de la variante que choca, p. ej. `M / rojo`). Las tildes no cuentan como duplicado.
+
+**Respuesta**
+```json
+{ "id": 7, "name": "Camiseta", "sku": null, "unit": "UNIT", "type": "CLOTHING", "category": { "...": "..." },
+  "brand": null, "model": null, "warrantyMonths": null, "salePrice": 12.00, "salePriceCurrency": "USD", "minStock": null,
+  "active": true, "hasVariants": true, "variantCount": 2,
+  "stock": { "onHand": 40.000, "reserved": 5.000, "available": 35.000, "averageCost": 8.0000, "costCurrency": "USD" },
+  "lowStock": false,
+  "variants": [
+    { "id": 11, "sku": "CAM-S-AZU", "size": "S", "color": "Azul", "minStock": 2.000, "active": true,
+      "stock": { "onHand": 10.000, "reserved": 1.000, "available": 9.000, "averageCost": 5.0000, "costCurrency": "USD" },
+      "lowStock": false, "version": 0 }
+  ],
+  "version": 0, "createdAt": "…", "createdBy": "admin", "updatedAt": "…", "updatedBy": "admin" }
+```
+- `variants[]` solo viene en el detalle y en las respuestas de alta, edición, variantes y conversión; **el listado no lo incluye** (el campo no aparece). Orden (CA-14): tallas `XXS…XXXL` (`2XL` = `XXL`, `3XL` = `XXXL`), numéricas de menor a mayor, resto alfabético, sin talla al final; a igual talla por color y por `id`.
+- `variantCount` cuenta todas las variantes (activas e inactivas).
+- `stock` de un producto con variantes (CA-15) suma **todas** las variantes; `averageCost` es el promedio ponderado Σ(onHand·costo)/Σ onHand sobre las que tienen costo (4 decimales, `HALF_UP`), `null` si ese Σ es 0; `costCurrency` = `USD` si hay costo. `lowStock` del producto = activo y alguna variante **activa** con stock bajo; el de una variante = producto activo, variante activa, `minStock > 0` y `available <= minStock`.
+
+**Versiones (CA-13b)**: crear, editar, activar o desactivar variantes no cambia la `version` ni el `updatedAt` del producto. `enable`/`disable` sí suben la del producto. En un producto simple, un `PUT` que solo cambia `sku`/`minStock` (su variante oculta) también sube la `version` del producto.
+
+**Conversión**: `enable` (simple → variantes) exige `size` y/o `color`; la variante conserva `id`, SKU, umbral y stock; 409 `product.has_variants` si ya las tiene (se comprueba antes que las opciones). `disable` solo con exactamente una variante (activa o no): pierde talla y color y queda activa; 409 `product.has_multiple_variants`; en un simple, 409 `product.no_variants`. Los endpoints de variantes sobre un simple → 409 `product.no_variants`. Variante de otro producto o inexistente → 404 `variant.not_found`. `DELETE` → 405.
+
+**Migración V5**: cada producto existente pasa a tener `hasVariants = false` y una variante con su antiguo SKU, umbral y stock.

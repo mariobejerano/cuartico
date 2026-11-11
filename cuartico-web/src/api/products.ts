@@ -1,10 +1,13 @@
 import { request } from './client'
 import type {
+  AddVariantsRequest,
   CreateProductRequest,
+  EnableVariantsRequest,
   PageResponse,
   ProductListParams,
   ProductResponse,
   UpdateProductRequest,
+  UpdateVariantRequest,
 } from './types'
 
 const BASE = '/api/v1/products'
@@ -23,9 +26,12 @@ export function listQueryString(params: ProductListParams): string {
 }
 
 /**
- * Endpoints de productos (HU-02, HU-15). Como un cliente Feign: solo sabe hablar con la API, nada de React.
+ * Endpoints de productos (HU-02, HU-15, HU-16). Como un cliente Feign: solo sabe hablar con la API, nada de React.
  * `signal` permite cancelar la petición (TanStack Query lo usa cuando la respuesta ya no interesa).
  * Las categorías tienen su propio cliente (`categories.ts`): `GET /products/categories` ya no existe (HU-15 CA-21).
+ *
+ * Variantes (HU-16): TODOS sus endpoints devuelven el producto completo (`ProductResponse` con `variants[]`), así la
+ * pantalla se pone al día con una sola respuesta. No hay `GET` de una variante: se relee el producto.
  */
 export const productsApi = {
   list: (params: ProductListParams, signal?: AbortSignal) =>
@@ -36,4 +42,22 @@ export const productsApi = {
     request<ProductResponse>(`${BASE}/${id}`, { method: 'PUT', body }),
   activate: (id: number) => request<ProductResponse>(`${BASE}/${id}/activate`, { method: 'POST' }),
   deactivate: (id: number) => request<ProductResponse>(`${BASE}/${id}/deactivate`, { method: 'POST' }),
+
+  // ----- Variantes (HU-16) -----
+  /** CA-8: añade 1–100 variantes (todo o nada). */
+  addVariants: (id: number, body: AddVariantsRequest) =>
+    request<ProductResponse>(`${BASE}/${id}/variants`, { method: 'POST', body }),
+  /** CA-9: edita una variante con su propia `version`. */
+  updateVariant: (id: number, variantId: number, body: UpdateVariantRequest) =>
+    request<ProductResponse>(`${BASE}/${id}/variants/${variantId}`, { method: 'PUT', body }),
+  /** CA-10 (solo ADMIN). */
+  activateVariant: (id: number, variantId: number) =>
+    request<ProductResponse>(`${BASE}/${id}/variants/${variantId}/activate`, { method: 'POST' }),
+  deactivateVariant: (id: number, variantId: number) =>
+    request<ProductResponse>(`${BASE}/${id}/variants/${variantId}/deactivate`, { method: 'POST' }),
+  /** CA-12: simple → con variantes (la variante existente recibe talla y/o color). Sube la versión del producto. */
+  enableVariants: (id: number, body: EnableVariantsRequest) =>
+    request<ProductResponse>(`${BASE}/${id}/variants/enable`, { method: 'POST', body }),
+  /** CA-13: con una sola variante → simple. Sube la versión del producto. */
+  disableVariants: (id: number) => request<ProductResponse>(`${BASE}/${id}/variants/disable`, { method: 'POST' }),
 }

@@ -52,6 +52,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(ApiException.class)
 	ResponseEntity<ProblemDetail> handleApi(ApiException ex, HttpServletRequest request) {
 		ProblemDetail problem = problems.create(ex.getStatus(), ex.getCode(), request, ex.getArgs());
+		if (ex instanceof FieldValidationException fields) {
+			Locale locale = problems.localeOf(request);
+			Map<String, String> errors = new LinkedHashMap<>();
+			fields.getFieldMessageCodes().forEach((field, code) -> errors.put(field, problems.message(code, locale)));
+			problem.setProperty("errors", errors);
+		}
 		return ResponseEntity.status(ex.getStatus()).body(problem);
 	}
 

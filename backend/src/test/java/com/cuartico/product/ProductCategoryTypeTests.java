@@ -205,7 +205,7 @@ class ProductCategoryTypeTests {
 	@Test
 	void sortByCategoryIsRetiredAndTheEndpointIsGone() throws Exception {
 		list("sort=category").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("request.invalid_sort"));
-		list("sort=sku,desc").andExpect(status().isOk());
+		list("sort=sku,desc").andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("request.invalid_sort"));
 		list("sort=createdAt,desc").andExpect(status().isOk());
 		mvc.perform(get(PRODUCTS + "/categories").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
 			.andExpect(status().isNotFound())

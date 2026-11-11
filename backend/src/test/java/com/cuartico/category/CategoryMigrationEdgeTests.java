@@ -2,6 +2,8 @@ package com.cuartico.category;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.cuartico.testsupport.MigrationDb;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;

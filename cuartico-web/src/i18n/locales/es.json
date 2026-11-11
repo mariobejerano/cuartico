@@ -24,7 +24,8 @@
     "offline": "Sin conexión. Los cambios no se guardarán hasta que vuelvas a tener internet.",
     "skip_to_content": "Saltar al contenido",
     "not_set": "Sin definir",
-    "got_it": "Entendido"
+    "got_it": "Entendido",
+    "edit": "Editar"
   },
   "validation": {
     "required": "Este campo es obligatorio.",
@@ -129,7 +130,7 @@
     "sale_price": "Precio de venta de referencia",
     "amount": "Importe",
     "currency": "Moneda",
-    "sale_price_help": "Orientativo. El precio real lo fija cada combo o pedido.",
+    "sale_price_help": "Orientativo y para todas sus tallas y colores. El precio real lo fija cada combo o pedido.",
     "section_stock": "Stock y costo",
     "on_hand": "Físico",
     "reserved": "Reservado",
@@ -176,7 +177,12 @@
     "months": "meses",
     "warranty_help": "En meses, de 0 a 120. Es informativa: se muestra al vender.",
     "unit_locked_help": "Fija: {{type}} se cuenta por unidades.",
-    "section_inventory": "Inventario"
+    "section_inventory": "Inventario",
+    "has_variants": "Tiene tallas o colores",
+    "has_variants_help": "Márcalo si cada talla o color lleva su propio SKU y stock. En ropa viene marcado.",
+    "stock_new_note_variants": "El stock de cada variante empieza en 0 y se actualiza con las compras y ventas.",
+    "variant_count_one": "1 variante",
+    "variant_count_other": "{{count}} variantes"
   },
   "product": {
     "sku_pattern": "Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_).",
@@ -278,6 +284,84 @@
       "parent_inactive": "La categoría superior está desactivada. Actívala primero o elige otra.",
       "has_active_children": "Tiene subcategorías activas. Desactívalas primero.",
       "inactive": "Esta categoría se ha desactivado. Elige otra."
+    },
+    "product": {
+      "sku_conflict": "El SKU {{sku}} ya lo usa otro producto o variante."
+    },
+    "variant": {
+      "options_conflict": "Ya existe la variante {{options}} en este producto."
     }
+  },
+  "variants": {
+    "section": "Tallas y colores",
+    "title_count": "Tallas y colores ({{count}})",
+    "col_variant": "Variante",
+    "size": "Talla",
+    "color": "Color",
+    "count_one": "1 variante",
+    "count_other": "{{count}} variantes",
+    "count_inactive": "{{count}} inactivas",
+    "badge_inactive": "Inactiva",
+    "remove": "Quitar {{name}}",
+    "required": "Añade al menos una variante: elige tallas o colores y pulsa «Añadir variantes».",
+    "max": "Máximo 100 variantes por producto.",
+    "add": "Añadir variantes",
+    "immediate_note": "Los cambios de cada variante se guardan con su propio botón, sin tocar «Guardar producto».",
+    "total_title": "Total de todas las variantes",
+    "total_note": "Suma de todas las variantes, también las inactivas. Se actualiza con las compras y ventas.",
+    "save_row": "Guardar variante",
+    "saved": "Variante «{{name}}» guardada.",
+    "staged_one": "1 variante por guardar",
+    "staged_other": "{{count}} variantes por guardar",
+    "save_new_zero": "Guardar variantes nuevas",
+    "save_new_one": "Guardar 1 variante nueva",
+    "save_new_other": "Guardar {{count}} variantes nuevas",
+    "added_one": "1 variante añadida.",
+    "added_other": "{{count}} variantes añadidas.",
+    "deactivated": "Variante «{{name}}» desactivada.",
+    "activated": "Variante «{{name}}» activada.",
+    "version_conflict": "Otra persona cambió esta variante. Tu cambio no se ha guardado.",
+    "reload_row": "Recargar variante",
+    "simple_text": "Este producto no tiene tallas ni colores: todo su stock se cuenta junto.",
+    "to_variants": "Convertir en producto con variantes",
+    "convert": "Convertir",
+    "enable_body": "Las unidades que ya tienes ({{onHand}}) pasan a ser la primera variante, con su SKU y su stock mínimo. ¿Qué talla o color tienen? Después podrás añadir las demás.",
+    "enabled": "«{{name}}» ya tiene tallas o colores. Añade las demás variantes.",
+    "save_first_title": "Guarda antes los cambios del producto",
+    "save_first_body": "La conversión se guarda al momento. Para no perder lo que has escrito, guarda o descarta los cambios del producto y vuelve a intentarlo.",
+    "to_simple": "Convertir en producto simple",
+    "to_simple_hint": "Tiene una sola variante: puedes volver a gestionarlo como producto simple.",
+    "to_simple_title": "¿Convertir en producto simple?",
+    "to_simple_body": "«{{name}}» deja de tener talla y color. Su SKU, su stock mínimo y su stock pasan a ser los del producto.",
+    "to_simple_body_inactive": "«{{name}}» deja de tener talla y color y se vuelve a activar. Su SKU, su stock mínimo y su stock pasan a ser los del producto.",
+    "disabled_done": "«{{name}}» es ahora un producto simple."
+  },
+  "variant": {
+    "options_required": "Indica al menos una talla o un color.",
+    "sku_repeated": "Este SKU se repite en otra variante.",
+    "similar_color": "«{{color}}» se parece a «{{other}}». Si es el mismo color, escríbelo igual."
+  },
+  "gen": {
+    "title": "Generar combinaciones",
+    "sizes": "Tallas",
+    "colors": "Colores",
+    "add": "Añadir",
+    "presets": "Habituales:",
+    "sizes_help": "Escribe una o varias separadas por comas y pulsa Intro. Ej.: M, 38, 10.",
+    "colors_help": "Ej.: Blanco, Azul marino. Puedes dejarlo vacío si solo cambia la talla.",
+    "chosen_sizes": "Tallas elegidas",
+    "chosen_colors": "Colores elegidos",
+    "remove_size": "Quitar la talla {{v}}",
+    "remove_color": "Quitar el color {{v}}",
+    "prefix": "Prefijo de SKU",
+    "prefix_help": "Propone cada SKU como PREFIJO-TALLA-COLOR (p. ej. CAM-M-BLA). Puedes cambiarlos después.",
+    "min": "Stock mínimo de cada una",
+    "preview_none": "Elige al menos una talla o un color.",
+    "preview_one": "1 combinación nueva.",
+    "preview_other": "{{count}} combinaciones nuevas.",
+    "preview_skipped": "{{n}} ya existen y se omiten.",
+    "apply_zero": "Añadir variantes",
+    "apply_one": "Añadir 1 variante",
+    "apply_other": "Añadir {{count}} variantes"
   }
 }
