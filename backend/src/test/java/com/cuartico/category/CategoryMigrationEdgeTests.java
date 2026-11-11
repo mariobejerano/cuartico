@@ -2,10 +2,9 @@ package com.cuartico.category;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * QA (Vera): V4 with the awkward legacy data of CA-22 that the main migration test does not cover:
@@ -13,24 +12,20 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
  */
 class CategoryMigrationEdgeTests {
 
-	private static DriverManagerDataSource db(String name) {
-		return new DriverManagerDataSource("jdbc:h2:mem:" + name
-				+ ";MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1", "sa", "");
-	}
+	private MigrationDb db;
 
-	private static void migrate(DriverManagerDataSource ds, String target) {
-		var cfg = Flyway.configure().dataSource(ds).locations("classpath:db/migration");
-		if (target != null) {
-			cfg.target(target);
+	@AfterEach
+	void dropDb() {
+		if (db != null) {
+			db.close();
 		}
-		cfg.load().migrate();
 	}
 
 	@Test
 	void everyAliasGoesToItsRootAndBlankTextGoesToFood() {
-		DriverManagerDataSource ds = db("migration-edge");
-		migrate(ds, "3");
-		JdbcTemplate jdbc = new JdbcTemplate(ds);
+		db = MigrationDb.create("migration-edge");
+		db.migrate("3");
+		JdbcTemplate jdbc = db.jdbc();
 		String[][] cases = {
 				{ "alimento", "Alimentos" }, { "COMIDA", "Alimentos" }, { "Food", "Alimentos" },
 				{ "calzado", "Ropa" }, { "Zapatos", "Ropa" }, { "CLOTHING", "Ropa" },
@@ -47,7 +42,7 @@ class CategoryMigrationEdgeTests {
 			jdbc.update("insert into product_stock (product_id, on_hand, reserved, updated_at) "
 					+ "select id, 0, 0, current_timestamp from products where name = ?", "p" + i);
 		}
-		migrate(ds, null);
+		db.migrate(null);
 		for (int i = 0; i < cases.length; i++) {
 			String root = jdbc.queryForObject("""
 					select r.name from products p join categories c on c.id = p.category_id
@@ -62,18 +57,18 @@ class CategoryMigrationEdgeTests {
 
 	@Test
 	void emptyDatabaseMigratesAndHasTheFourRoots() {
-		DriverManagerDataSource ds = db("migration-empty");
-		migrate(ds, null);
-		JdbcTemplate jdbc = new JdbcTemplate(ds);
+		db = MigrationDb.create("migration-empty");
+		db.migrate(null);
+		JdbcTemplate jdbc = db.jdbc();
 		assertEquals(4, jdbc.queryForObject("select count(*) from categories where parent_id is null and active", Integer.class));
 		assertEquals(0, jdbc.queryForObject("select count(*) from products", Integer.class));
 	}
 
 	@Test
 	void textMatchingASubcategoryNameKeepsPaddingAndAccentsOutOfTheKey() {
-		DriverManagerDataSource ds = db("migration-key");
-		migrate(ds, "3");
-		JdbcTemplate jdbc = new JdbcTemplate(ds);
+		db = MigrationDb.create("migration-key");
+		db.migrate("3");
+		JdbcTemplate jdbc = db.jdbc();
 		// "Lacteos" and "Lácteos" are different texts (no accent folding, by design); "  LÁCTEOS " is the second
 		String[] texts = { "Lacteos", "Lácteos", "  LÁCTEOS ", "Bebidas   Frías" };
 		for (int i = 0; i < texts.length; i++) {
@@ -84,7 +79,7 @@ class CategoryMigrationEdgeTests {
 			jdbc.update("insert into product_stock (product_id, on_hand, reserved, updated_at) "
 					+ "select id, 0, 0, current_timestamp from products where name = ?", "k" + i);
 		}
-		migrate(ds, null);
+		db.migrate(null);
 		assertEquals(3, jdbc.queryForObject("select count(*) from categories where depth = 2", Integer.class));
 		assertEquals(jdbc.queryForObject("select category_id from products where name = 'k1'", Long.class),
 				jdbc.queryForObject("select category_id from products where name = 'k2'", Long.class));

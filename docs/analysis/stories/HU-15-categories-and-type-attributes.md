@@ -54,8 +54,10 @@ garantía).
   normalización en un solo sitio (la BD); el caso es raro y el aviso basta. `name_en` tampoco es único entre hermanas.
 - **CA-7 Normalización y validación.** `name` y `nameEn` se recortan; `nameEn` vacío → `null`. `name` vacío o de más de
   60 caracteres, o `nameEn` de más de 60 → **400** `validation.failed` con `errors` por campo.
-- **CA-8 Renombrar.** `PUT` con `name`, `nameEn` y `version` → **200**, `version + 1`; las rutas (`path`) de sus
-  descendientes y de los productos reflejan el nombre nuevo. Versión antigua → **409** `resource.version_conflict`.
+- **CA-8 Renombrar.** `PUT` con `name`, `nameEn` y `version` → **200**; la `version` sube en 1 **solo si cambia algún
+  dato** (`name` o `nameEn` tras normalizar). Un `PUT` con los mismos valores es un no-op: **200** con la misma
+  `version` y sin tocar `updatedAt`/`updatedBy`. Las rutas (`path`) de sus descendientes y de los productos reflejan el
+  nombre nuevo. Versión antigua → **409** `resource.version_conflict` (también en un `PUT` sin cambios).
   El `PUT` no cambia padre ni tipo (esos campos no existen en el DTO de edición).
 - **CA-9 Desactivar.** Dada una categoría sin hijas activas, cuando un `ADMIN` la desactiva, entonces **200** con
   `active = false`; sus productos la conservan. Con alguna hija activa → **409** `category.has_active_children`.

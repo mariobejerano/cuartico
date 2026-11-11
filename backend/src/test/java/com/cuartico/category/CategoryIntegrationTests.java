@@ -492,6 +492,32 @@ class CategoryIntegrationTests {
 		list("").andExpect(jsonPath("$[?(@.id == " + root + ")].productCount").value(contains(2)));
 	}
 
+	@Test
+	void listSortsWithSpanishCollationIgnoringAccentsAndCase() throws Exception {
+		String tag = unique("ZZcol");
+		long root = createRoot(tag, null, "FOOD");
+		for (String name : List.of("Zumos", "Ácidos", "bebidas", "Ñandú", "Nubes")) {
+			createChild(root, name);
+		}
+		list("").andExpect(status().isOk())
+			.andExpect(jsonPath("$[?(@.path =~ /" + tag + ".*/)].name")
+				.value(contains(tag, "Ácidos", "bebidas", "Nubes", "Ñandú", "Zumos")));
+	}
+
+	@Test
+	void putWithoutChangesIsANoOpAndKeepsTheVersion() throws Exception {
+		long root = createRoot(unique("SinCambios"), "Same", "FOOD");
+		MvcResult r = fetch(root).andReturn();
+		String name = JsonPath.read(r.getResponse().getContentAsString(), "$.name");
+		// CA-8 "version + 1" applies when something changes; an identical PUT writes nothing
+		rename(root, adminToken, "{\"name\":\"%s\",\"nameEn\":\"Same\",\"version\":0}".formatted(name))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.version").value(0));
+		rename(root, adminToken, "{\"name\":\"%s\",\"nameEn\":\"Changed\",\"version\":0}".formatted(name))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.version").value(1));
+	}
+
 	// ---------------------------------------------------------------- CA-23 / CA-24 permissions
 
 	@Test

@@ -5,22 +5,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import java.util.Map;
 
-import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /** HU-15 CA-22: V4 migrates the old free-text products.category with data seeded before it (Flyway target 3). */
 class CategoryMigrationTests {
 
+	private MigrationDb db;
+
+	@AfterEach
+	void dropDb() {
+		if (db != null) {
+			db.close();
+		}
+	}
+
 	@Test
 	void v4MapsOldTextToRootsAndSubcategories() {
-		DriverManagerDataSource ds = new DriverManagerDataSource(
-				"jdbc:h2:mem:migration-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1",
-				"sa", "");
-		Flyway.configure().dataSource(ds).locations("classpath:db/migration").target("3").load().migrate();
+		db = MigrationDb.create("main");
+		db.migrate("3");
 
-		JdbcTemplate jdbc = new JdbcTemplate(ds);
+		JdbcTemplate jdbc = db.jdbc();
 		String[] texts = { "alimentos", "ROPA", "Aseo", "Limpieza", "Granos", "granos", "Lácteos", "LÁCTEOS", null,
 				"  Zapatos ", "Electrodomestico" };
 		for (int i = 0; i < texts.length; i++) {
@@ -34,7 +40,7 @@ class CategoryMigrationTests {
 		}
 		Map<String, Object> before = jdbc.queryForMap("select id, sku, sale_price, unit from products where name = 'p4'");
 
-		Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();
+		db.migrate(null);
 
 		assertEquals(4, jdbc.queryForObject("select count(*) from categories where parent_id is null", Integer.class));
 		assertEquals("Alimentos", rootOf(jdbc, 0));
@@ -73,13 +79,13 @@ class CategoryMigrationTests {
 		assertEquals(before, after);
 		assertEquals(texts.length, jdbc.queryForObject("select count(*) from product_stock where on_hand = 3", Integer.class));
 		assertEquals(0, jdbc.queryForObject(
-				"select count(*) from information_schema.columns where table_name = 'products' and column_name = 'category'",
+				"select count(*) from information_schema.columns where table_schema = current_schema() and table_name = 'products' and column_name = 'category'",
 				Integer.class));
 		assertEquals("NO", jdbc.queryForObject(
-				"select is_nullable from information_schema.columns where table_name = 'products' and column_name = 'category_id'",
+				"select is_nullable from information_schema.columns where table_schema = current_schema() and table_name = 'products' and column_name = 'category_id'",
 				String.class));
 		assertEquals(0, jdbc.queryForObject(
-				"select count(*) from information_schema.tables where table_name = 'category_alias_tmp'", Integer.class));
+				"select count(*) from information_schema.tables where table_schema = current_schema() and table_name = 'category_alias_tmp'", Integer.class));
 
 		// The key written by the migration collides with the one the application writes (same function)
 		List<Long> same = jdbc.queryForList(

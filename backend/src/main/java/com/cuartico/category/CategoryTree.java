@@ -1,5 +1,6 @@
 package com.cuartico.category;
 
+import java.text.Collator;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,7 +9,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,6 +21,9 @@ import com.cuartico.category.dto.CategoryDtos.CategoryRef;
 public final class CategoryTree {
 
 	public static final String SEPARATOR = " › ";
+
+	/** Spanish collation at primary strength: ignores accents and case ("Ácidos" sorts before "Zumos"). Ties fall back to the id. */
+	private static final Collator COLLATOR = newCollator();
 
 	private final Map<Long, Category> byId = new HashMap<>();
 
@@ -37,6 +40,12 @@ public final class CategoryTree {
 				childrenOf.computeIfAbsent(parentId, k -> new ArrayList<>()).add(c.getId());
 			}
 		}
+	}
+
+	private static Collator newCollator() {
+		Collator collator = Collator.getInstance(java.util.Locale.forLanguageTag("es"));
+		collator.setStrength(Collator.PRIMARY);
+		return collator;
 	}
 
 	public boolean contains(Long id) {
@@ -84,22 +93,23 @@ public final class CategoryTree {
 	/** Order by path, case-insensitive, comparing level by level so a parent always precedes its children. */
 	public Comparator<Long> pathOrder() {
 		return (a, b) -> {
-			List<String> pa = lowerSegments(a);
-			List<String> pb = lowerSegments(b);
+			List<String> pa = segments(a);
+			List<String> pb = segments(b);
 			for (int i = 0; i < Math.min(pa.size(), pb.size()); i++) {
-				int cmp = pa.get(i).compareTo(pb.get(i));
+				int cmp = COLLATOR.compare(pa.get(i), pb.get(i));
 				if (cmp != 0) {
 					return cmp;
 				}
 			}
-			return Integer.compare(pa.size(), pb.size());
+			int bySize = Integer.compare(pa.size(), pb.size());
+			return bySize != 0 ? bySize : Long.compare(a, b);
 		};
 	}
 
-	private List<String> lowerSegments(Long id) {
+	private List<String> segments(Long id) {
 		List<String> segments = new ArrayList<>();
 		for (Long cur = id; cur != null; cur = parentOf.get(cur)) {
-			segments.add(0, byId.get(cur).getName().toLowerCase(Locale.ROOT));
+			segments.add(0, byId.get(cur).getName());
 		}
 		return segments;
 	}

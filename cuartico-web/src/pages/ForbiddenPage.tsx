@@ -9,7 +9,7 @@ import { useDocumentTitle } from '../components/useDocumentTitle'
  */
 export default function ForbiddenPage() {
   const { t } = useTranslation()
-  useDocumentTitle('categories.page_title')
+  useDocumentTitle('forbidden.title')
   return (
     <section className="c-empty">
       <Icon name="lock" />

@@ -103,6 +103,7 @@ Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`
 
 **`CreateCategoryRequest`**: `name` (obligatorio, 1-60, recortado), `nameEn` (opcional, ≤ 60; vacío → `null`), `parentId` (`null` = raíz), `productType` (`FOOD|CLOTHING|APPLIANCE|OTHER`; obligatorio en raíz, prohibido en hija).
 **`UpdateCategoryRequest`**: `name`, `nameEn`, `version` (obligatorio). El padre y el tipo no cambian.
+Un `PUT` que no cambia ningún valor (mismo `name` y `nameEn`) es un no-op: responde 200 con la misma `version` (no se incrementa); `version + 1` ocurre solo cuando algo cambia. El listado se ordena por ruta con colación española (sin distinguir tildes ni mayúsculas: «Ácidos» antes que «Zumos»).
 
 **`CategoryResponse`**:
 ```json

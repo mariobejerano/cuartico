@@ -140,6 +140,7 @@ describe('Navegación de Categorías (HU-15 CA-24, CA-25)', () => {
     expect(await screen.findByRole('heading', { name: 'No tienes acceso a esta página' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ir a productos' })).toHaveAttribute('href', '/products')
     expect(api.calls('GET /api/v1/categories')).toHaveLength(0)
+    expect(document.title).toBe('No tienes acceso a esta página') // título genérico, no el de la página protegida
   })
 })
 
