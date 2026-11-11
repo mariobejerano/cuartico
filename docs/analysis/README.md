@@ -18,7 +18,7 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | HU-01 | [Acceso al panel](stories/HU-01-panel-access.md) | 1 | Hecha (PR #9) |
 | HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Hecha (PR #10) |
 | HU-14 | [Gestión de usuarios](stories/HU-14-user-management.md) | — | Ficha breve |
-| HU-15 | [Categorías y atributos por tipo](stories/HU-15-categories-and-type-attributes.md) (V4) | 2 | Analizada; prototipos y D-1, D-4 aprobados (2026-11-09) |
+| HU-15 | [Categorías y atributos por tipo](stories/HU-15-categories-and-type-attributes.md) (V4) | 2 | Hecha (PR #13, 2026-11-11) |
 | HU-16 | [Variantes de producto](stories/HU-16-product-variants.md) (V5) | 2 | Analizada; prototipo y D-2, D-3 aprobados (2026-11-09) |
 
 ## ADR

@@ -103,7 +103,7 @@ Tabla completa en [deploy.md](deploy.md#errores-de-arranque-habituales). Resumen
 - Medir la memoria en staging y revisar los topes del `Dockerfile` (TT-09).
 - `APP_CORS_ORIGINS` de producción, al tener frontend (TT-10).
 - Acceso de solo lectura a Neon por MCP para Vera y Faro (TT-07).
-- **Bloquea el despliegue de V4 (HU-15):** comprobar `SHOW lc_ctype` en las ramas `staging` y `production` de Neon (TT-16).
+- **Bloquea el release de V4 (HU-15) a producción:** comprobar `SHOW lc_ctype` en la rama `production` de Neon (TT-16). En `staging` ya está comprobado (2026-11-11: `C.UTF-8`, correcto).
   Con `C`/`POSIX`, `LOWER()` no pasa a minúsculas las letras acentuadas y las claves únicas de nombres de categoría fallarían.
 
 Backlog completo: [product-backlog.md](../scrum/product-backlog.md).
