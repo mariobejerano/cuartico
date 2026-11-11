@@ -208,7 +208,7 @@
   },
   "forbidden": {
     "title": "No tienes acceso a esta página",
-    "body": "Solo un administrador puede gestionar las categorías. Si lo necesitas, pídeselo a uno.",
+    "body": "Solo un administrador puede ver esta página. Si la necesitas, pídeselo a uno.",
     "go_products": "Ir a productos"
   },
   "product_type": {
