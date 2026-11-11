@@ -1,7 +1,8 @@
 # HU-16: Variantes de producto
 
-- **Sprint:** — (después de HU-15 y antes de HU-04) · **Estado:** analizada; pendiente de prototipo (Lienzo) y aprobación
-  de la supervisión.
+- **Sprint:** 2 (después de HU-15 y antes de HU-04) · **Estado:** analizada; prototipo de Lienzo
+  ([`products-v2.html`](../../design/prototypes/products-v2.html)) y decisiones D-2 y D-3 **aprobados por la
+  supervisión (2026-11-09)**.
 - **Alcance:** backend (módulo `product`, migración **V5**) y frontend (`cuartico-web`).
 - **Decisiones:** [ADR-003](../adr/ADR-003-categories-types-variants.md) (decisión 3) y addendum de
   [ADR-002](../adr/ADR-002-product-stock-cache.md) (la caché de stock es 1:1 con la variante).
@@ -34,7 +35,7 @@ antes de que HU-04 empiece a registrar movimientos.
 - **CA-1 Alta simple.** Dado un `POST /products` con `hasVariants` ausente o `false`, `sku` y `minStock`, entonces
   **201** con `hasVariants = false`, `variantCount = 1`, `sku`, `minStock` y `stock` como en HU-02, y existen una fila en
   `product_variants` (sin talla ni color) y su fila en `variant_stock` con ceros.
-- **CA-2 Edición simple.** `PUT /products/{id}` de un producto simple con `sku` y `minStock` actualiza su variante.
+- **CA-2 Edición simple.** `PUT /products/{id}` de un producto simple con `sku` y `minStock` actualiza su variante (también sube la `version` de esa variante oculta; el cliente no la gestiona).
   Las reglas de SKU de HU-02 (normalización, único entre todas las variantes activas e inactivas, carrera → 409
   `product.sku_conflict`) se mantienen.
 - **CA-3 Endpoints de variantes en un simple.** Crear, editar, activar o desactivar variantes de un producto simple
@@ -62,8 +63,9 @@ antes de que HU-04 empiece a registrar movimientos.
   → **200**, `version + 1`. Versión antigua → **409** `resource.version_conflict`. Una variante de **otro** producto o
   inexistente → **404** `variant.not_found`.
 - **CA-10 Desactivar/activar variante** (solo `ADMIN`): **200**, idempotente. Conserva su stock y datos (futuro: no se
-  usa en compras, combos ni pedidos nuevos, `variant.inactive`). Se puede desactivar la última activa (el producto queda
-  sin variantes vendibles; el listado lo muestra con 0 disponibles). `OPERATOR` → **403**.
+  usa en compras, combos ni pedidos nuevos, `variant.inactive`). Se puede desactivar la última activa: el producto queda
+  sin variantes vendibles, pero el listado **sigue mostrando sus unidades** (el agregado incluye las inactivas, CA-15) y
+  `lowStock = false`; el detalle muestra cada variante con su etiqueta «Inactiva». `OPERATOR` → **403**.
 - **CA-11 Sin borrado.** `DELETE` sobre una variante → **405** `request.method_not_allowed`.
 
 ### Convertir
@@ -73,6 +75,12 @@ antes de que HU-04 empiece a registrar movimientos.
 - **CA-13 Con variantes → simple.** `POST /products/{id}/variants/disable` → **200** si tiene exactamente una variante
   (activa o no): pierde talla y color, se activa si estaba inactiva y `hasVariants = false`. Con más de una → **409**
   `product.has_multiple_variants`. Si ya es simple → **409** `product.no_variants`.
+- **CA-13b Versiones.** Cada variante tiene su propia `version`. Crear, editar, activar o desactivar variantes **no
+  cambia** la `version` ni el `updatedAt` del producto: un `PUT` del producto con la versión que tenía antes de esas
+  operaciones → **200** (no hay conflicto falso). Las conversiones de CA-12 y CA-13 **sí** suben la `version` del
+  producto (cambian `hasVariants`, un campo del producto): un `PUT` con la versión anterior → **409**
+  `resource.version_conflict`. Para un producto simple, el `PUT` del producto actualiza también su variante oculta (la
+  versión que manda es la del producto).
 
 ### Lectura
 - **CA-14 Detalle.** `GET /products/{id}` (y las respuestas de alta, edición y conversión) incluyen `hasVariants`,
@@ -110,18 +118,31 @@ antes de que HU-04 empiece a registrar movimientos.
   desactiva variantes.
 
 ### Frontend
-- **CA-21 Alta.** Interruptor «Tiene tallas o colores» (por defecto apagado; encendido por defecto si el tipo es
-  `CLOTHING`). Encendido: desaparecen SKU y umbral del producto y aparece un generador: tallas (lista de etiquetas) ×
+- **CA-21 Alta.** Casilla «Tiene tallas o colores» (disponible en **cualquier** tipo; desmarcada por defecto y marcada
+  sola al elegir una categoría de tipo `CLOTHING`, si el usuario no la ha tocado). Marcada: desaparecen SKU y umbral del
+  producto y aparece un generador: tallas (lista de etiquetas) ×
   colores (lista de etiquetas) → genera las filas combinadas, cada una con SKU y umbral editables y botón para quitarla.
   Errores por fila (`errors["variants[2].sku"]`) junto al campo; `variant.options_conflict` y `product.sku_conflict` en
   la fila correspondiente cuando se pueda identificar.
 - **CA-22 Edición.** Tabla de variantes con edición en línea (SKU, talla, color, umbral) y stock en solo lectura;
   «Añadir variantes» reutiliza el generador y omite las combinaciones existentes; activar/desactivar por fila solo para
-  `ADMIN`. Conflicto de versión en una fila → aviso y recarga de esa fila. Botones «Convertir en producto con variantes»
-  (pide talla/color de la existente) y «Convertir en producto simple» (solo visible si hay una variante).
+  `ADMIN`. Conflicto de versión en una fila → aviso y recarga de esa fila (no hay `GET` de una variante: se hace
+  `GET /products/{id}` y se toma esa variante de `variants[]`). Las operaciones de variantes se guardan al momento y no
+  invalidan el formulario del producto (CA-13b). Botones «Convertir en producto con variantes» (pide talla/color de la
+  existente) y «Convertir en producto simple» (solo visible si hay una variante); como suben la versión del producto,
+  si el formulario tiene cambios sin guardar, la interfaz pide guardarlos antes.
 - **CA-23 Listado.** «N variantes» bajo el nombre y disponible agregado con su unidad. Las etiquetas de stock siguen
   ocultas hasta HU-04 (como en HU-02).
 - **CA-24** En móvil (360 px) la tabla de variantes se ve como tarjetas, sin desplazamiento horizontal; textos en es/en.
+
+## Decisiones de diseño aprobadas (supervisión, 2026-11-09)
+Lienzo ([prototipo](../../design/prototypes/products-v2.html), [notas](../../design/ux-notes/products-v2.md)); prototipo
+aprobado. Forman parte de los CA indicados. (D-1 y D-4 están en HU-15.)
+- **D-2 Prefijo de SKU editable en el generador** (CA-21, solo frontend): campo opcional que propone cada SKU como
+  `PREFIJO-TALLA-COLOR` (p. ej. `CAM-M-BLA`), sin tildes y añadiendo `-2` si choca; editable fila a fila. La API no
+  cambia: recibe SKU normales.
+- **D-3 Desactivar variante sin diálogo** (CA-22): toast «Variante «XL · Azul marino» desactivada.» con [Deshacer]
+  (es reversible y de alcance pequeño); el producto completo sigue pidiendo confirmación.
 
 ## Fuera de alcance
 - Precio por variante (decisión de la supervisión; columna nullable futura); imagen por variante (Combazo).
@@ -223,8 +244,19 @@ record VariantResponse(Long id, String sku, String size, String color, BigDecima
 
 ### Reglas en `ProductService` (`@Transactional`)
 - Simple: el `PUT` del producto actualiza también su variante (la `version` que manda es la del producto).
-- Añadir variantes, convertir y crear/editar variantes **bloquean la fila del producto** (`PESSIMISTIC_WRITE`): así
-  `disable` no puede cruzarse con un alta de variante (quedaría un «simple» con dos variantes). Son operaciones raras.
+- Añadir variantes, convertir y crear/editar/activar/desactivar variantes **bloquean la fila del producto** con
+  `PESSIMISTIC_WRITE` (**no** `PESSIMISTIC_FORCE_INCREMENT`, y sin modificar ningún campo del producto): así `disable`
+  no puede cruzarse con un alta de variante (quedaría un «simple» con dos variantes), y la `version` del producto no
+  cambia (CA-13b). Son operaciones raras.
+- Por qué la versión del producto no sube con las variantes: `version` protege los campos que edita el formulario del
+  producto (nombre, categoría, precio…); cada variante protege los suyos con su propia `version`. Subirla obligaría a
+  recargar el formulario tras cada cambio de talla, con 409 falsos. Solo `enable`/`disable` la suben, porque cambian
+  `hasVariants` y, con él, qué campos acepta el `PUT` del producto (`sku`/`minStock`): un formulario abierto antes de
+  la conversión enviaría datos incoherentes y debe recibir 409.
+- Detalle de implementación para que no suba sin querer: la colección `Product.variants` lleva
+  `@OptimisticLock(excluded = true)` (Hibernate incrementa la versión del dueño cuando cambia una colección) y las
+  variantes se guardan con su repositorio. Test de CA-13b: crear, editar y desactivar una variante y comprobar que
+  `products.version` y `updated_at` no cambian.
 - Duplicados de opciones: dentro de la petición, comparando `size` y `color` en minúsculas; contra las existentes, con
   una consulta que compara `color_key = lower(trim(:color))` (la misma función de la BD). Después `saveAndFlush`
   capturando `uk_product_variants_options` → `variant.options_conflict` y `uk_product_variants_sku` →

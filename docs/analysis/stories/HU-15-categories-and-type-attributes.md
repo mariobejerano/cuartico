@@ -1,6 +1,8 @@
 # HU-15: Categorías y atributos por tipo
 
-- **Sprint:** — (antes de HU-04) · **Estado:** analizada; pendiente de prototipo (Lienzo) y aprobación de la supervisión.
+- **Sprint:** 2 (antes de HU-04) · **Estado:** analizada; prototipos de Lienzo
+  ([`categories.html`](../../design/prototypes/categories.html), [`products-v2.html`](../../design/prototypes/products-v2.html))
+  y decisiones D-1 y D-4 **aprobados por la supervisión (2026-11-09)**.
 - **Alcance:** backend (módulo nuevo `category`, cambios en `product`, migración **V4**) y frontend (`cuartico-web`).
 - **Decisión:** [ADR-003](../adr/ADR-003-categories-types-variants.md) (decisiones 1 y 2). **Depende de:** HU-02.
   **La sigue:** [HU-16](HU-16-product-variants.md) (variantes, V5).
@@ -45,6 +47,11 @@ garantía).
   Dos raíces con el mismo nombre (sin distinguir mayúsculas) → **409**. Con acentos igual: `Lácteos` y `LÁCTEOS` bajo el
   mismo padre → **409**. Dos altas simultáneas iguales → una 201 y otra 409 (la restricción de BD es la garantía final,
   nunca 500). Las categorías inactivas también cuentan.
+  **Tildes**: `Lacteos` y `Lácteos` **no** chocan en la BD (`LOWER` no quita tildes) y la API las acepta (**201**). El
+  frontend muestra un **aviso no bloqueante** al escribir un nombre que solo difiere en tildes de una hermana
+  («Se parece a «Lácteos»…»; comparación con `normalize('NFD')` sin marcas diacríticas). Decisión: no se bloquea en el
+  servidor, porque quitar tildes exigiría `unaccent` (no existe en H2) o calcular la clave en Java, rompiendo la
+  normalización en un solo sitio (la BD); el caso es raro y el aviso basta. `name_en` tampoco es único entre hermanas.
 - **CA-7 Normalización y validación.** `name` y `nameEn` se recortan; `nameEn` vacío → `null`. `name` vacío o de más de
   60 caracteres, o `nameEn` de más de 60 → **400** `validation.failed` con `errors` por campo.
 - **CA-8 Renombrar.** `PUT` con `name`, `nameEn` y `version` → **200**, `version + 1`; las rutas (`path`) de sus
@@ -57,7 +64,9 @@ garantía).
 - **CA-11 Sin borrado.** `DELETE /api/v1/categories/{id}` → **405** `request.method_not_allowed`.
 - **CA-12 Listado.** `GET /api/v1/categories` (`?active=true|false`, ausente = todas) devuelve la lista plana ordenada
   por `path` (sin distinguir mayúsculas), sin paginar, con `id, parentId, name, nameEn, productType, depth, active,
-  path, pathEn, version`. `pathEn` usa `nameEn` de cada nivel o, si falta, `name`.
+  path, pathEn, productCount, version`. `pathEn` usa `nameEn` de cada nivel o, si falta, `name`. `productCount` = número
+  de productos (activos e inactivos) asignados **directamente** a esa categoría (sin descendientes); lo usa el diálogo de
+  desactivar («12 productos conservan esta categoría.»). Una consulta `GROUP BY category_id`.
 
 ### Productos
 - **CA-13 Categoría obligatoria.** Alta o edición de producto sin `categoryId` → **400** `validation.failed`
@@ -82,8 +91,20 @@ garantía).
 - **CA-21 Endpoint retirado.** `GET /api/v1/products/categories` deja de existir (**404**).
 
 ### Migración (V4)
-- **CA-22 Texto → categoría.** Dados productos con `category` = `"alimentos"`, `"ROPA"`, `"Granos"`, `"granos"`,
-  `"Lácteos"`, `"LÁCTEOS"` y `null`, tras V4: los dos primeros quedan en las raíces `Alimentos` y `Ropa`; los dos `Granos`
+- **CA-22 Texto → categoría.** Regla: un texto que coincide (sin distinguir mayúsculas, tras recortar) con el nombre
+  es/en de una raíz **o con uno de sus alias** va **a esa raíz**; el resto, a una subcategoría bajo `Alimentos`. Alias
+  (lista corta y explícita en el SQL de V4):
+
+  | Raíz | Textos que van a ella |
+  |---|---|
+  | Alimentos (`FOOD`) | `alimentos`, `food`, `alimento`, `comida` |
+  | Ropa (`CLOTHING`) | `ropa`, `clothing`, `calzado`, `zapatos` |
+  | Electrodomésticos (`APPLIANCE`) | `electrodomésticos`, `electrodomesticos`, `appliances`, `electrodoméstico`, `electrodomestico` |
+  | Aseo y hogar (`OTHER`) | `aseo y hogar`, `personal care & home`, `aseo`, `limpieza`, `higiene`, `aseo personal`, `hogar` |
+
+  Ejemplo: dados productos con `category` = `"alimentos"`, `"ROPA"`, `"Aseo"`, `"Limpieza"`, `"Granos"`, `"granos"`,
+  `"Lácteos"`, `"LÁCTEOS"` y `null`, tras V4: los dos primeros quedan en las raíces `Alimentos` y `Ropa`; `"Aseo"` y
+  `"Limpieza"` en la raíz `Aseo y hogar` (tipo `OTHER`, no alimento); los dos `Granos`
   en **una sola** subcategoría y los dos `Lácteos` en **una sola** subcategoría, ambas bajo `Alimentos` (su nombre es uno
   de los textos del grupo, `MIN`; el `ADMIN` puede renombrarla después); el de
   `null` en `Alimentos`. Después, crear `lácteos` bajo `Alimentos` desde la API → **409** `category.name_conflict`
@@ -99,18 +120,32 @@ garantía).
 - **CA-25 Página «Categorías»** (`/categories`, solo `ADMIN`): árbol con nombre (en el idioma de la interfaz), tipo
   (solo en las raíces) y estado; acciones «Nueva categoría» (raíz, con tipo), «Añadir subcategoría» (oculta en el nivel 3
   y en categorías inactivas), «Renombrar» (es/en) y activar/desactivar con confirmación. Errores de `errors` junto a cada
-  campo y `category.name_conflict` en el campo nombre.
+  campo y `category.name_conflict` en el campo nombre; aviso no bloqueante para nombres que solo difieren en tildes
+  (CA-6). Entrada de navegación: barra lateral debajo de «Productos» (solo `ADMIN`) y, en móvil, la hoja de la barra
+  inferior, rebautizada «Más» para `ADMIN` (D-4, aprobada). Un `OPERATOR` que llega por URL ve «No tienes acceso a esta página» + [Ir a productos].
 - **CA-26 Formulario de producto.** Selector de categoría con las activas como rutas indentadas
   (`Alimentos › Granos`); si el producto está en una inactiva, se muestra también, marcada «(inactiva)». El tipo se ve
   como etiqueta derivada. `brand` siempre; `model` y «Garantía (meses)» solo si el tipo es `APPLIANCE`; si el tipo es
   `CLOTHING` o `APPLIANCE`, la unidad queda fija en «Unidad» (deshabilitada). Al cambiar a una categoría de otro tipo,
   los campos que no aplican se vacían antes de enviar.
-- **CA-27 Listado.** Columna «Categoría» con la ruta; filtros «Tipo» y «Categoría» (árbol; incluye subcategorías). En la
-  URL: `?type=&cat=<id>` (antes `cat` era texto: un enlace antiguo con texto se ignora y muestra todas).
-- **CA-28** Todos los textos (tipos incluidos) en es/en; nombres de categoría con `nameEn ?? name` en inglés. En móvil
+- **CA-27 Listado.** Ruta de la categoría en cada fila: columna «Categoría» en ≥ 1024 px y, por debajo, en la línea
+  secundaria. Filtros «Tipo» y «Categoría» (por ruta; incluye subcategorías). El filtro de categoría ofrece **todas**,
+  las inactivas marcadas «(inactiva)» (sirve para encontrar lo que hay que reclasificar); con un tipo elegido, solo las
+  de ese tipo (si la elegida no es del tipo, se quita). En la URL: `?type=&cat=<id>` (antes `cat` era texto: un enlace
+  antiguo con texto se ignora y muestra todas).
+- **CA-28** Todos los textos (tipos incluidos; `OTHER` = «Aseo y hogar», D-1) en es/en; nombres de categoría con `nameEn ?? name` en inglés. En móvil
   (360 px) la página de categorías no tiene desplazamiento horizontal.
 
+## Decisiones de diseño aprobadas (supervisión, 2026-11-09)
+Lienzo ([prototipo](../../design/prototypes/categories.html), [notas](../../design/ux-notes/categories.md)); prototipos
+aprobados. Forman parte de los CA indicados.
+- **D-1 Nombre visible del tipo `OTHER`: «Aseo y hogar» / «Personal care & home»** (CA-28), igual que su raíz (no
+  «Otros», como proponía Lienzo). El código sigue siendo `OTHER`.
+- **D-4 Navegación móvil** (CA-25): para `ADMIN`, la pestaña «Cuenta» de la barra inferior pasa a llamarse **«Más»** y su
+  hoja incluye «Categorías» (sección «Gestión»); para `OPERATOR` sigue siendo «Cuenta». (D-2 y D-3 están en HU-16.)
+
 ## Fuera de alcance
+- Bloquear duplicados que solo difieren en tildes (aviso en la interfaz, CA-6).
 - Mover una categoría de padre; ordenar categorías a mano; imágenes de categoría (Combazo).
 - Variantes, SKU y umbral por variante (HU-16).
 - Número de serie; gestión de reclamaciones de garantía.
@@ -148,9 +183,10 @@ CREATE TABLE categories (
 CREATE INDEX idx_categories_parent ON categories (parent_id);
 
 -- 1. Raíces (created_by = 'system', created_at = updated_at = CURRENT_TIMESTAMP)
--- 2. Subcategorías bajo Alimentos para cada LOWER(TRIM(category)) distinto que no coincida con el name_key ni con
---    LOWER(name_en) de una raíz (nombre = MIN(TRIM(category)) del grupo, name_key = LOWER(TRIM(...)): misma función
---    que usa la aplicación al escribir, ver «Normalización»)
+-- 2. Tabla temporal de alias (alias_key, root_id) con los nombres es/en de las raíces y los alias de CA-22;
+--    subcategorías bajo Alimentos para cada LOWER(TRIM(category)) distinto que no esté en los alias
+--    (nombre = MIN(TRIM(category)) del grupo, name_key = LOWER(TRIM(...)): misma función que usa la aplicación al
+--    escribir, ver «Normalización»). Se borra la tabla temporal al final de V4.
 -- 3. ALTER TABLE products ADD category_id BIGINT; UPDATE según 1–2; los NULL → Alimentos;
 --    ALTER COLUMN category_id SET NOT NULL; FK fk_products_category; índice idx_products_category
 -- 4. ALTER TABLE products ADD brand VARCHAR(80), model VARCHAR(80), warranty_months INTEGER
@@ -187,7 +223,7 @@ record CreateCategoryRequest(@NotBlank @Size(max = 60) String name, @Size(max = 
 record UpdateCategoryRequest(@NotBlank @Size(max = 60) String name, @Size(max = 60) String nameEn,
                              @NotNull Long version) {}
 record CategoryResponse(Long id, Long parentId, String name, String nameEn, ProductType productType, int depth,
-                        boolean active, String path, String pathEn, long version,
+                        boolean active, String path, String pathEn, long productCount, long version,
                         Instant createdAt, String createdBy, Instant updatedAt, String updatedBy) {}
 record CategoryRef(Long id, String name, String nameEn, String path, String pathEn, boolean active) {}
 
