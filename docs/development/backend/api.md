@@ -69,9 +69,9 @@ El primer administrador se crea solo al arrancar con la base vacía (ver [backen
 Monedas admitidas desde configuración: `app.currencies.supported` (`CUP`, `USD`) y `app.currencies.reference` (`USD`); añadir una moneda no requiere migración.
 Comparación exacta (mayúsculas): `usd` responde `product.currency_unsupported`.
 
-**`CreateProductRequest`** (POST): `name` (obligatorio, 1-120), `sku` (opcional, 1-50, `[A-Za-z0-9._-]`; se guarda recortado y en mayúsculas, vacío → `null`, único entre activos e inactivos),
+**`CreateProductRequest`** (POST): `name` (obligatorio, 1-120), `sku` (solo producto simple; con `hasVariants=true` debe ir `null` y va en cada variante; opcional, 1-50, `[A-Za-z0-9._-]`; se guarda recortado y en mayúsculas, vacío → `null`, único entre activos e inactivos),
 `unit` (`UNIT|KG|LB|G|L|ML`, obligatorio; solo `UNIT` si el tipo es `CLOTHING` o `APPLIANCE`), `categoryId` (obligatorio), `brand` (opcional, ≤ 80), `model` y `warrantyMonths` (opcionales, solo `APPLIANCE`; `warrantyMonths` entero 0-120), `salePrice` (opcional, >= 0, máx. 10 enteros y 2 decimales),
-`salePriceCurrency` (obligatoria si hay `salePrice`, y nula si no lo hay), `minStock` (obligatorio, >= 0, máx. 9 enteros y 3 decimales).
+`salePriceCurrency` (obligatoria si hay `salePrice`, y nula si no lo hay), `minStock` (obligatorio solo en producto simple; con variantes `null`, va en cada variante; >= 0, máx. 9 enteros y 3 decimales).
 **`UpdateProductRequest`** (PUT): los mismos campos más `version` (obligatorio). La normalización (recortar, SKU en mayúsculas) ocurre en el constructor compacto del record, antes de validar.
 `active`, `stock` y cualquier otro campo del cuerpo se ignoran.
 

@@ -35,6 +35,7 @@ ambos y su QA deben estar terminados (vertical slice).
 | HU-11 | Fase 2: Combazo catálogo (combos disponibles + "Pedir por WhatsApp") | Pendiente | |
 | HU-12 | Fase 3: Combazo tienda ("arma tu combo", pedidos online que llegan a Cuartico) | Pendiente | |
 | HU-13 | Fase 4: móviles (PWA y después app Android con React Native / Expo) | Pendiente | |
+| HU-17 | Tallas y colores bilingües (es/en): nombre en inglés de cada color y talla, como en las categorías | Pendiente | Supervisión, 2026-11-11. Para cuando llegue la tienda Combazo; hoy se guardan tal como se escriben, en un solo idioma. |
 
 ## Tareas técnicas
 
@@ -58,6 +59,7 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-14 | 4 | Pulido de productos (MENOR de Lupa, PR #10): SKU con «ß» u otros caracteres que cambian al pasar a mayúsculas debe dar 400; desactivar/activar idempotente ante carrera (200, no 409); monedas del frontend desde la API o la configuración; `page` absurda en la URL vuelve a la primera página; no desmontar el formulario de edición si falla un refetch en segundo plano | Hecho | Sprint 2. Lupa, PR #10. PR #13 (`5cfdb49`). |
 | TT-15 | 1 | **ADR-003 (Faro): categorías con jerarquía, tipos de producto y variantes.** Empezar con 3 categorías generales gestionadas (Alimentos, Ropa, Electrodomésticos) y añadir subcategorías tras el despliegue; variantes talla × color con stock propio (impacto en el 1:1 `products`–`product_stock` de ADR-002); atributos por tipo (marca, modelo, garantía, ¿nº de serie?); combos mixtos | Hecho | Supervisión, 2026-11-09. ADR-003 aceptado (2026-11-09); genera HU-15 y HU-16. |
 | TT-16 | 1 | Antes de desplegar V4 (HU-15): comprobar `SHOW lc_ctype` en Neon (ramas staging y production). Con `C`/`POSIX`, `LOWER()` no pasa a minúsculas las letras acentuadas y las claves únicas de nombres fallarían con «Lácteos»/«LÁCTEOS» | En curso | Sprint 2. Faro, ADR-003 (PR #11). **Staging: comprobado (2026-11-11)**, `C.UTF-8` y `LOWER()` correcto con tildes; V4 aplicada. **Falta production**, antes del release. |
+| TT-17 | 4 | Aviso de «¿descartar cambios?» también con filas sin guardar de «Añadir variantes» y con una variante en edición (hoy solo mira el formulario principal) | Pendiente | Vera, HU-16 (H-2, baja). No incumple ningún CA. |
 
 ## Hecho
 

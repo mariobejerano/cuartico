@@ -1,9 +1,10 @@
 # Modelo entidad-relación
 
 Sprint 1: V1 + productos ([HU-02](../stories/HU-02-products.md)) + ventana de gracia del refresh
-([HU-01](../stories/HU-01-panel-access.md) CA-28 a CA-33), en el primer diagrama. Sprint 2: **V4 implementada**
-([HU-15](../stories/HU-15-categories-and-type-attributes.md), rama `feature/hu-15-categories`, pendiente de merge) y V5
-pendiente ([HU-16](../stories/HU-16-product-variants.md)), en la sección de ADR-003. Se amplía con cada historia.
+([HU-01](../stories/HU-01-panel-access.md) CA-28 a CA-33), en el primer diagrama (histórico: `products.category`, `sku`,
+`min_stock` y `product_stock` ya no existen tras V4/V5). Sprint 2: **V4** ([HU-15](../stories/HU-15-categories-and-type-attributes.md),
+mergeada en PR #13) y **V5** ([HU-16](../stories/HU-16-product-variants.md), implementada, pendiente de merge), en la
+sección de ADR-003, que es el modelo vigente de productos. Se amplía con cada historia.
 
 ```mermaid
 erDiagram
@@ -62,11 +63,11 @@ erDiagram
 Notas: `refresh_tokens` y `product_stock` no extienden `AuditableEntity` (no las edita un usuario). Índices: los `UK`
 (`username`, `token_hash`, `sku`), `idx_refresh_tokens_user` e `idx_refresh_tokens_replaced_by` (nuevo); productos no lleva índices de búsqueda (ver HU-02, migración).
 
-## Modelo ADR-003 (V4 implementada, V5 pendiente)
+## Modelo ADR-003 (V4 y V5)
 
-> [ADR-003](../adr/ADR-003-categories-types-variants.md) (aceptado 2026-11-09). **V4 implementada** (HU-15, sprint 2:
-> `categories`, `products.category_id`, `brand`, `model`, `warranty_months`; pendiente de merge). **V5 pendiente**
-> (HU-16: `product_variants`, `variant_stock`); hasta entonces sigue vigente `product_stock` del primer diagrama. Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
+> [ADR-003](../adr/ADR-003-categories-types-variants.md) (aceptado 2026-11-09). **V4** (HU-15, sprint 2, PR #13:
+> `categories`, `products.category_id`, `brand`, `model`, `warranty_months`). **V5** (HU-16, sprint 2, implementada y
+> pendiente de merge: `product_variants`, `variant_stock`). Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
 > `products.category` (texto) por `categories` (árbol) y `product_stock` por `variant_stock` (1:1 con la variante).
 > Se quitan de `products`: `category`, `sku`, `min_stock` (pasan a categoría y variante).
 

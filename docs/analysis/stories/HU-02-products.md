@@ -24,18 +24,21 @@ las compras y los combos se construyen sobre él.
 | Campo (API) | Tipo | Obligatorio | Reglas |
 |---|---|---|---|
 | `name` | texto | sí | 1–120 caracteres tras recortar espacios. **No es único** (el identificador único opcional es el SKU). |
-| `sku` | texto | no | 1–50, `[A-Za-z0-9._-]`. Se guarda recortado y **en mayúsculas**; vacío → `null`. **Único** entre todos los productos (activos e inactivos). |
+| `sku` | texto | no | 1–50, `[A-Za-z0-9._-]`. Se guarda recortado y **en mayúsculas**; vacío → `null`. **Único** entre todos los productos (activos e inactivos). *Sustituido por [HU-16](HU-16-product-variants.md):* el SKU es de la **variante** (único entre todas las variantes); en un producto simple la API lo sigue mostrando aquí (el de su única variante) y en uno con variantes es `null`. |
 | `unit` | enum `UnitOfMeasure` | sí | `UNIT`, `KG`, `LB`, `G`, `L`, `ML`. Texto visible traducido en el frontend. |
 | `category` | texto | no | 1–50, texto libre recortado; vacío → `null`. El frontend autocompleta con las existentes. |
 | `salePrice` | decimal | no | ≥ 0, máximo 2 decimales y 10 enteros. Precio de venta **de referencia** (el precio real lo fija el combo o el pedido). |
 | `salePriceCurrency` | ISO 4217 | si hay `salePrice` | Debe estar en la lista configurada `app.currencies.supported` (inicial: `CUP`, `USD`; se amplía solo con configuración, sin migración). Sin precio → debe ir `null`. |
-| `minStock` | decimal | sí (por defecto 0) | ≥ 0, máximo 3 decimales. Umbral de alerta de stock bajo; 0 = sin alerta. |
+| `minStock` | decimal | sí (por defecto 0) | ≥ 0, máximo 3 decimales. Umbral de alerta de stock bajo; 0 = sin alerta. *Sustituido por [HU-16](HU-16-product-variants.md):* el umbral es de la **variante**; obligatorio solo en productos simples (el de su única variante) y `null` en productos con variantes. |
 | `active` | booleano | — | Solo lectura en el formulario; cambia con activar/desactivar. Nuevo producto → `true`. |
 | `version` | entero | en edición | Bloqueo optimista: el cliente envía la versión que editó. |
 
 **Solo lectura** (de `product_stock`, ADR-002; en HU-02 siempre 0 / `null` porque aún no hay movimientos):
 `stock.onHand`, `stock.reserved`, `stock.available` (= onHand − reserved), `stock.averageCost`, `stock.costCurrency`,
 y `lowStock` = `active && minStock > 0 && available <= minStock`.
+*Sustituido por [HU-16](HU-16-product-variants.md):* `product_stock` ya no existe; el stock vive en `variant_stock` (1:1
+con la variante, addendum de ADR-002). Producto simple: el de su única variante; con variantes: el agregado de HU-16
+CA-15 (sumas de todas las variantes y costo promedio ponderado) y `lowStock` si alguna variante activa está baja.
 
 ## Criterios de aceptación
 

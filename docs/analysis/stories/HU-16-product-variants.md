@@ -1,8 +1,10 @@
 # HU-16: Variantes de producto
 
-- **Sprint:** 2 (después de HU-15 y antes de HU-04) · **Estado:** analizada; prototipo de Lienzo
-  ([`products-v2.html`](../../design/prototypes/products-v2.html)) y decisiones D-2 y D-3 **aprobados por la
-  supervisión (2026-11-09)**.
+- **Sprint:** 2 (después de HU-15 y antes de HU-04) · **Estado:** implementada, QA APTO (Vera), pendiente de merge
+  (rama `feature/hu-16-variants`). Prototipo de Lienzo ([`products-v2.html`](../../design/prototypes/products-v2.html))
+  y decisiones D-2 y D-3 **aprobados por la supervisión (2026-11-09)**.
+- **Decisión de la supervisión (2026-11-11):** los nombres de tallas y colores en dos idiomas (es/en) quedan **fuera**
+  de esta historia; van en **HU-17** del backlog. Aquí `size` y `color` son texto libre de un solo idioma.
 - **Alcance:** backend (módulo `product`, migración **V5**) y frontend (`cuartico-web`).
 - **Decisiones:** [ADR-003](../adr/ADR-003-categories-types-variants.md) (decisión 3) y addendum de
   [ADR-002](../adr/ADR-002-product-stock-cache.md) (la caché de stock es 1:1 con la variante).
@@ -145,6 +147,7 @@ aprobado. Forman parte de los CA indicados. (D-1 y D-4 están en HU-15.)
   (es reversible y de alcance pequeño); el producto completo sigue pidiendo confirmación.
 
 ## Fuera de alcance
+- Tallas y colores bilingües (HU-17, decisión de la supervisión del 2026-11-11).
 - Precio por variante (decisión de la supervisión; columna nullable futura); imagen por variante (Combazo).
 - Otros ejes (voltaje…): de momento, productos distintos.
 - Número de serie por unidad (decisión de la supervisión).

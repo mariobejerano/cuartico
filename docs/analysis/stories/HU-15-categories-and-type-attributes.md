@@ -1,6 +1,6 @@
 # HU-15: Categorías y atributos por tipo
 
-- **Sprint:** 2 (antes de HU-04) · **Estado:** analizada; prototipos de Lienzo
+- **Sprint:** 2 (antes de HU-04) · **Estado:** hecha (PR #13, 2026-11-11); prototipos de Lienzo
   ([`categories.html`](../../design/prototypes/categories.html), [`products-v2.html`](../../design/prototypes/products-v2.html))
   y decisiones D-1 y D-4 **aprobados por la supervisión (2026-11-09)**.
 - **Alcance:** backend (módulo nuevo `category`, cambios en `product`, migración **V4**) y frontend (`cuartico-web`).
@@ -90,6 +90,8 @@ garantía).
   `type=FOOD|CLOTHING|APPLIANCE|OTHER` filtra por tipo; ambos combinables con `q` y `active`. `categoryId` inexistente
   → `content` vacío (no error). `type` desconocido → **400** `validation.failed` (`errors.type`).
 - **CA-20 Orden.** `sort` admite `name`, `sku`, `createdAt`; `category` deja de admitirse (**400** `request.invalid_sort`).
+  *Sustituido en parte por [HU-16](HU-16-product-variants.md) CA-17:* el orden por `sku` también se retira (el SKU pasa a
+  la variante); quedan `name` y `createdAt`.
 - **CA-21 Endpoint retirado.** `GET /api/v1/products/categories` deja de existir (**404**).
 
 ### Migración (V4)
