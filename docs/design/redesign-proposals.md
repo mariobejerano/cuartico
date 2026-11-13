@@ -1,6 +1,6 @@
 # Rediseño del panel con Tailwind + shadcn/ui: propuestas A y B
 
-> Lienzo · 2026-11-13 · **Estado: propuesta, pendiente de aprobación de la supervisión.** Prototipo: [`prototypes/redesign-proposals.html`](prototypes/redesign-proposals.html)
+> Lienzo · 2026-11-13 · **Estado: propuesta B aprobada por la supervisión (2026-11-13); decisiones en §6.** La técnica la fija [ADR-004](../analysis/adr/ADR-004-tailwind-shadcn.md): si algo de este documento lo contradice, manda el ADR. Prototipo: [`prototypes/redesign-proposals.html`](prototypes/redesign-proposals.html)
 > (conmutadores de propuesta A/B, tema claro/oscuro, pantalla y ancho escritorio/360 px; funciona sin red). Textos: los de [`copy.md`](copy.md).
 
 ## 1. Qué cambia respecto al diseño actual (v0.1)
@@ -9,8 +9,8 @@
 - **Densidad en escritorio**: controles de 40 px y texto de 14 px (≥ 768 px), como shadcn. **En móvil se mantienen 44 px y 16 px** (objetivo táctil y sin zoom de iOS).
 - **Filtro de estado** como grupo segmentado (Activos · Inactivos · Todos) en vez de select: un toque menos. **Acciones de fila** en un menú «⋯» (DropdownMenu).
 - **Estado «Activo» visible** con badge (antes solo se marcaba «Inactivo»): ya figura en el design system §7.5.
-- **Accesibilidad que shadcn no trae por defecto y mantenemos**: borde de input ≥ 3:1 (shadcn usa ~1,3:1), anillo de foco sólido ≥ 3:1 (shadcn usa `ring/50`), `<select>` nativo y `<dialog>` como hoja inferior en móvil.
-- Sigue con fuentes del sistema y sin imágenes: el peso extra real es Radix + Tailwind compilado (estimado 25–40 KB gzip, a medir en el PR).
+- **Accesibilidad que shadcn no trae por defecto y mantenemos**: borde de input ≥ 3:1 (shadcn usa ~1,3:1), anillo de foco sólido ≥ 3:1 (shadcn usa `ring/50`), `<select>` nativo y hoja inferior en móvil (con el Drawer de Base UI: ADR-004 retira el polyfill de `<dialog>`).
+- Sigue con fuentes del sistema y sin imágenes: el peso extra real es Base UI + Tailwind compilado (estimado 25–40 KB gzip, a medir en el PR).
 
 ## 2. Tokens (claro / oscuro; contraste AA verificado, detalle en el `<style>` del prototipo)
 | Token | A · claro | A · oscuro | B · claro | B · oscuro |
@@ -26,6 +26,7 @@
 | `destructive` | `#b91c1c` 6.47 | `#f87171` 5.84 | `#b91c1c` 6.47 | `#f87171` 5.84 |
 | `--radius` · badges | 10 px · rectos (6 px) | igual | 12 px · píldora | igual |
 | Sombras | neutras, `rgb(0 0 0 / .05–.1)` | | cálidas, `rgb(68 52 34 / .06–.16)` | |
+
 Badges: Activo `#dcfce7`/`#166534` 6.49 (oscuro `#052e16`/`#86efac` 10.6); Inactivo A `#f4f4f5`/`#3f3f46` 9.5 · B `#efe9e1`/`#44403c` 8.5.
 «N variantes»: A badge de contorno; B `#ccfbf1`/`#115e59` 6.73. Por qué el foco de B es ámbar: el botón principal es teal y un anillo teal no se distinguiría.
 
@@ -34,9 +35,10 @@ Badges: Activo `#dcfce7`/`#166534` 6.49 (oscuro `#052e16`/`#86efac` 10.6); Inact
 |---|---|
 | Login | `Card`, `Label`, `Input` (+ `Button` ghost «Mostrar»), `Button`, `Form` (react-hook-form + zod para «Escribe tu usuario.»), `<select>` nativo de idioma |
 | Layout | `Sidebar` (escritorio, contraído a iconos 768–1023 px), barra inferior propia (shadcn no la trae), `Avatar`, `Sheet` para «Cuenta»/«Más» |
-| Listado | `Table`, `Card` (tarjetas a < 768 px), `Input` con icono, `ToggleGroup` (estado), `<select>` nativo (tipo, categoría), `Badge`, `DropdownMenu` (Editar/Desactivar), `AlertDialog` (desactivar), `Sonner` (toasts), `Skeleton` (carga), `Pagination` |
-| Formulario | `Form` + `FormField`/`FormMessage`, `Input`, `<select>` nativo, `Checkbox`, `Card` (secciones), `Badge` (Inactiva, Tipo), `Button`, `AlertDialog` (descartar, convertir), `Sonner`; generador con chips propios sobre `Badge` + `Button` |
-Select de Radix solo si hace falta búsqueda (futuro `Combobox` = `Popover` + `Command`); en móvil, el nativo es mejor y no pesa.
+| Listado | `Table`, `Card` (tarjetas a < 768 px), `Input` con icono, `ToggleGroup` (estado), `<select>` nativo (tipo, categoría), `Badge`, `DropdownMenu` (Editar/Desactivar), `AlertDialog` (desactivar), toasts con componente propio (sin Sonner: ADR-004), `Skeleton` (carga), `Pagination` |
+| Formulario | `Form` + `FormField`/`FormMessage`, `Input`, `<select>` nativo, `Checkbox`, `Card` (secciones), `Badge` (Inactiva, Tipo), `Button`, `AlertDialog` (descartar, convertir), toasts propios; generador con chips propios sobre `Badge` + `Button` |
+
+Los componentes de shadcn/ui se instalan sobre **Base UI**, no Radix (ADR-004). Select de Base UI solo si hace falta búsqueda (futuro `Combobox` = `Popover` + `Command`); en móvil, el nativo es mejor y no pesa.
 
 ## 4. Diferencias A / B en una frase
 - **A · Sobria**: shadcn por defecto (zinc), botón principal casi negro, teal solo en el logo, los enlaces y el foco. Neutra, muy legible, «aspecto de herramienta».

@@ -32,7 +32,7 @@
   `vite.config.ts` (`@types/node` ya está). React Hook Form + Zod siguen igual (los controles no nativos van con `Controller`).
 
 ## CSP: qué rompe y qué no (punto crítico)
-`style-src 'self'` bloquea **atributos `style="…"`** (en HTML, `setAttribute('style')`, `style.cssText`) y **elementos
+`style-src 'self'` bloquea **atributos `style="…"`** (en HTML o con `setAttribute('style')`) y **elementos
 `<style>`** sin nonce/hash. **No** bloquea asignar propiedades vía CSSOM (`el.style.top = …`, `style.setProperty`).
 - **Seguro**: React `style={{…}}` en una SPA (React usa CSSOM; sin SSR no hay atributos en el HTML). Tailwind (CSS
   estático en un `.css` del build, `'self'`). El posicionamiento de popovers (Floating UI) y las variables `--x` por
