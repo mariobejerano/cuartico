@@ -102,6 +102,8 @@ describe('Formulario de producto (HU-02 CA-2, CA-5, CA-25; HU-15 CA-13, CA-16, C
     minStock: '0',
     salePrice: '',
     salePriceCurrency: 'USD',
+    hasVariants: false,
+    variants: [],
   }
   const errorsOf = (v: Partial<ProductFormValues>) => {
     const r = schema.safeParse({ ...valid, ...v })
@@ -165,6 +167,7 @@ describe('Formulario de producto (HU-02 CA-2, CA-5, CA-25; HU-15 CA-13, CA-16, C
       minStock: 2.5,
       salePrice: null,
       salePriceCurrency: null,
+      hasVariants: false,
     })
     expect(toRequest({ ...valid, salePrice: '3,50', salePriceCurrency: 'CUP' }, 'FOOD')).toMatchObject({
       salePrice: 3.5,

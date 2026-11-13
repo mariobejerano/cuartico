@@ -226,7 +226,7 @@ CREATE TABLE variant_stock (                     -- misma estructura y reglas qu
 ALTER TABLE products ADD COLUMN has_variants BOOLEAN NOT NULL DEFAULT FALSE;
 -- después de migrar: DROP TABLE product_stock; DROP CONSTRAINT uk_products_sku; DROP COLUMN sku, min_stock
 ```
-Diagrama: [er.md, sección «Modelo ADR-003»](../diagrams/er.md#modelo-adr-003-v4-implementada-v5-pendiente).
+Diagrama: [er.md, sección «Modelo ADR-003»](../diagrams/er.md#modelo-adr-003-v4-y-v5).
 
 ### Migración de datos (solo hay datos de dev/staging)
 **V4 (categorías):**

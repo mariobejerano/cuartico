@@ -93,7 +93,7 @@ cuartico-web/
     ├── components/         Piezas de UI reutilizables (Alert, Icon, ConfirmDialog, toast, OfflineNotice, useMediaQuery…)
     ├── layout/             Esqueleto del panel: barra lateral, barra inferior, hoja «Cuenta»/«Más», navItems.ts (menú por rol)
     ├── features/login/     La pantalla de login y su esquema de validación
-    ├── features/products/  Catálogo de productos (HU-02, HU-15): ver la tabla «Productos» más abajo
+    ├── features/products/  Catálogo de productos (HU-02, HU-15, HU-16): ver «Productos» y «Variantes» más abajo
     ├── features/categories/ Categorías (HU-15): ver «Categorías» más abajo
     ├── pages/              Páginas simples (Inicio, 404, «No tienes acceso»)
     ├── styles/             tokens.css (copia de docs/design) y global.css
@@ -178,8 +178,39 @@ Pendiente / mejoras futuras: `SHOW_STOCK_BADGES = true` con HU-04; mostrar ambas
   en la línea secundaria (CSS `.col-cat` / `.cat-inline`).
 - **TT-14**: `page` absurda → página 1; el formulario de edición no se desmonta si falla un refetch en segundo plano (se
   comprueba `product.data` antes que `isError`); monedas en `config/currencies.ts`.
-- **Textos que no se cambiaron todavía**: `products.sale_price_help` y `api.product.sku_conflict` tienen versión nueva en
-  `copy.md` §9 que habla de tallas/colores y variantes: se aplicarán con HU-16.
+- **Textos**: `products.sale_price_help` y `api.product.sku_conflict` ya están en su versión de `copy.md` §9 (HU-16).
+
+## Variantes (HU-16)
+
+Talla × color, cada variante con su SKU, umbral y stock; sin precio por variante. Contrato: `docs/development/backend/api.md`
+§ «Variantes (HU-16)» (verificado contra el de Forja-Back el 2026-11-11: sin diferencias salvo que el listado **omite**
+`variants`, por eso es opcional en `ProductResponse`).
+
+| Archivo (`src/`) | Responsabilidad |
+|---|---|
+| `api/types.ts`, `api/products.ts` | `VariantResponse`, `VariantRequest`, `UpdateVariantRequest`, `AddVariantsRequest`, `EnableVariantsRequest`; `ProductResponse` con `hasVariants`, `variantCount`, `variants?`; endpoints `addVariants`, `updateVariant`, `activateVariant`/`deactivateVariant`, `enableVariants`/`disableVariants` |
+| `features/products/variants.ts` | Lógica pura: normalización (talla en mayúsculas, color recortado), clave de opciones (`Rojo` = `rojo`), aviso de tildes, orden de CA-14, generador (combinaciones, omitir existentes), SKU sugerido `PREFIJO-TALLA-COLOR` (D-2), errores de la API → fila, `mergeVariantData` |
+| `features/products/productSchema.ts` | Esquema-fábrica con `mode` (`create`/`edit`): SKU/mínimo del producto solo si es simple; filas del alta (`checkDraftRows`); esquemas de «Añadir variantes» y de la fila en edición; `toRequest` (alta) y `toUpdateRequest` (PUT sin `hasVariants`/`variants`) |
+| `features/products/queries.ts` | `useAddVariants`, `useUpdateVariant`, `useSetVariantActive`, `useConvertVariants`: guardan el detalle con la respuesta e invalidan solo los listados |
+| `features/products/VariantGenerator.tsx` | Generador: tallas (con habituales XS–XXL) y colores como etiquetas, prefijo de SKU, mínimo común, resumen vivo; Intro nunca envía el formulario |
+| `features/products/DraftVariantList.tsx` | Filas por guardar (alta y «Añadir variantes»): una sola marcación, tarjetas en móvil y filas alineadas desde 768 px |
+| `features/products/VariantsCard.tsx` | Edición con variantes: total agregado, lista, edición en línea, activar/desactivar con «Deshacer» (solo ADMIN), «Añadir variantes», «Convertir en producto simple» |
+| `features/products/VariantEditRow.tsx`, `AddVariantsPanel.tsx`, `ConvertToVariantsCard.tsx` | Fila en edición (su propio `<form>`, Esc cancela, conflicto de versión con «Recargar variante»), panel de alta de variantes (otro `useForm`) y conversión simple → variantes |
+| `components/useFocusAfterRender.ts` | Llevar el foco a un elemento tras la siguiente pintada |
+
+Decisiones:
+- **Alta**: casilla «Tiene tallas o colores» (marcada sola al elegir Ropa mientras el usuario no la toque). Las filas son un
+  `useFieldArray` del formulario del producto; si se desmarca, se conservan pero no se envían.
+- **Edición**: las operaciones de variantes se guardan al momento y **no cambian la versión del formulario**
+  (`mergeVariantData`, CA-13b). Las conversiones sí: piden guardar antes si hay cambios y recargan el formulario.
+- **Errores**: `validation.failed` con `variants[i].campo`, `product.sku_conflict` (fila cuyo SKU aparece en el `detail`) y
+  `variant.options_conflict` (fila cuyas opciones aparecen en el `detail`) van a su fila; si no se puede saber, alerta arriba.
+  `product.no_variants`/`has_variants`/`has_multiple_variants` y `variant.not_found` (carreras): aviso rojo y recarga.
+- **Duplicados por tildes** («Marron»/«Marrón»): aviso no bloqueante en el generador (`variant.similar_color`).
+- **Etiquetas de stock** por variante: ocultas con `SHOW_STOCK_BADGES` hasta HU-04, como las del producto.
+- **Claves i18n**: las de `copy.md` §9; ajustes técnicos: `gen.preview_one`/`gen.preview_other` (plural de i18next) y la nueva
+  `variant.similar_color` (propuesta a Lienzo). `products.sale_price_help` y `api.product.sku_conflict` pasan a su versión nueva.
+- **Tests**: `variants.test.ts` (lógica, esquemas, paridad de claves es/en) y `ProductVariants.test.tsx` (flujos).
 
 ## Categorías (HU-15)
 

@@ -30,6 +30,13 @@ Cambios en `develop`, pendientes de la próxima release.
 - Guía de aprendizaje de React, temas 19 a 23. (HU-15)
 - Análisis y diseño del sprint 2: ADR-003 (categorías, tipos y variantes), historias HU-15 y HU-16, y prototipos de categorías y de productos v2 (PR #11 y sprint 2).
 - Matriz CA → tests de HU-15 y TT-14 en `docs/qa/stories/HU-15.md` (APTO), con `CategoryIntegrationTests`, `CategoryMigrationTests`, `ProductCategoryTypeTests` y los tests de QA y de componente del panel. (HU-15)
+- Variantes de producto (talla × color): cada variante tiene su SKU, su umbral (`minStock`), su versión y su stock (`variant_stock`). Un producto simple tiene una variante oculta sin talla ni color. Endpoints bajo `/api/v1/products/{id}/variants`: alta de 1 a 100 variantes (todo o nada), edición, activar y desactivar (solo `ADMIN`) y conversión simple ↔ con variantes (`enable`/`disable`). Sin borrado de variantes (405). El alta de producto acepta `hasVariants` y `variants`. Agregado de stock por producto: suma de todas las variantes, costo promedio ponderado y alerta de stock bajo según las variantes activas. (HU-16)
+- Búsqueda de `GET /api/v1/products` (`q`) por el SKU de cualquier variante, sin duplicar productos. (HU-16)
+- Migración `V5__product_variants.sql`: tablas `product_variants` y `variant_stock` (sustituye a `product_stock`). Cada producto existente recibe una variante oculta con su SKU, umbral y stock, y `products` gana `has_variants`. (HU-16)
+- Códigos de error `variant.not_found`, `variant.options_required`, `variant.options_conflict`, `variant.inactive` (reservado: todavía no se lanza), `product.no_variants`, `product.has_variants`, `product.has_multiple_variants` y `product.variant_fields_not_allowed`, traducidos es/en. (HU-16)
+- Panel `cuartico-web`: en el alta de producto, casilla «Tiene tallas o colores» (Ropa la marca sola) y generador de combinaciones (tallas, colores, prefijo de SKU, omitir las que ya existen y aviso de colores que solo difieren en tildes). En la edición: tabla de variantes con edición en línea, activar y desactivar con «Deshacer», «Añadir variantes» y «Convertir en producto simple». Errores de variante en su fila. (HU-16)
+- Matriz CA → tests de HU-16 en `docs/qa/stories/HU-16.md` (APTO), con `ProductVariantIntegrationTests`, `ProductVariantMigrationTests`, `ProductVariantConcurrencyTests`, `ProductVariantQaEdgeTests` y los tests de variantes del panel. (HU-16)
+- Documentación de variantes: sección «Variantes (HU-16)» en la API, códigos de error, arquitectura del backend y panel, y guía de aprendizaje de React (temas 24 a 28). (HU-16)
 
 ### Changed
 - Todos los endpoints bajo `/api/v1` (antes `/api/`). (PR #5)
@@ -41,6 +48,13 @@ Cambios en `develop`, pendientes de la próxima release.
 - Enteros estrictos en el JSON: un decimal en un campo entero (p. ej. `warrantyMonths: 1.5`) responde 400 `validation.failed` en lugar de truncarse. (HU-15)
 - Panel: la pestaña «Cuenta» de la barra inferior se llama «Más» para `ADMIN` (para `OPERATOR` sigue siendo «Cuenta»). (HU-15)
 - Panel: el filtro de categoría del listado de productos va por id en la URL (`?cat=<id>`); un enlace antiguo con texto se ignora y se muestran todas. (HU-15)
+- **API de productos incompatible con HU-02 y HU-15** (HU-02 y HU-15 no están en producción; ningún cliente publicado las usa). `sku` y `minStock` viven en la variante:
+  - Producto **con variantes** (`hasVariants = true`): `sku` y `minStock` del producto son `null` en la respuesta. En `POST` y `PUT` deben ir `null`; si no, 400 `product.variant_fields_not_allowed`. Los SKU y umbrales se envían dentro de `variants[]`.
+  - Producto **simple**: `sku` y `minStock` siguen en el nivel de producto (se leen y escriben sobre su variante oculta, que la API no muestra). `minStock` sigue siendo obligatorio.
+  - `ProductResponse` añade `hasVariants`, `variantCount` y, en el detalle y en las respuestas de variantes, `variants[]`. `stock` de un producto con variantes es el agregado. El listado no incluye `variants[]`.
+  - `GET /api/v1/products`: `sort=sku` se retira y responde 400 `request.invalid_sort` (solo `name` y `createdAt`). (HU-16)
+- Esquema interno (V5): `product_stock` desaparece y su caché de stock pasa a `variant_stock` (1:1 con la variante); `products.sku` y `products.min_stock` se eliminan. Quien consulte la base de datos directamente debe usar las tablas nuevas. (HU-16)
+- Panel: el listado de productos ordena solo por nombre (`name,asc` / `name,desc`), a juego con la API. (HU-16)
 
 ### Fixed
 - `PUT /api/v1/users/{id}` exige el campo `active`. Antes, omitirlo desactivaba al usuario y revocaba sus sesiones; ahora responde 400 `validation.failed`. (TT-11, PR #7)

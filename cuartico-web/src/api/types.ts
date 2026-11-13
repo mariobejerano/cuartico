@@ -48,7 +48,7 @@ export interface ProblemDetail {
 export const UNITS = ['UNIT', 'KG', 'LB', 'G', 'L', 'ML'] as const
 export type UnitOfMeasure = (typeof UNITS)[number]
 
-/** Stock y costo de solo lectura (tabla `product_stock`, ADR-002). En HU-02 siempre 0 / `null`. */
+/** Stock y costo de solo lectura (tabla `variant_stock`, ADR-002 + addendum de HU-16). Hasta HU-04, 0 / `null`. */
 export interface StockSummary {
   onHand: number
   reserved: number
@@ -110,9 +110,54 @@ export interface CategoryRef {
   active: boolean
 }
 
+// ===== Variantes (HU-16) — equivalen a `VariantRequest`/`VariantResponse` de `ProductDtos.java` =====
+
+/**
+ * Una variante (talla × color): lo que se compra, se almacena y se vende. Tiene su propio SKU, umbral, stock y `version`
+ * (bloqueo optimista propio: editar una variante NO cambia la versión del producto, HU-16 CA-13b).
+ */
+export interface VariantResponse {
+  id: number
+  sku: string | null
+  /** Ya normalizada por la API: recortada y en mayúsculas («M»). */
+  size: string | null
+  /** Tal como se escribió, recortado («Azul marino»). */
+  color: string | null
+  minStock: number
+  active: boolean
+  stock: StockSummary
+  lowStock: boolean
+  version: number
+}
+
+/** Una variante nueva (alta del producto o `POST /products/{id}/variants`). */
+export interface VariantRequest {
+  sku: string | null
+  size: string | null
+  color: string | null
+  minStock: number
+}
+
+/** Cuerpo de `PUT /products/{id}/variants/{variantId}` (CA-9). */
+export interface UpdateVariantRequest extends VariantRequest {
+  version: number
+}
+
+/** Cuerpo de `POST /products/{id}/variants` (CA-8): 1–100 variantes, todo o nada. */
+export interface AddVariantsRequest {
+  variants: VariantRequest[]
+}
+
+/** Cuerpo de `POST /products/{id}/variants/enable` (CA-12): talla y/o color de la variante que ya existe. */
+export interface EnableVariantsRequest {
+  size: string | null
+  color: string | null
+}
+
 export interface ProductResponse {
   id: number
   name: string
+  /** El de su única variante si es simple; `null` si tiene variantes (HU-16 CA-14). */
   sku: string | null
   unit: UnitOfMeasure
   category: CategoryRef
@@ -125,10 +170,17 @@ export interface ProductResponse {
   warrantyMonths: number | null
   salePrice: number | null
   salePriceCurrency: string | null
-  minStock: number
+  /** El de su única variante si es simple; `null` si tiene variantes. */
+  minStock: number | null
   active: boolean
+  /** Simple: el de su variante. Con variantes: el AGREGADO de todas, también las inactivas (HU-16 CA-15). */
   stock: StockSummary
   lowStock: boolean
+  /** HU-16: `false` = producto simple (tiene una variante invisible en la interfaz). */
+  hasVariants: boolean
+  variantCount: number
+  /** En el detalle y en las respuestas de escritura, en el orden de la API (CA-14). El listado NO lo trae (campo ausente). */
+  variants?: VariantResponse[] | null
   version: number
   createdAt: string
   createdBy: string | null
@@ -136,9 +188,10 @@ export interface ProductResponse {
   updatedBy: string | null
 }
 
-/** Cuerpo de `POST /products`. Los decimales viajan como número JSON. */
-export interface CreateProductRequest {
+/** Campos del producto comunes al alta y a la edición. Los decimales viajan como número JSON. */
+interface ProductFields {
   name: string
+  /** Solo en un producto simple; `null` si tiene variantes (si no, 400 `product.variant_fields_not_allowed`). */
   sku: string | null
   unit: UnitOfMeasure
   categoryId: number
@@ -147,11 +200,21 @@ export interface CreateProductRequest {
   warrantyMonths: number | null
   salePrice: number | null
   salePriceCurrency: string | null
-  minStock: number
+  /** Obligatorio en un producto simple; `null` si tiene variantes. */
+  minStock: number | null
 }
 
-/** Cuerpo de `PUT /products/{id}`: lo mismo + la versión que se editó (bloqueo optimista, CA-9). */
-export interface UpdateProductRequest extends CreateProductRequest {
+/** Cuerpo de `POST /products`. Con `hasVariants = true`, `variants` lleva 1–100 elementos (HU-16 CA-4). */
+export interface CreateProductRequest extends ProductFields {
+  hasVariants: boolean
+  variants?: VariantRequest[]
+}
+
+/**
+ * Cuerpo de `PUT /products/{id}`: los campos del producto + la versión que se editó (bloqueo optimista, CA-9).
+ * NO lleva `hasVariants` ni `variants`: las variantes y la conversión tienen sus propios endpoints.
+ */
+export interface UpdateProductRequest extends ProductFields {
   version: number
 }
 

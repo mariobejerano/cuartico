@@ -13,20 +13,20 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 /**
- * Stock and average-cost cache, 1:1 with {@link Product} (ADR-002). In HU-02 it is created with
- * zeros and never modified; from HU-04 only the inventory service writes it.
+ * Stock and average-cost cache, 1:1 with {@link ProductVariant} (ADR-002 addendum). It is created with
+ * zeros and never modified here; from HU-04 only the inventory service writes it.
  */
 @Entity
-@Table(name = "product_stock")
-public class ProductStock {
+@Table(name = "variant_stock")
+public class VariantStock {
 
 	@Id
-	private Long productId;
+	private Long variantId;
 
 	@OneToOne(fetch = FetchType.LAZY, optional = false)
 	@MapsId
-	@JoinColumn(name = "product_id")
-	private Product product;
+	@JoinColumn(name = "variant_id")
+	private ProductVariant variant;
 
 	@Column(nullable = false, precision = 14, scale = 3)
 	private BigDecimal onHand;
@@ -43,12 +43,12 @@ public class ProductStock {
 	@Column(nullable = false)
 	private Instant updatedAt;
 
-	protected ProductStock() {
+	protected VariantStock() {
 		// JPA
 	}
 
-	ProductStock(Product product, Instant now) {
-		this.product = product;
+	VariantStock(ProductVariant variant, Instant now) {
+		this.variant = variant;
 		this.onHand = BigDecimal.ZERO.setScale(3);
 		this.reserved = BigDecimal.ZERO.setScale(3);
 		this.updatedAt = now;

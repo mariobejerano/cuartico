@@ -26,6 +26,8 @@ const PATHS = {
   dots: ['M5 10.5a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3', 'M12 10.5a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3', 'M19 10.5a1.5 1.5 0 1 1 0 3a1.5 1.5 0 1 1 0-3'],
   edit: ['M4 20h4L19 9l-4-4L4 16z'],
   power: ['M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0'],
+  // HU-16 (prototipo products-v2.html): «Convertir en producto con variantes»
+  grid: ['M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z', 'M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z', 'M4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z', 'M15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z'],
 } as const
 
 export type IconName = keyof typeof PATHS

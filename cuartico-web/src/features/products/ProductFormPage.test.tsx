@@ -74,6 +74,7 @@ describe('Formulario de producto (HU-02 CA-25)', () => {
       minStock: 2.5,
       salePrice: null,
       salePriceCurrency: null,
+      hasVariants: false, // HU-16: producto simple (sin `variants`)
     })
     expect(router.state.location.pathname).toBe('/products')
     expect(router.state.location.search).toBe('?q=arr&page=2')

@@ -1,4 +1,4 @@
-import type { CategoryRef, CategoryResponse, PageResponse, ProductResponse } from '../api/types'
+import type { CategoryRef, CategoryResponse, PageResponse, ProductResponse, VariantResponse } from '../api/types'
 import { installFakeApi, json, tokenPair } from './fakeApi'
 
 /** Una categoría como la devuelve `GET /api/v1/categories` (contrato de HU-15). */
@@ -65,6 +65,9 @@ export function product(overrides: Partial<ProductResponse> = {}): ProductRespon
     active: true,
     stock: { onHand: 0, reserved: 0, available: 0, averageCost: null, costCurrency: null },
     lowStock: true,
+    hasVariants: false,
+    variantCount: 1,
+    variants: null,
     version: 0,
     createdAt: '2026-11-01T10:00:00Z',
     createdBy: 'admin',
@@ -72,6 +75,47 @@ export function product(overrides: Partial<ProductResponse> = {}): ProductRespon
     updatedBy: 'admin',
     ...overrides,
   }
+}
+
+/** Una variante como la devuelve la API (HU-16 CA-14). */
+export function variant(overrides: Partial<VariantResponse> = {}): VariantResponse {
+  return {
+    id: 101,
+    sku: 'CAM-S-BLA',
+    size: 'S',
+    color: 'Blanco',
+    minStock: 2,
+    active: true,
+    stock: { onHand: 0, reserved: 0, available: 0, averageCost: null, costCurrency: null },
+    lowStock: false,
+    version: 0,
+    ...overrides,
+  }
+}
+
+/** Producto CON variantes (ropa): S · Blanco, M · Blanco y XL · Azul marino, en el orden de la API. */
+export function shirt(overrides: Partial<ProductResponse> = {}): ProductResponse {
+  const variants = overrides.variants ?? [
+    variant(),
+    variant({ id: 102, sku: 'CAM-M-BLA', size: 'M', version: 3 }),
+    variant({ id: 103, sku: 'CAM-XL-AZM', size: 'XL', color: 'Azul marino' }),
+  ]
+  return product({
+    id: 2,
+    name: 'Camiseta básica',
+    sku: null,
+    minStock: null,
+    unit: 'UNIT',
+    category: ref(2),
+    type: 'CLOTHING',
+    salePrice: 8,
+    lowStock: false,
+    hasVariants: true,
+    variantCount: variants.length,
+    variants,
+    version: 5,
+    ...overrides,
+  })
 }
 
 export function page(content: ProductResponse[], init: Partial<PageResponse<ProductResponse>> = {}): PageResponse<ProductResponse> {

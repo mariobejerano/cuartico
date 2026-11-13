@@ -41,7 +41,15 @@ Los textos son los de `backend/src/main/resources/messages_es.properties` (es) y
 | `user.cannot_demote_self` | 400 | No puedes desactivarte ni quitarte el rol de administrador a ti mismo | You cannot deactivate yourself or remove your own administrator role | Un admin intenta desactivarse o quitarse el rol `ADMIN`. |
 | `user.wrong_current_password` | 400 | La contraseña actual no es correcta | The current password is incorrect | Cambio de contraseña con una actual errónea. |
 | `product.not_found` | 404 | No existe el producto {0}. | Product {0} doesn't exist. | `GET`/`PUT`/activar/desactivar con un id inexistente. |
-| `product.sku_conflict` | 409 | Ya existe un producto con el SKU {0}. | A product with SKU {0} already exists. | SKU repetido (activo o inactivo), también en carrera: la restricción `uk_products_sku` es la garantía final. |
+| `product.sku_conflict` | 409 | Ya existe un producto con el SKU {0}. | A product with SKU {0} already exists. | SKU repetido entre todas las variantes (activas o inactivas), también dentro de la misma petición y en carrera: `uk_product_variants_sku` es la garantía final. |
+| `variant.not_found` | 404 | No existe la variante {0}. | Variant {0} doesn't exist. | Variante inexistente o de otro producto (`{0}` = id). |
+| `variant.options_required` | 400 | Indica la talla, el color o ambos. | Enter a size, a color, or both. | Variante sin talla ni color (tras recortar), o `enable` sin opciones. |
+| `variant.options_conflict` | 409 | Este producto ya tiene una variante con las opciones {0}. | This product already has a variant with the options {0}. | Misma talla y color (sin distinguir mayúsculas) en el producto, en la petición o en carrera (`uk_product_variants_options`). `{0}` = `"M / Rojo"`. |
+| `variant.inactive` | 409 | La variante está desactivada. | The variant is deactivated. | Reservado para HU-04/06/07 (usar una variante inactiva); aún no se lanza. |
+| `product.no_variants` | 409 | Este producto no tiene variantes: es un producto simple. | This product has no variants: it is a simple product. | Endpoints de variantes sobre un simple, o `disable` en un simple. |
+| `product.has_variants` | 409 | Este producto ya tiene variantes. | This product already has variants. | `enable` sobre un producto que ya las tiene. |
+| `product.has_multiple_variants` | 409 | No se puede convertir en producto simple: tiene más de una variante. | It cannot be converted to a simple product: it has more than one variant. | `disable` con más de una variante. |
+| `product.variant_fields_not_allowed` | 400 | El SKU y el umbral van en cada variante… | The SKU and the threshold belong to each variant… | `sku`/`minStock` a nivel de producto con `hasVariants = true`, o `variants` en un producto simple. |
 | `category.not_found` | 404 | No existe la categoría {0}. | Category {0} doesn't exist. | Consulta/edición/activar/desactivar con id inexistente, o padre inexistente al crear. |
 | `category.name_conflict` | 409 | Ya existe una categoría llamada «{0}» en este nivel. | A category named “{0}” already exists at this level. | Nombre repetido entre hermanas (sin distinguir mayúsculas; activas e inactivas; raíces entre sí). También en carrera (`uk_categories_parent_name`). |
 | `category.max_depth` | 400 | Las categorías admiten como máximo 3 niveles. | Categories can have at most 3 levels. | Crear una hija bajo una categoría de `depth` 3. |
@@ -74,6 +82,7 @@ Las anotaciones usan `message = "{clave}"`; la clave se traduce en los mismos ar
 |---|---|---|
 | `jakarta.validation.constraints.NotBlank.message` | no puede estar vacío | must not be blank |
 | `jakarta.validation.constraints.NotNull.message` | es obligatorio | is required |
+| `jakarta.validation.constraints.NotEmpty.message` | no puede estar vacío | must not be empty |
 | `jakarta.validation.constraints.Size.message` | el tamaño debe estar entre {min} y {max} | size must be between {min} and {max} |
 | `user.username.pattern` | solo letras, números, punto, guion y guion bajo | only letters, digits, dot, hyphen and underscore are allowed |
 | `product.sku.pattern` | Usa solo letras sin tilde, números, punto (.), guion (-) o guion bajo (_). | Use only unaccented letters, numbers, dot (.), hyphen (-) or underscore (_). |

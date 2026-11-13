@@ -1,7 +1,17 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { productsApi } from '../../api/products'
-import type { CreateProductRequest, ProductListParams, ProductResponse, UpdateProductRequest } from '../../api/types'
+import type {
+  CreateProductRequest,
+  EnableVariantsRequest,
+  ProductListParams,
+  ProductResponse,
+  UpdateProductRequest,
+  UpdateVariantRequest,
+  VariantRequest,
+} from '../../api/types'
 import { categoryKeys } from '../categories/keys'
+
+export type SaveProductInput = { id: null; body: CreateProductRequest } | { id: number; body: UpdateProductRequest }
 
 /**
  * Claves de la caché de TanStack Query. Son jerárquicas, como rutas: invalidar `['products']` marca como
@@ -45,10 +55,9 @@ function invalidateCategoryCounts(queryClient: QueryClient) {
 export function useSaveProduct() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { id: number | null; body: CreateProductRequest; version?: number }) =>
-      input.id === null
-        ? productsApi.create(input.body)
-        : productsApi.update(input.id, { ...input.body, version: input.version ?? 0 } satisfies UpdateProductRequest),
+    // Alta (`id: null`, cuerpo de alta) o edición (con id y cuerpo del PUT, que lleva la versión y no las variantes).
+    mutationFn: (input: SaveProductInput) =>
+      input.id === null ? productsApi.create(input.body) : productsApi.update(input.id, input.body),
     onSuccess: (saved, input) => {
       // Alta → siempre cambia un contador; edición → solo si cambió la categoría (comparamos con la versión en caché).
       const before = input.id === null ? undefined : queryClient.getQueryData<ProductResponse>(productKeys.detail(input.id))
@@ -81,3 +90,48 @@ export function useSetProductActive() {
     },
   })
 }
+
+// ===== Variantes (HU-16) =====
+
+/**
+ * Todas las operaciones de variantes devuelven el producto completo. Al terminar bien: guardamos esa respuesta como
+ * detalle en la caché e invalidamos solo los LISTADOS (cambian «N variantes» y el disponible agregado). El detalle no se
+ * invalida para no repintar el formulario abierto; las categorías tampoco (el producto no cambia de categoría).
+ *
+ * Es una FÁBRICA de hooks: cada operación solo dice qué endpoint llama. Analogía: una plantilla (`JdbcTemplate`) a la
+ * que se le pasa solo lo que cambia.
+ */
+function useProductCommand<TInput>(call: (input: TInput) => Promise<ProductResponse>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: call,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(productKeys.detail(saved.id), saved)
+      return queryClient.invalidateQueries({ queryKey: productKeys.all, predicate: (q) => q.queryKey[1] !== 'detail' })
+    },
+  })
+}
+
+/** CA-8: añadir variantes (todo o nada). */
+export const useAddVariants = () =>
+  useProductCommand(({ id, variants }: { id: number; variants: VariantRequest[] }) =>
+    productsApi.addVariants(id, { variants }),
+  )
+
+/** CA-9: editar una variante con su `version`. */
+export const useUpdateVariant = () =>
+  useProductCommand(({ id, variantId, body }: { id: number; variantId: number; body: UpdateVariantRequest }) =>
+    productsApi.updateVariant(id, variantId, body),
+  )
+
+/** CA-10 (solo ADMIN): activar / desactivar una variante. */
+export const useSetVariantActive = () =>
+  useProductCommand(({ id, variantId, active }: { id: number; variantId: number; active: boolean }) =>
+    active ? productsApi.activateVariant(id, variantId) : productsApi.deactivateVariant(id, variantId),
+  )
+
+/** CA-12 / CA-13: convertir simple ↔ con variantes (estas SÍ suben la versión del producto). */
+export const useConvertVariants = () =>
+  useProductCommand((input: { id: number; enable: EnableVariantsRequest } | { id: number; enable: null }) =>
+    input.enable ? productsApi.enableVariants(input.id, input.enable) : productsApi.disableVariants(input.id),
+  )

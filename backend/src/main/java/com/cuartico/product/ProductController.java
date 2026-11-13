@@ -4,10 +4,13 @@ import java.net.URI;
 
 import com.cuartico.common.ApiException;
 import com.cuartico.common.dto.PageResponse;
+import com.cuartico.product.dto.ProductDtos.AddVariantsRequest;
 import com.cuartico.product.dto.ProductDtos.CreateProductRequest;
+import com.cuartico.product.dto.ProductDtos.EnableVariantsRequest;
 import com.cuartico.product.dto.ProductDtos.ProductQuery;
 import com.cuartico.product.dto.ProductDtos.ProductResponse;
 import com.cuartico.product.dto.ProductDtos.UpdateProductRequest;
+import com.cuartico.product.dto.ProductDtos.UpdateVariantRequest;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -24,7 +27,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-/** Product catalog. ADMIN and OPERATOR read, create and edit; only ADMIN activates/deactivates. */
+/**
+ * Product catalog and its variants. ADMIN and OPERATOR read, create, edit and convert; only ADMIN activates and
+ * deactivates (products and variants). The variant endpoints answer the whole product (HU-16).
+ */
 @RestController
 @RequestMapping("/api/v1/products")
 @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
@@ -75,6 +81,44 @@ public class ProductController {
 	@PreAuthorize("hasRole('ADMIN')")
 	public ProductResponse activate(@PathVariable Long id) {
 		return productService.setActive(id, true);
+	}
+
+	// ---------------------------------------------------------------- variants (HU-16)
+
+	@PostMapping("/{id}/variants")
+	public ResponseEntity<ProductResponse> addVariants(@PathVariable Long id,
+			@Valid @RequestBody AddVariantsRequest req) {
+		ProductResponse product = productService.addVariants(id, req);
+		URI location = ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/v1/products/{id}").build(id);
+		return ResponseEntity.created(location).body(product);
+	}
+
+	@PutMapping("/{id}/variants/{variantId}")
+	public ProductResponse updateVariant(@PathVariable Long id, @PathVariable Long variantId,
+			@Valid @RequestBody UpdateVariantRequest req) {
+		return productService.updateVariant(id, variantId, req);
+	}
+
+	@PostMapping("/{id}/variants/{variantId}/deactivate")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ProductResponse deactivateVariant(@PathVariable Long id, @PathVariable Long variantId) {
+		return productService.setVariantActive(id, variantId, false);
+	}
+
+	@PostMapping("/{id}/variants/{variantId}/activate")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ProductResponse activateVariant(@PathVariable Long id, @PathVariable Long variantId) {
+		return productService.setVariantActive(id, variantId, true);
+	}
+
+	@PostMapping("/{id}/variants/enable")
+	public ProductResponse enableVariants(@PathVariable Long id, @Valid @RequestBody EnableVariantsRequest req) {
+		return productService.enableVariants(id, req);
+	}
+
+	@PostMapping("/{id}/variants/disable")
+	public ProductResponse disableVariants(@PathVariable Long id) {
+		return productService.disableVariants(id);
 	}
 
 }

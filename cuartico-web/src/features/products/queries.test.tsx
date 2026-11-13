@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { productsApi } from '../../api/products'
-import type { CreateProductRequest } from '../../api/types'
+import type { CreateProductRequest, UpdateProductRequest } from '../../api/types'
 import { CATEGORIES, product, ref } from '../../test/productFixtures'
 import { categoryKeys } from '../categories/keys'
 import { productKeys, useSaveProduct, useSetProductActive } from './queries'
@@ -20,6 +20,7 @@ function setup() {
 }
 
 const body = { name: 'Arroz blanco', categoryId: 5 } as CreateProductRequest
+const update = { name: 'Arroz blanco', categoryId: 5, version: 0 } as UpdateProductRequest
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -39,7 +40,7 @@ describe('Contador de productos del árbol (productCount) tras guardar un produc
     const { queryClient, wrapper, stale } = setup()
     queryClient.setQueryData(productKeys.detail(1), product())
     const { result } = renderHook(() => useSaveProduct(), { wrapper })
-    await act(() => result.current.mutateAsync({ id: 1, body, version: 0 }))
+    await act(() => result.current.mutateAsync({ id: 1, body: update }))
     expect(stale()).toBe(false)
   })
 
@@ -48,7 +49,7 @@ describe('Contador de productos del árbol (productCount) tras guardar un produc
     const { queryClient, wrapper, stale } = setup()
     queryClient.setQueryData(productKeys.detail(1), product())
     const { result } = renderHook(() => useSaveProduct(), { wrapper })
-    await act(() => result.current.mutateAsync({ id: 1, body: { ...body, categoryId: 6 }, version: 0 }))
+    await act(() => result.current.mutateAsync({ id: 1, body: { ...update, categoryId: 6 } }))
     expect(stale()).toBe(true)
   })
 
