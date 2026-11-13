@@ -317,7 +317,7 @@ html[data-compact="0"] .dlg-actions { flex-direction: row; justify-content: flex
 html[data-compact="1"] dialog.dlg { width: min(360px, 100%); max-width: 100%; margin: auto auto 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 html[data-compact="1"] .dlg-actions .btn { min-height: 2.75rem; font-size: 1rem; }
 
-/* Toast (Sonner) */
+/* Toast (componente propio; sin Sonner, ADR-004) */
 .toaster { position: fixed; z-index: 60; right: 1rem; bottom: 1rem; width: min(22rem, calc(100% - 2rem)); }
 html[data-compact="1"] .toaster { right: auto; left: 50%; transform: translateX(-50%); bottom: 5rem; width: min(340px, calc(100% - 2rem)); }
 .toaster ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
