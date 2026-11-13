@@ -1,6 +1,6 @@
-# ADR-004: Estilos de cuartico-web: ¿Tailwind CSS + shadcn/ui?
+# ADR-004: Estilos de cuartico-web: Tailwind CSS + shadcn/ui
 
-- **Estado:** Propuesto (2026-11-13). Pendiente de decisión de la supervisión (ver el final).
+- **Estado:** Aceptado (2026-11-13). Decisiones de la supervisión al final.
 - **Fecha:** 2026-11-13
 - **Relacionado:** [ADR-001](ADR-001-frontend-token-storage.md) (condición 6: CSP estricta), design system de Lienzo (`docs/design/`)
 
@@ -98,12 +98,13 @@ Rama `feature/` por fase, cada una con PR propio y la app siempre desplegable.
 **Opción (c) con base Base UI**, sin tocar la CSP, empezando por el **spike de la fase 0** como tarea técnica. (b) es la
 alternativa si la supervisión prefiere menos dependencias; (a) y (d) se descartan.
 
-## Decisiones para la supervisión
-1. ¿Aprobar (c) Tailwind + shadcn/ui, o quedarse en (b) Tailwind solo?
-2. ¿Base **Base UI** (recomendada por la CSP) o Radix (más tutoriales, pero rompe la CSP en los modales)?
-3. Confirmar que la **CSP no se relaja** (sin `'unsafe-inline'`, sin nonce fijo) y que se descarta Sonner.
-4. ¿Aceptar los navegadores mínimos de Tailwind v4 para Cuartico? (Para Combazo se decide más adelante con datos.)
-5. ¿Migración como tareas técnicas propias (recomendado) o dentro de las próximas historias?
+## Decisiones de la supervisión (2026-11-13)
+1. Se aprueba la opción (c): **Tailwind CSS + shadcn/ui**.
+2. Base **Base UI** (no Radix).
+3. La **CSP no se relaja** (sin `'unsafe-inline'`, sin nonce fijo). Se descarta Sonner: los avisos van con un componente propio.
+4. Se aceptan los navegadores mínimos de Tailwind v4 (Chrome 111 / Safari 16.4) **para Cuartico**. Para Combazo se decidirá con datos.
+5. La migración es una **tarea técnica propia** (TT-19) en el Sprint 3, antes de añadir más pantallas.
+6. Aspecto: **propuesta B** de Lienzo ([redesign-proposals.md](../../design/redesign-proposals.md)), con tema claro y oscuro.
 
 ## Fuentes
 [Tailwind: Vite 8 en 4.2.2](https://github.com/tailwindlabs/tailwindcss/discussions/19624) ·

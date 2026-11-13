@@ -411,6 +411,7 @@ CA-21); alternativa «Tiene variantes» / "Has variants" (más corta, pero «var
 | `variant.sku_repeated` | Este SKU se repite en otra variante. | This SKU is repeated in another variant. |
 | `api.variant.options_conflict` | Ya existe la variante {{options}} en este producto. | Variant {{options}} already exists in this product. |
 | `variant.similar_color` | «{{color}}» se parece a «{{other}}». Si es el mismo color, escríbelo igual. | "{{color}}" looks like "{{other}}". If it's the same color, write it the same way. |
+| `products.actions_for` | Acciones de «{{name}}» | Actions for "{{name}}" |
 
 ### Generador
 

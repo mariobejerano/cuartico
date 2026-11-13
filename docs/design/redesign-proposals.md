@@ -49,9 +49,12 @@ Select de Radix solo si hace falta búsqueda (futuro `Combobox` = `Popover` + `C
 4. **Prepara Combazo**: el mismo esquema (`primary` + `sidebar` + `--radius`) se remapea para la tienda.
 Riesgo de B: el fondo arena puede parecer «amarillento» en pantallas baratas; si pasa, se usa `#f8fafc` y se mantiene el resto.
 
-## 6. Pendiente de aprobación de la supervisión
-1. Elegir A o B (o B con fondo neutro).
-2. Densidad de 40 px / 14 px solo en escritorio (en móvil no cambia).
-3. Badge «Activo» siempre visible en el listado y filtro de estado segmentado.
-4. Nueva clave `products.actions_for` = «Acciones de «{{name}}»» / "Actions for "{{name}}"" (botón «⋯»).
-5. Tras aprobar: actualizar `design-system.md` y `tokens.css` (v0.2) y una tarea técnica para migrar `cuartico-web` a Tailwind + shadcn.
+## 6. Decisiones de la supervisión (2026-11-13)
+1. **Propuesta B**, con fondo arena (si amarillea en pantallas baratas, se cambia por `#f8fafc`).
+2. **Tema claro y oscuro** con un botón de icono **sol / luna**. La primera vez sigue el modo del dispositivo; al pulsar el botón,
+   se recuerda la elección en ese navegador. Los textos accesibles del botón (es/en) se proponen y aprueban en TT-19.
+3. Densidad de 40 px / 14 px solo en escritorio (en móvil no cambia): aprobada.
+4. Badge «Activo» siempre visible en el listado y filtro de estado segmentado: aprobados.
+5. Clave nueva `products.actions_for` aprobada (en `copy.md`).
+6. Siguiente paso (TT-19, Sprint 3): actualizar `design-system.md` y `tokens.css` a v0.2 y migrar `cuartico-web` a
+   Tailwind + shadcn/ui según [ADR-004](../analysis/adr/ADR-004-tailwind-shadcn.md).
