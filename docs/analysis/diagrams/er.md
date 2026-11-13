@@ -3,7 +3,7 @@
 Sprint 1: V1 + productos ([HU-02](../stories/HU-02-products.md)) + ventana de gracia del refresh
 ([HU-01](../stories/HU-01-panel-access.md) CA-28 a CA-33), en el primer diagrama (histórico: `products.category`, `sku`,
 `min_stock` y `product_stock` ya no existen tras V4/V5). Sprint 2: **V4** ([HU-15](../stories/HU-15-categories-and-type-attributes.md),
-mergeada en PR #13) y **V5** ([HU-16](../stories/HU-16-product-variants.md), implementada, pendiente de merge), en la
+mergeada en PR #13) y **V5** ([HU-16](../stories/HU-16-product-variants.md), mergeada en PR #14), en la
 sección de ADR-003, que es el modelo vigente de productos. Se amplía con cada historia.
 
 ```mermaid
@@ -66,8 +66,8 @@ Notas: `refresh_tokens` y `product_stock` no extienden `AuditableEntity` (no las
 ## Modelo ADR-003 (V4 y V5)
 
 > [ADR-003](../adr/ADR-003-categories-types-variants.md) (aceptado 2026-11-09). **V4** (HU-15, sprint 2, PR #13:
-> `categories`, `products.category_id`, `brand`, `model`, `warranty_months`). **V5** (HU-16, sprint 2, implementada y
-> pendiente de merge: `product_variants`, `variant_stock`). Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
+> `categories`, `products.category_id`, `brand`, `model`, `warranty_months`). **V5** (HU-16, sprint 2, mergeada en
+> PR #14: `product_variants`, `variant_stock`). Incluye la 4.ª raíz «Aseo y hogar» (`OTHER`). Sustituye
 > `products.category` (texto) por `categories` (árbol) y `product_stock` por `variant_stock` (1:1 con la variante).
 > Se quitan de `products`: `category`, `sku`, `min_stock` (pasan a categoría y variante).
 

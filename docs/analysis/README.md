@@ -19,7 +19,7 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | HU-02 | [Catálogo de productos](stories/HU-02-products.md) | 1 | Hecha (PR #10) |
 | HU-14 | [Gestión de usuarios](stories/HU-14-user-management.md) | — | Ficha breve |
 | HU-15 | [Categorías y atributos por tipo](stories/HU-15-categories-and-type-attributes.md) (V4) | 2 | Hecha (PR #13, 2026-11-11) |
-| HU-16 | [Variantes de producto](stories/HU-16-product-variants.md) (V5) | 2 | Implementada, QA APTO; pendiente de merge (rama `feature/hu-16-variants`) |
+| HU-16 | [Variantes de producto](stories/HU-16-product-variants.md) (V5) | 2 | Hecha (PR #14, 2026-11-13) |
 
 ## ADR
 | ID | Decisión | Estado |
@@ -29,5 +29,5 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | ADR-003 | [Categorías con jerarquía, tipos de producto y variantes](adr/ADR-003-categories-types-variants.md) | Aceptado (2026-11-09) |
 
 ## Diagramas
-- [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003: V4 en `develop` con HU-15; V5 implementada en HU-16, pendiente de merge)
+- [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003: V4 en `develop` con HU-15; V5 en `develop` con HU-16)
 - [Sesión en `cuartico-web`: renovación y estados](diagrams/auth-session.md)

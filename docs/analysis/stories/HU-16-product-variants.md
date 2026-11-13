@@ -1,7 +1,7 @@
 # HU-16: Variantes de producto
 
-- **Sprint:** 2 (después de HU-15 y antes de HU-04) · **Estado:** implementada, QA APTO (Vera), pendiente de merge
-  (rama `feature/hu-16-variants`). Prototipo de Lienzo ([`products-v2.html`](../../design/prototypes/products-v2.html))
+- **Sprint:** 2 (después de HU-15 y antes de HU-04) · **Estado:** hecha (PR #14, 2026-11-13).
+  Prototipo de Lienzo ([`products-v2.html`](../../design/prototypes/products-v2.html))
   y decisiones D-2 y D-3 **aprobados por la supervisión (2026-11-09)**.
 - **Decisión de la supervisión (2026-11-11):** los nombres de tallas y colores en dos idiomas (es/en) quedan **fuera**
   de esta historia; van en **HU-17** del backlog. Aquí `size` y `color` son texto libre de un solo idioma.
@@ -162,6 +162,10 @@ aprobado. Forman parte de los CA indicados. (D-1 y D-4 están en HU-15.)
   aquí; su dueño será el módulo `inventory` (HU-04).
 - `Product`: se quitan `sku`, `minStock` y `stock`; se añaden `hasVariants` y `@OneToMany(mappedBy = "product")
   List<ProductVariant> variants`.
+
+> **Nota de implementación (PR #14).** No existe la colección `Product.variants` ni se usa `@OptimisticLock(excluded = true)`:
+> las variantes se leen y escriben por repositorio, y sus operaciones toman `PESSIMISTIC_WRITE` sobre el producto sin subir su
+> versión (CA-13b se cumple igual). Detalle en [backend/README.md](../../development/backend/README.md).
 
 ### Migración `V5__product_variants.sql` (orientativa)
 ```sql
