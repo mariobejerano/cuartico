@@ -19,7 +19,8 @@
 | [`scrum/product-backlog.md`](scrum/product-backlog.md) | Product backlog priorizado: historias de usuario, tareas técnicas y lo hecho. |
 | [`scrum/sprints/00.md`](scrum/sprints/00.md) | Sprint 0 (Fundaciones): objetivo, entregas, notas de la review. Incluye la plantilla de sprint. |
 | [`scrum/sprints/01.md`](scrum/sprints/01.md) | Sprint 1 (Acceso al panel y productos): objetivo, historias y tareas, entregas, notas de la review. *(terminado)* |
-| [`scrum/sprints/02.md`](scrum/sprints/02.md) | Sprint 2 (Catálogo completo): categorías (HU-15), variantes (HU-16) y TT-14. *(en curso)* |
+| [`scrum/sprints/02.md`](scrum/sprints/02.md) | Sprint 2 (Catálogo completo): categorías (HU-15), variantes (HU-16) y TT-14. *(terminado)* |
+| [`scrum/sprints/03.md`](scrum/sprints/03.md) | Sprint 3 (Rediseño del panel): Tailwind + shadcn/ui, propuesta B, claro/oscuro (TT-19). *(en curso)* |
 
 ### `analysis/` (Faro)
 
@@ -37,6 +38,7 @@
 | [`analysis/adr/ADR-001-frontend-token-storage.md`](analysis/adr/ADR-001-frontend-token-storage.md) | ADR-001: dónde guarda los tokens el frontend (access en memoria, refresh en `localStorage`) y complemento de la ventana de gracia. |
 | [`analysis/adr/ADR-002-product-stock-cache.md`](analysis/adr/ADR-002-product-stock-cache.md) | ADR-002: stock y costo del producto como caché en `product_stock` (addendum: pasa a la variante). |
 | [`analysis/adr/ADR-003-categories-types-variants.md`](analysis/adr/ADR-003-categories-types-variants.md) | ADR-003: categorías en árbol, tipo de producto heredado de la raíz y variantes (aceptado el 2026-11-09). |
+| [`analysis/adr/ADR-004-tailwind-shadcn.md`](analysis/adr/ADR-004-tailwind-shadcn.md) | ADR-004: Tailwind CSS + shadcn/ui (Base UI) para `cuartico-web`, sin relajar la CSP (aceptado el 2026-11-13). |
 
 ### `design/` (Lienzo)
 
@@ -51,6 +53,8 @@
 | [`design/prototypes/products.html`](design/prototypes/products.html) | Prototipo del layout del panel y del catálogo de productos (HU-01 y HU-02). Sustituido como referencia de productos por `products-v2.html`. |
 | [`design/prototypes/categories.html`](design/prototypes/categories.html) | Prototipo de la página «Categorías» (HU-15, solo ADMIN). |
 | [`design/prototypes/products-v2.html`](design/prototypes/products-v2.html) | Prototipo de productos con categoría, tipo, atributos (HU-15) y variantes (HU-16). |
+| [`design/prototypes/redesign-proposals.html`](design/prototypes/redesign-proposals.html) | Prototipo del rediseño: propuestas A y B, claro y oscuro. Elegida la B (2026-11-13). |
+| [`design/redesign-proposals.md`](design/redesign-proposals.md) | Propuestas de rediseño con Tailwind + shadcn/ui: tokens, componentes y decisiones de la supervisión. |
 | [`design/ux-notes/login.md`](design/ux-notes/login.md) | Notas de UX del login: flujo, decisiones, estados, accesibilidad. |
 | [`design/ux-notes/products.md`](design/ux-notes/products.md) | Notas de UX del catálogo de productos (HU-02). |
 | [`design/ux-notes/categories.md`](design/ux-notes/categories.md) | Notas de UX de la página de categorías (HU-15). |
@@ -95,5 +99,5 @@
 - **Tratar un error en el frontend o en la API**: [`development/backend/errors.md`](development/backend/errors.md).
 - **Entender la sesión y el refresh token**: [ADR-001](analysis/adr/ADR-001-frontend-token-storage.md), [diagrama de sesión](analysis/diagrams/auth-session.md) y [HU-01](analysis/stories/HU-01-panel-access.md).
 - **Desplegar o cambiar configuración**: [`devops/README.md`](devops/README.md) y [`devops/deploy.md`](devops/deploy.md).
-- **Saber qué se va a hacer y en qué sprint**: [`scrum/product-backlog.md`](scrum/product-backlog.md) y [`scrum/sprints/02.md`](scrum/sprints/02.md).
+- **Saber qué se va a hacer y en qué sprint**: [`scrum/product-backlog.md`](scrum/product-backlog.md) y [`scrum/sprints/03.md`](scrum/sprints/03.md).
 - **Certificar o revisar un release, o ver qué prueba cubre cada criterio**: [`qa/strategy.md`](qa/strategy.md), las matrices [HU-01](qa/stories/HU-01.md), [HU-02](qa/stories/HU-02.md), [HU-15](qa/stories/HU-15.md) y [HU-16](qa/stories/HU-16.md), y [`qa/certifications.md`](qa/certifications.md).

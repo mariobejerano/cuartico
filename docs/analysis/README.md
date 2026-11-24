@@ -27,6 +27,7 @@ Las reglas de negocio de referencia están en [`CLAUDE.md`](../../CLAUDE.md#regl
 | ADR-001 | [Almacenamiento de tokens en el frontend](adr/ADR-001-frontend-token-storage.md) | Aceptado (2026-10-30); addendum 2026-11-07 (Render) |
 | ADR-002 | [Stock y costo del producto: caché en `product_stock`](adr/ADR-002-product-stock-cache.md) | Aceptado (2026-10-30); addendum 2026-11-09 (la caché pasa a la variante) |
 | ADR-003 | [Categorías con jerarquía, tipos de producto y variantes](adr/ADR-003-categories-types-variants.md) | Aceptado (2026-11-09) |
+| ADR-004 | [Estilos de cuartico-web: Tailwind CSS + shadcn/ui](adr/ADR-004-tailwind-shadcn.md) | Aceptado (2026-11-13) |
 
 ## Diagramas
 - [Modelo entidad-relación](diagrams/er.md) (incluye el modelo de ADR-003: V4 en `develop` con HU-15; V5 en `develop` con HU-16)

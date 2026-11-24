@@ -61,6 +61,7 @@ Trabajo sin valor directo de negocio (infraestructura, calidad, herramientas).
 | TT-16 | 1 | Antes de desplegar V4 (HU-15): comprobar `SHOW lc_ctype` en Neon (ramas staging y production). Con `C`/`POSIX`, `LOWER()` no pasa a minúsculas las letras acentuadas y las claves únicas de nombres fallarían con «Lácteos»/«LÁCTEOS» | En curso | Sprint 2. Faro, ADR-003 (PR #11). **Staging: comprobado (2026-11-11)**, `C.UTF-8` y `LOWER()` correcto con tildes; V4 aplicada. **Falta production**, antes del release. |
 | TT-17 | 4 | Aviso de «¿descartar cambios?» también con filas sin guardar de «Añadir variantes» y con una variante en edición (hoy solo mira el formulario principal) | Pendiente | Vera, HU-16 (H-2, baja). No incumple ningún CA. |
 | TT-18 | 4 | Costo agregado de un producto con variantes: leer la moneda de `app.currencies.reference` (hoy fija en `USD` en `VariantAggregate`) y agregar solo las filas en esa moneda | Pendiente | Lupa, PR #14 (menor). Sin efecto hasta que haya costos: hacerlo con HU-04. |
+| TT-19 | 1 | **Rediseño de `cuartico-web` con Tailwind CSS + shadcn/ui (Base UI)**: propuesta B de Lienzo, tema claro/oscuro con botón sol/luna (inicial según el dispositivo, se recuerda la elección), design system y tokens v0.2, migración por fases de ADR-004 sin relajar la CSP (sin Sonner) y test guardarraíl de `<style>` | En curso | Supervisión, 2026-11-13. Sprint 3. [ADR-004](../analysis/adr/ADR-004-tailwind-shadcn.md), [propuestas](../design/redesign-proposals.md). Antes de HU-03. |
 
 ## Hecho
 
