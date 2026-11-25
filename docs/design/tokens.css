@@ -1,161 +1,69 @@
 /* ==========================================================================
-   Cuartico — design tokens (v0.1, Sprint 1)
-   Fuente de verdad: docs/design/design-system.md
-   Uso en React: import "./styles/tokens.css" una vez en main.tsx.
+   Cuartico — design tokens v0.2 (propuesta B «Cuartico», claro y oscuro)
+   Fuente de verdad: docs/design/design-system.md (v0.2) · Técnica: ADR-004 (Tailwind v4 + shadcn/ui sobre Base UI)
+   Estado: PENDIENTE DE APROBACIÓN de la supervisión (valores de la propuesta B aprobada el 2026-11-13).
 
-   Capas:
-     1. Base (--base-*)      Valores crudos (paleta, escalas). No usar en componentes.
-     2. Semántica (--color-*, --space-*, --radius-*, ...)
-                             Lo que usan los componentes. Cada marca/tema remapea esta capa.
-   Temas:
-     - Claro por defecto.
-     - Oscuro: automático con prefers-color-scheme, o forzado con <html data-theme="dark">.
-       <html data-theme="light"> fuerza el claro.
-   Marcas:
-     - Cuartico por defecto. Combazo (fase 2) añadirá [data-brand="combazo"] remapeando
-       solo los tokens de marca (--color-brand-*, --color-action-primary-*, --font-family-display).
+   QUÉ CAMBIA RESPECTO A v0.1
+     - Nombres de shadcn/ui (--background, --foreground, --primary, --muted, --border, --input, --ring…)
+       en lugar de --color-action-primary-bg y compañía. Sin capa --base-*: los valores van directos (convención shadcn).
+     - Extensiones de Cuartico con el mismo estilo: --primary-hover, --destructive-hover, --brand-subtle,
+       estados (--success-bg / --success-fg…), --sidebar-muted-foreground, --elevation-*, densidad (--control-*).
+     - Los nombres v0.1 siguen existiendo como ALIAS (§6) para las pantallas aún no migradas; se borran en la fase 6.
+
+   CÓMO LO CONSUME FORJA-FRONT (cuartico-web)
+     1. Copiar este archivo a src/styles/tokens.css (sigue siendo copia: si Lienzo lo cambia, se vuelve a copiar).
+     2. src/styles/globals.css (el único CSS que importa main.tsx):
+          @import "tailwindcss";
+          @import "tw-animate-css";
+          @import "./tokens.css";               (sin capa: solo declara variables, @theme y @custom-variant)
+          @import "./global.css" layer(legacy); (CSS v0.1 durante las fases 1–5 del ADR-004)
+     3. Tailwind procesa los bloques @theme inline (§5) y @custom-variant (§5) de este archivo: así existen
+        bg-background, text-muted-foreground, border-input, ring-ring, bg-success-bg, rounded-lg, h-control, text-control…
+        Un navegador que cargue este archivo sin Tailwind (los prototipos v0.1 con ../tokens.css) ignora esas
+        reglas desconocidas y solo ve las variables: por eso pueden vivir aquí.
+     4. Los componentes usan utilidades (bg-primary) o var(--primary); nunca hex sueltos.
+     5. Tema: atributo data-theme en <html> (nunca en un subárbol: los alias de §6 se resuelven en :root).
+          - Sin elección guardada → no hay atributo y manda @media (prefers-color-scheme).
+          - Elección guardada → <html data-theme="light|dark">, puesto por public/theme-init.js (archivo propio,
+            cargado en <head> antes del CSS: la CSP script-src 'self' prohíbe scripts en línea). Ver design-system §7.12.
+     6. Cosas a confirmar en el spike (fase 0): que @theme inline acepte var() en --shadow-* y --spacing-*;
+        si no, usar shadow-(--elevation-sm) y h-(--control-height).
+
+   REGLA: los bloques oscuros (media query y atributo) están DUPLICADOS porque CSS no permite compartirlos.
+          Al cambiar uno, cambiar el otro. Mismos nombres de variable en claro y oscuro.
+   Contrastes WCAG 2.x contra --card salvo indicación (bg = sobre --background).
    ========================================================================== */
 
 /* -------------------------------------------------------------------------
-   1. CAPA BASE
+   1. INDEPENDIENTE DEL TEMA
    ------------------------------------------------------------------------- */
 :root {
-  /* Neutros (pizarra fría: sobrio, no compite con los badges de estado) */
-  --base-white: #ffffff;
-  --base-slate-50: #f8fafc;
-  --base-slate-100: #f1f5f9;
-  --base-slate-200: #e2e8f0;
-  --base-slate-300: #cbd5e1;
-  --base-slate-400: #94a3b8;
-  --base-slate-500: #64748b;
-  --base-slate-600: #475569;
-  --base-slate-700: #334155;
-  --base-slate-800: #1e293b;
-  --base-slate-900: #0f172a;
+  /* Forma: radio base de la propuesta B (los derivados están en @theme: sm 8 · md 10 · lg 12 · xl 16 px) */
+  --radius: 0.75rem;
 
-  /* Marca Cuartico: verde azulado (teal) */
-  --base-teal-50: #f0fdfa;
-  --base-teal-100: #ccfbf1;
-  --base-teal-300: #5eead4;
-  --base-teal-400: #2dd4bf;
-  --base-teal-700: #0f766e;
-  --base-teal-800: #115e59;
-  --base-teal-900: #134e4a;
-  --base-teal-950: #042f2e;
-
-  /* Estados */
-  --base-green-100: #dcfce7;
-  --base-green-300: #86efac;
-  --base-green-700: #15803d;
-  --base-green-800: #166534;
-  --base-green-950: #052e16;
-
-  --base-amber-100: #fef3c7;
-  --base-amber-300: #fcd34d;
-  --base-amber-800: #92400e;
-  --base-amber-950: #451a03;
-
-  --base-red-100: #fee2e2;
-  --base-red-300: #fca5a5;
-  --base-red-400: #f87171;
-  --base-red-700: #b91c1c;
-  --base-red-800: #991b1b;
-  --base-red-950: #450a0a;
-
-  --base-blue-100: #dbeafe;
-  --base-blue-300: #93c5fd;
-  --base-blue-700: #1d4ed8;
-  --base-blue-800: #1e40af;
-  --base-blue-950: #172554;
-
-  --base-violet-100: #ede9fe;
-  --base-violet-300: #c4b5fd;
-  --base-violet-800: #5b21b6;
-  --base-violet-950: #2e1065;
-
-  /* Escala de espaciado (base 4 px) */
-  --base-size-0: 0;
-  --base-size-1: 0.25rem;  /*  4px */
-  --base-size-2: 0.5rem;   /*  8px */
-  --base-size-3: 0.75rem;  /* 12px */
-  --base-size-4: 1rem;     /* 16px */
-  --base-size-5: 1.25rem;  /* 20px */
-  --base-size-6: 1.5rem;   /* 24px */
-  --base-size-8: 2rem;     /* 32px */
-  --base-size-10: 2.5rem;  /* 40px */
-  --base-size-12: 3rem;    /* 48px */
-  --base-size-16: 4rem;    /* 64px */
-
-  /* Escala tipográfica (1.125 ~ 1.25) */
-  --base-font-12: 0.75rem;
-  --base-font-14: 0.875rem;
-  --base-font-16: 1rem;
-  --base-font-18: 1.125rem;
-  --base-font-20: 1.25rem;
-  --base-font-24: 1.5rem;
-  --base-font-30: 1.875rem;
-}
-
-/* -------------------------------------------------------------------------
-   2. CAPA SEMÁNTICA — independiente del tema
-   ------------------------------------------------------------------------- */
-:root {
-  /* Tipografía: fuentes del sistema (0 KB de descarga) */
+  /* Tipografía: fuentes del sistema (0 KB) */
   --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-family-display: var(--font-family-base); /* Combazo podrá cambiarla */
   --font-family-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --heading-weight: 700;                           /* B: títulos en negrita, más presencia sin fuente propia */
 
-  --text-xs: var(--base-font-12);   /* metadatos, nunca texto esencial */
-  --text-sm: var(--base-font-14);   /* tablas densas en escritorio, ayudas */
-  --text-md: var(--base-font-16);   /* cuerpo e inputs (evita el zoom de iOS) */
-  --text-lg: var(--base-font-18);
-  --text-xl: var(--base-font-20);   /* título de tarjeta / sección */
-  --text-2xl: var(--base-font-24);  /* título de página */
-  --text-3xl: var(--base-font-30);  /* cifras destacadas */
-
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  --line-height-tight: 1.25;
-  --line-height-base: 1.5;
-
-  /* Espaciado */
-  --space-0: var(--base-size-0);
-  --space-1: var(--base-size-1);
-  --space-2: var(--base-size-2);
-  --space-3: var(--base-size-3);
-  --space-4: var(--base-size-4);
-  --space-5: var(--base-size-5);
-  --space-6: var(--base-size-6);
-  --space-8: var(--base-size-8);
-  --space-10: var(--base-size-10);
-  --space-12: var(--base-size-12);
-  --space-16: var(--base-size-16);
-
-  /* Radios */
-  --radius-sm: 4px;     /* badges, checkboxes */
-  --radius-md: 8px;     /* botones, inputs */
-  --radius-lg: 12px;    /* tarjetas, modales */
-  --radius-full: 9999px;
-
-  /* Tamaños de control */
-  --control-height: 2.75rem;     /* 44px: objetivo táctil mínimo */
-  --control-height-sm: 2rem;     /* 32px: solo escritorio, acciones en tablas */
+  /* Densidad: móvil (< 768 px) táctil; escritorio en el media query de abajo */
+  --control-height: 2.75rem;      /* 44 px: botón, input, select, segmentado */
+  --control-height-sm: 2.75rem;   /* 44 px: en móvil el «pequeño» no baja de 44 (objetivo táctil) */
+  --control-font-size: 1rem;      /* 16 px: evita el zoom de iOS al enfocar */
   --touch-target-min: 2.75rem;
   --border-width: 1px;
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
 
   /* Layout */
-  --layout-sidebar-width: 15rem;     /* 240px */
-  --layout-topbar-height: 3.5rem;    /* 56px */
-  --layout-bottomnav-height: 4rem;   /* 64px */
-  --layout-content-max: 80rem;       /* 1280px */
-  /* Breakpoints (referencia; las media queries no aceptan var()):
-     móvil < 768px · tablet 768–1023px · escritorio ≥ 1024px */
+  --layout-sidebar-width: 15rem;          /* 240 px (≥ 1024) */
+  --layout-sidebar-collapsed: 4rem;       /* 64 px (768–1023) */
+  --layout-topbar-height: 3.5rem;         /* 56 px */
+  --layout-bottomnav-height: 4rem;        /* 64 px */
+  --layout-content-max: 80rem;            /* 1280 px */
+  /* Breakpoints = los de Tailwind: md 48rem (768) · lg 64rem (1024). Las media queries no aceptan var(). */
 
   /* Capas (z-index) */
   --z-sticky: 10;
@@ -170,6 +78,14 @@
   --easing-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
+@media (min-width: 768px) {
+  :root {
+    --control-height: 2.5rem;       /* 40 px (aprobado 2026-11-13: solo ≥ 768 px) */
+    --control-height-sm: 2rem;      /* 32 px: acciones de fila en tablas */
+    --control-font-size: 0.875rem;  /* 14 px */
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
@@ -178,211 +94,357 @@
 }
 
 /* -------------------------------------------------------------------------
-   3. TEMA CLARO (por defecto) — marca Cuartico
-   Contrastes indicados contra --color-surface (#fff) salvo que se diga otra cosa.
+   2. TEMA CLARO (por defecto)
    ------------------------------------------------------------------------- */
 :root,
-[data-theme="light"] {
+:root[data-theme="light"] {
   color-scheme: light;
 
-  /* Marca */
-  --color-brand: var(--base-teal-700);              /* 5.47:1 */
-  --color-brand-subtle: var(--base-teal-50);
+  --background: #faf8f5;                 /* arena. Si amarillea en pantallas baratas: #f8fafc (decisión 2026-11-13) */
+  --foreground: #1c1917;                 /* 17.5 · 16.5 sobre bg */
+  --card: #ffffff;
+  --card-foreground: #1c1917;            /* 17.5 */
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
 
-  /* Fondos y superficies */
-  --color-bg: var(--base-slate-50);                 /* fondo de página */
-  --color-surface: var(--base-white);               /* tarjetas, tablas, modales */
-  --color-surface-muted: var(--base-slate-100);     /* cabecera de tabla, skeleton. Encima solo --color-text */
-  --color-surface-hover: var(--base-slate-50);      /* hover de fila: muted sigue en 7.26:1 */
-  --color-surface-inverse: var(--base-slate-900);
+  --primary: #0f766e;                    /* teal de marca; como texto/enlace: 5.47 · 5.16 sobre bg */
+  --primary-hover: #115e59;
+  --primary-foreground: #ffffff;         /* 5.47 · sobre hover 7.58 */
+  --secondary: #f3efe9;
+  --secondary-hover: #ebe4da;
+  --secondary-foreground: #1c1917;       /* 15.3 · sobre hover 13.9 */
+  --muted: #f3efe9;                      /* cabecera de lista, stats, skeleton, pista del segmentado */
+  --muted-foreground: #57534e;           /* 7.63 · 6.66 sobre muted · 7.20 sobre bg */
+  --accent: #fdf3e1;                     /* hover de outline/ghost/ítems de menú */
+  --accent-foreground: #1c1917;          /* muted-foreground encima: 6.93 */
+  --destructive: #b91c1c;                /* botón y texto de error: 6.47 · 6.10 sobre bg */
+  --destructive-hover: #991b1b;
+  --destructive-foreground: #ffffff;     /* 6.47 */
 
-  /* Texto */
-  --color-text: var(--base-slate-900);              /* 17.85:1 */
-  --color-text-muted: var(--base-slate-600);        /* 7.58:1 (7.26:1 sobre --color-bg) */
-  --color-text-inverse: var(--base-slate-50);
-  --color-text-disabled: var(--base-slate-500);     /* exento (WCAG 1.4.3), aun así 3.86:1 sobre disabled-bg */
-  --color-link: var(--base-teal-700);               /* 5.47:1, siempre subrayado */
+  --border: #e7e1d8;                     /* decorativo: divisores, contorno de tarjetas */
+  --input: #8f877d;                      /* borde de campo 3.54 · 3.34 sobre bg (WCAG 1.4.11; shadcn trae ~1.3) */
+  --ring: #b45309;                       /* foco ámbar 5.02 · 4.74 sobre bg (un anillo teal no se vería junto al botón teal) */
 
-  /* Bordes */
-  --color-border: var(--base-slate-200);            /* divisores decorativos */
-  --color-border-strong: var(--base-slate-500);     /* bordes de inputs: 4.76:1 (≥3:1, WCAG 1.4.11) */
-  --color-focus: var(--base-blue-700);              /* 6.70:1 */
+  --brand-subtle: #ccfbf1;               /* píldora activa de la barra inferior, badge «N variantes», chips */
+  --brand-subtle-foreground: #115e59;    /* 6.73 · primary encima 4.86 */
 
-  /* Acciones */
-  --color-action-primary-bg: var(--base-teal-700);
-  --color-action-primary-bg-hover: var(--base-teal-800);
-  --color-action-primary-bg-active: var(--base-teal-900);
-  --color-action-primary-text: var(--base-white);   /* 5.47:1 · hover 7.58:1 */
+  /* Estados (badges, alertas, toasts): -bg fondo suave, -fg texto encima (y sobre card) */
+  --success-bg: #dcfce7;   --success-fg: #166534;   /* 6.49 · Activo, Pagado, Entregado */
+  --warning-bg: #fef3c7;   --warning-fg: #92400e;   /* 6.37 · Pendiente, Pago parcial, Stock bajo */
+  --danger-bg: #fee2e2;    --danger-fg: #991b1b;    /* 6.80 · Sin pagar, Sin stock */
+  --info-bg: #dbeafe;      --info-fg: #1e40af;      /* 7.15 · Confirmado */
+  --transit-bg: #ede9fe;   --transit-fg: #5b21b6;   /* 7.57 · En camino (era «accent» en v0.1) */
+  --neutral-bg: #efe9e1;   --neutral-fg: #44403c;   /* 8.52 · Inactivo, Cancelado */
 
-  --color-action-secondary-bg: var(--base-white);
-  --color-action-secondary-bg-hover: var(--base-slate-100);
-  --color-action-secondary-text: var(--base-slate-700);   /* 10.35:1 · 9.45:1 en hover */
-  --color-action-secondary-border: var(--base-slate-500);
+  /* Barra lateral (escritorio) y barra superior (móvil): superficie de marca */
+  --sidebar: #134e4a;
+  --sidebar-foreground: #f0fdfa;             /* 9.09 */
+  --sidebar-muted-foreground: #99f6e4;       /* 7.5: iconos, rol, etiquetas de grupo */
+  --sidebar-primary: #fbbf24;                /* indicador ámbar del ítem activo, acento del logo: 5.68 */
+  --sidebar-primary-foreground: #134e4a;
+  --sidebar-accent: #1f625d;                 /* ítem activo / hover */
+  --sidebar-accent-foreground: #ffffff;      /* 6.8 */
+  --sidebar-border: #1f625d;
+  --sidebar-ring: #fbbf24;                   /* foco sobre teal oscuro: 5.68 */
 
-  --color-action-danger-bg: var(--base-red-700);
-  --color-action-danger-bg-hover: var(--base-red-800);
-  --color-action-danger-text: var(--base-white);    /* 6.47:1 · hover 8.31:1 */
+  /* Elevación: sombras cálidas, muy suaves */
+  --elevation-xs: 0 1px 2px rgb(68 52 34 / 0.06);
+  --elevation-sm: 0 1px 2px rgb(68 52 34 / 0.06), 0 2px 6px rgb(68 52 34 / 0.06);
+  --elevation-md: 0 4px 12px rgb(68 52 34 / 0.1);
+  --elevation-lg: 0 14px 32px rgb(68 52 34 / 0.16), 0 2px 6px rgb(68 52 34 / 0.08);
+  --overlay: rgb(0 0 0 / 0.5);
 
-  --color-action-disabled-bg: var(--base-slate-200);
-  --color-action-disabled-text: var(--base-slate-500);
-
-  /* Feedback (texto sobre superficie / fondo suave + texto oscuro) */
-  --color-success-text: var(--base-green-700);      /* 5.01:1 */
-  --color-success-bg: var(--base-green-100);
-  --color-success-on-bg: var(--base-green-800);     /* 6.49:1 */
-
-  --color-warning-text: var(--base-amber-800);      /* 7.09:1 */
-  --color-warning-bg: var(--base-amber-100);
-  --color-warning-on-bg: var(--base-amber-800);     /* 6.37:1 */
-
-  --color-danger-text: var(--base-red-700);         /* 6.47:1 */
-  --color-danger-bg: var(--base-red-100);
-  --color-danger-on-bg: var(--base-red-800);        /* 6.80:1 */
-
-  --color-info-text: var(--base-blue-700);          /* 6.70:1 */
-  --color-info-bg: var(--base-blue-100);
-  --color-info-on-bg: var(--base-blue-800);         /* 7.15:1 */
-
-  --color-accent-bg: var(--base-violet-100);        /* estado "en camino" */
-  --color-accent-on-bg: var(--base-violet-800);     /* 7.57:1 */
-
-  --color-neutral-bg: var(--base-slate-100);
-  --color-neutral-on-bg: var(--base-slate-700);     /* 9.45:1 */
-
-  /* Sombras: suaves, solo para separar capas */
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 2px 8px rgb(15 23 42 / 0.08), 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow-lg: 0 12px 32px rgb(15 23 42 / 0.16), 0 2px 6px rgb(15 23 42 / 0.08);
-  --overlay-bg: rgb(15 23 42 / 0.5);
+  --login-bg: radial-gradient(48rem 28rem at 0% 0%, #ccfbf1 0%, transparent 60%),
+              radial-gradient(40rem 24rem at 100% 100%, #fde7c2 0%, transparent 55%), #faf8f5;
+  --theme-color: #134e4a;                    /* <meta name="theme-color">: barra del navegador = barra superior */
 }
 
 /* -------------------------------------------------------------------------
-   4. TEMA OSCURO
-   Contrastes contra --color-surface (#1e293b) salvo que se diga otra cosa.
-   Se define dos veces (media query + atributo) porque CSS no permite
-   compartir el bloque; mantener ambos IDÉNTICOS.
+   3. TEMA OSCURO — automático (sin elección guardada) …
    ------------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --color-brand: var(--base-teal-400);
-    --color-brand-subtle: var(--base-teal-950);
-    --color-bg: var(--base-slate-900);
-    --color-surface: var(--base-slate-800);
-    --color-surface-muted: var(--base-slate-700);
-    --color-surface-hover: #243041;
-    --color-surface-inverse: var(--base-slate-100);
-    --color-text: var(--base-slate-100);
-    --color-text-muted: var(--base-slate-400);
-    --color-text-inverse: var(--base-slate-900);
-    --color-text-disabled: var(--base-slate-400);
-    --color-link: var(--base-teal-400);
-    --color-border: var(--base-slate-700);
-    --color-border-strong: var(--base-slate-400);
-    --color-focus: var(--base-blue-300);
-    --color-action-primary-bg: var(--base-teal-400);
-    --color-action-primary-bg-hover: var(--base-teal-300);
-    --color-action-primary-bg-active: var(--base-teal-300);
-    --color-action-primary-text: var(--base-teal-950);
-    --color-action-secondary-bg: var(--base-slate-800);
-    --color-action-secondary-bg-hover: var(--base-slate-700);
-    --color-action-secondary-text: var(--base-slate-100);
-    --color-action-secondary-border: var(--base-slate-400);
-    --color-action-danger-bg: var(--base-red-400);
-    --color-action-danger-bg-hover: var(--base-red-300);
-    --color-action-danger-text: var(--base-red-950);
-    --color-action-disabled-bg: var(--base-slate-700);
-    --color-action-disabled-text: var(--base-slate-400);
-    --color-success-text: var(--base-green-300);
-    --color-success-bg: var(--base-green-950);
-    --color-success-on-bg: var(--base-green-300);
-    --color-warning-text: var(--base-amber-300);
-    --color-warning-bg: var(--base-amber-950);
-    --color-warning-on-bg: var(--base-amber-300);
-    --color-danger-text: var(--base-red-300);
-    --color-danger-bg: var(--base-red-950);
-    --color-danger-on-bg: var(--base-red-300);
-    --color-info-text: var(--base-blue-300);
-    --color-info-bg: var(--base-blue-950);
-    --color-info-on-bg: var(--base-blue-300);
-    --color-accent-bg: var(--base-violet-950);
-    --color-accent-on-bg: var(--base-violet-300);
-    --color-neutral-bg: var(--base-slate-700);
-    --color-neutral-on-bg: var(--base-slate-200);
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
-    --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
-    --overlay-bg: rgb(0 0 0 / 0.65);
+    --background: #171412;
+    --foreground: #f5f0e8;
+    --card: #221e1b;
+    --card-foreground: #f5f0e8;
+    --popover: #221e1b;
+    --popover-foreground: #f5f0e8;
+    --primary: #2dd4bf;
+    --primary-hover: #5eead4;
+    --primary-foreground: #042f2e;
+    --secondary: #2e2925;
+    --secondary-hover: #3a332d;
+    --secondary-foreground: #f5f0e8;
+    --muted: #2e2925;
+    --muted-foreground: #b5ada3;
+    --accent: #33291f;
+    --accent-foreground: #f5f0e8;
+    --destructive: #f87171;
+    --destructive-hover: #fca5a5;
+    --destructive-foreground: #450a0a;
+    --border: #38322c;
+    --input: #7a7269;
+    --ring: #fcd34d;
+    --brand-subtle: #042f2e;
+    --brand-subtle-foreground: #5eead4;
+    --success-bg: #052e16;   --success-fg: #86efac;
+    --warning-bg: #451a03;   --warning-fg: #fcd34d;
+    --danger-bg: #450a0a;    --danger-fg: #fca5a5;
+    --info-bg: #172554;      --info-fg: #93c5fd;
+    --transit-bg: #2e1065;   --transit-fg: #c4b5fd;
+    --neutral-bg: #2e2925;   --neutral-fg: #e7e0d6;
+    --sidebar: #102624;
+    --sidebar-foreground: #f0fdfa;
+    --sidebar-muted-foreground: #99f6e4;
+    --sidebar-primary: #fbbf24;
+    --sidebar-primary-foreground: #102624;
+    --sidebar-accent: #1b3b38;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #1b3b38;
+    --sidebar-ring: #fcd34d;
+    --elevation-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+    --elevation-sm: 0 1px 3px rgb(0 0 0 / 0.5);
+    --elevation-md: 0 4px 10px rgb(0 0 0 / 0.5);
+    --elevation-lg: 0 14px 32px rgb(0 0 0 / 0.6);
+    --overlay: rgb(0 0 0 / 0.6);
+    --login-bg: radial-gradient(48rem 28rem at 0% 0%, #0b3532 0%, transparent 60%),
+                radial-gradient(40rem 24rem at 100% 100%, #3a2a14 0%, transparent 55%), #171412;
+    --theme-color: #102624;
   }
 }
 
-[data-theme="dark"] {
+/* … o elegido con el botón sol/luna (<html data-theme="dark">). IDÉNTICO al bloque anterior. */
+:root[data-theme="dark"] {
   color-scheme: dark;
-  --color-brand: var(--base-teal-400);              /* 7.87:1 */
-  --color-brand-subtle: var(--base-teal-950);
-  --color-bg: var(--base-slate-900);
-  --color-surface: var(--base-slate-800);
-  --color-surface-muted: var(--base-slate-700);     /* encima solo --color-text (9.45:1); muted daría 4.04:1 */
-  --color-surface-hover: #243041;                   /* muted encima: 5.20:1 */
-  --color-surface-inverse: var(--base-slate-100);
-  --color-text: var(--base-slate-100);              /* 13.37:1 (16.27:1 sobre bg) */
-  --color-text-muted: var(--base-slate-400);        /* 5.71:1 (6.95:1 sobre bg) */
-  --color-text-inverse: var(--base-slate-900);
-  --color-text-disabled: var(--base-slate-400);
-  --color-link: var(--base-teal-400);               /* 7.87:1 */
-  --color-border: var(--base-slate-700);            /* decorativo */
-  --color-border-strong: var(--base-slate-400);     /* 5.71:1 */
-  --color-focus: var(--base-blue-300);              /* 8.12:1 (9.9:1 sobre bg) */
-  --color-action-primary-bg: var(--base-teal-400);
-  --color-action-primary-bg-hover: var(--base-teal-300);
-  --color-action-primary-bg-active: var(--base-teal-300);
-  --color-action-primary-text: var(--base-teal-950); /* 7.77:1 */
-  --color-action-secondary-bg: var(--base-slate-800);
-  --color-action-secondary-bg-hover: var(--base-slate-700);
-  --color-action-secondary-text: var(--base-slate-100);
-  --color-action-secondary-border: var(--base-slate-400);
-  --color-action-danger-bg: var(--base-red-400);
-  --color-action-danger-bg-hover: var(--base-red-300);
-  --color-action-danger-text: var(--base-red-950);  /* 5.84:1 */
-  --color-action-disabled-bg: var(--base-slate-700);
-  --color-action-disabled-text: var(--base-slate-400);
-  --color-success-text: var(--base-green-300);      /* 10.4:1 */
-  --color-success-bg: var(--base-green-950);
-  --color-success-on-bg: var(--base-green-300);     /* 10.6:1 */
-  --color-warning-text: var(--base-amber-300);      /* 10.2:1 */
-  --color-warning-bg: var(--base-amber-950);
-  --color-warning-on-bg: var(--base-amber-300);     /* 10.4:1 */
-  --color-danger-text: var(--base-red-300);         /* 7.7:1 */
-  --color-danger-bg: var(--base-red-950);
-  --color-danger-on-bg: var(--base-red-300);        /* 8.5:1 */
-  --color-info-text: var(--base-blue-300);          /* 8.12:1 */
-  --color-info-bg: var(--base-blue-950);
-  --color-info-on-bg: var(--base-blue-300);         /* 8.15:1 */
-  --color-accent-bg: var(--base-violet-950);
-  --color-accent-on-bg: var(--base-violet-300);     /* 8.26:1 */
-  --color-neutral-bg: var(--base-slate-700);
-  --color-neutral-on-bg: var(--base-slate-200);     /* 8.4:1 */
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.45);
-  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
-  --overlay-bg: rgb(0 0 0 / 0.65);
+  --background: #171412;
+  --foreground: #f5f0e8;                 /* 14.6 · 16.2 sobre bg */
+  --card: #221e1b;
+  --card-foreground: #f5f0e8;
+  --popover: #221e1b;
+  --popover-foreground: #f5f0e8;
+  --primary: #2dd4bf;                    /* como texto/enlace 8.89 */
+  --primary-hover: #5eead4;
+  --primary-foreground: #042f2e;         /* 7.77 · sobre hover 9.78 */
+  --secondary: #2e2925;
+  --secondary-hover: #3a332d;
+  --secondary-foreground: #f5f0e8;       /* 12.7 */
+  --muted: #2e2925;
+  --muted-foreground: #b5ada3;           /* 7.46 · 6.49 sobre muted · 8.27 sobre bg */
+  --accent: #33291f;
+  --accent-foreground: #f5f0e8;          /* 12.5 · muted-foreground encima 6.41 */
+  --destructive: #f87171;                /* texto de error 5.98 */
+  --destructive-hover: #fca5a5;
+  --destructive-foreground: #450a0a;     /* 5.84 */
+  --border: #38322c;
+  --input: #7a7269;                      /* 3.50 · 3.88 sobre bg */
+  --ring: #fcd34d;                       /* 11.5 */
+  --brand-subtle: #042f2e;
+  --brand-subtle-foreground: #5eead4;    /* 9.8 */
+  --success-bg: #052e16;   --success-fg: #86efac;   /* 10.6 */
+  --warning-bg: #451a03;   --warning-fg: #fcd34d;   /* 10.4 */
+  --danger-bg: #450a0a;    --danger-fg: #fca5a5;    /* 8.5 */
+  --info-bg: #172554;      --info-fg: #93c5fd;      /* 8.15 */
+  --transit-bg: #2e1065;   --transit-fg: #c4b5fd;   /* 8.26 */
+  --neutral-bg: #2e2925;   --neutral-fg: #e7e0d6;   /* 11.0 */
+  --sidebar: #102624;
+  --sidebar-foreground: #f0fdfa;             /* 15.2 */
+  --sidebar-muted-foreground: #99f6e4;       /* 12.6 */
+  --sidebar-primary: #fbbf24;                /* 9.5 */
+  --sidebar-primary-foreground: #102624;
+  --sidebar-accent: #1b3b38;
+  --sidebar-accent-foreground: #ffffff;      /* 11.6 */
+  --sidebar-border: #1b3b38;
+  --sidebar-ring: #fcd34d;                   /* 11.0 */
+  --elevation-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elevation-sm: 0 1px 3px rgb(0 0 0 / 0.5);
+  --elevation-md: 0 4px 10px rgb(0 0 0 / 0.5);
+  --elevation-lg: 0 14px 32px rgb(0 0 0 / 0.6);
+  --overlay: rgb(0 0 0 / 0.6);
+  --login-bg: radial-gradient(48rem 28rem at 0% 0%, #0b3532 0%, transparent 60%),
+              radial-gradient(40rem 24rem at 100% 100%, #3a2a14 0%, transparent 55%), #171412;
+  --theme-color: #102624;
 }
 
 /* -------------------------------------------------------------------------
-   5. MARCA COMBAZO (fase 2) — reservado
-   Solo se remapean tokens de marca; el resto del sistema se hereda.
-   Valores pendientes de definir y aprobar por la supervisión.
+   4. MARCA COMBAZO (fase 2) — reservado. Solo remapea marca; estados, neutros y densidad se heredan.
    ------------------------------------------------------------------------- */
 /*
 [data-brand="combazo"] {
-  --color-brand: ...;
-  --color-brand-subtle: ...;
-  --color-link: ...;
-  --color-action-primary-bg: ...;
-  --color-action-primary-bg-hover: ...;
-  --color-action-primary-bg-active: ...;
-  --color-action-primary-text: ...;
+  --primary: ...; --primary-hover: ...; --primary-foreground: ...;
+  --ring: ...; --brand-subtle: ...; --brand-subtle-foreground: ...;
+  --sidebar: ...; (y el resto de --sidebar-*)
+  --radius: ...;  (Combazo puede ser más redondeado)
   --font-family-display: ...;
-  --radius-md: ...;  (Combazo puede ser más redondeado)
 }
 */
+
+/* -------------------------------------------------------------------------
+   5. PUENTE A TAILWIND v4 (lo procesa Tailwind; un navegador sin Tailwind lo ignora)
+   ------------------------------------------------------------------------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-subtle-foreground: var(--brand-subtle-foreground);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-transit-bg: var(--transit-bg);
+  --color-transit-fg: var(--transit-fg);
+  --color-neutral-bg: var(--neutral-bg);
+  --color-neutral-fg: var(--neutral-fg);
+  --color-overlay: var(--overlay);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);   /*  8 px: tags, ítems de menú */
+  --radius-md: calc(var(--radius) - 2px);   /* 10 px: botones, inputs, menús */
+  --radius-lg: var(--radius);               /* 12 px: toasts, lista de variantes */
+  --radius-xl: calc(var(--radius) + 4px);   /* 16 px: tarjetas, diálogos, hoja inferior */
+
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+
+  --font-sans: var(--font-family-base);
+  --font-mono: var(--font-family-mono);
+
+  --spacing-control: var(--control-height);        /* h-control, size-control, min-h-control */
+  --spacing-control-sm: var(--control-height-sm);  /* h-control-sm, size-control-sm */
+  --text-control: var(--control-font-size);        /* text-control */
+}
+
+/* dark: = tema oscuro elegido O automático sin elección. Con tokens casi nunca hace falta dark:. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------
+   6. COMPATIBILIDAD v0.1 (fases 1–5 del ADR-004). BORRAR EN LA FASE 6.
+   Los nombres antiguos apuntan a los nuevos: las pantallas sin migrar ya se ven con la propuesta B
+   y siguen el tema (son var(), se resuelven en :root). Contrastes revisados en design-system §11.
+   ------------------------------------------------------------------------- */
+:root {
+  --color-brand: var(--primary);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-bg: var(--background);
+  --color-surface: var(--card);
+  --color-surface-muted: var(--muted);
+  --color-surface-hover: var(--accent);
+  --color-surface-inverse: var(--foreground);
+  --color-text: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-text-inverse: var(--background);
+  --color-text-disabled: var(--muted-foreground);
+  --color-link: var(--primary);
+  --color-border: var(--border);
+  --color-border-strong: var(--input);
+  --color-focus: var(--ring);
+  --color-action-primary-bg: var(--primary);
+  --color-action-primary-bg-hover: var(--primary-hover);
+  --color-action-primary-bg-active: var(--primary-hover);
+  --color-action-primary-text: var(--primary-foreground);
+  --color-action-secondary-bg: var(--card);
+  --color-action-secondary-bg-hover: var(--accent);
+  --color-action-secondary-text: var(--foreground);
+  --color-action-secondary-border: var(--input);
+  --color-action-danger-bg: var(--destructive);
+  --color-action-danger-bg-hover: var(--destructive-hover);
+  --color-action-danger-text: var(--destructive-foreground);
+  --color-action-disabled-bg: var(--muted);
+  --color-action-disabled-text: var(--muted-foreground);
+  --color-success-text: var(--success-fg);
+  --color-success-bg: var(--success-bg);
+  --color-success-on-bg: var(--success-fg);
+  --color-warning-text: var(--warning-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-on-bg: var(--warning-fg);
+  --color-danger-text: var(--destructive);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-on-bg: var(--danger-fg);
+  --color-info-text: var(--info-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-on-bg: var(--info-fg);
+  --color-accent-bg: var(--transit-bg);
+  --color-accent-on-bg: var(--transit-fg);
+  --color-neutral-bg: var(--neutral-bg);
+  --color-neutral-on-bg: var(--neutral-fg);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+  --overlay-bg: var(--overlay);
+
+  /* Mismos valores que los derivados de @theme (§5) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-full: 9999px;
+
+  /* Sin cambios desde v0.1 (los --text-* coinciden con los de Tailwind) */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+}

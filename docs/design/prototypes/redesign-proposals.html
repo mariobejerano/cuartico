@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" data-proposal="a" data-theme="light">
+<html lang="es" data-proposal="b" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,7 +10,10 @@
   Autocontenido: sin CDN, sin fuentes web, sin scripts externos. Se abre sin red.
   Los tokens usan los nombres de shadcn/ui (background, foreground, primary, muted, border, ring…) para que el paso a
   Tailwind + shadcn sea copiar los valores a globals.css. El JS solo simula navegación y estados: NO es código para la app.
-  Estado en la URL: #p=a|b&t=light|dark&s=login|list|form&w=desktop|mobile&id=<producto>
+  Estado en la URL: #p=a|b&s=login|list|form&w=desktop|mobile&id=<producto>
+  TT-19 (2026-11-25): botón de tema sol/luna (design-system v0.2 §7.12) en la barra superior móvil, el pie de la barra
+  lateral y el login. El tema ya no va en la URL: la primera vez sigue al dispositivo; al pulsar se guarda en
+  localStorage («cuartico.theme»). «Olvidar elección» en la barra del prototipo simula la primera visita.
 -->
 <style>
 /* =====================================================================
@@ -502,6 +505,34 @@ main { flex: 1; padding: 1rem; outline: none; }
 .preset { min-height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border); border-radius: 9999px; background: var(--card); font-size: 0.875rem; cursor: pointer; }
 html[data-compact="1"] .preset { min-height: 2.75rem; }
 .preview { font-size: 0.875rem; font-weight: 500; }
+
+/* =====================================================================
+   9. BOTÓN DE TEMA SOL / LUNA (design-system v0.2 §7.12)
+   Icono = modo al que se cambia (luna en claro, sol en oscuro). 44 px en móvil, 40 px ≥ 768 px.
+   ===================================================================== */
+.theme-btn { position: relative; display: inline-grid; place-items: center; flex: none; width: var(--control-h); height: var(--control-h); padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; cursor: pointer; }
+.theme-btn .icon { width: 1.25rem; height: 1.25rem; }
+.topbar .theme-btn, .sidebar .theme-btn { color: var(--sidebar-foreground); }
+.topbar .theme-btn:focus-visible { outline-color: var(--sidebar-ring); }
+@media (hover: hover) {
+  .topbar .theme-btn:hover, .sidebar .theme-btn:hover { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+  .login .theme-btn:hover { background: var(--accent); color: var(--accent-foreground); }
+}
+.login .theme-btn { width: 2.75rem; height: 2.75rem; color: var(--foreground); }
+/* Tooltip solo ≥ 768 px (en la app: Base UI Tooltip). Aparece con hover y con foco de teclado. */
+.theme-btn::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 0.375rem); left: 50%; transform: translateX(-50%); z-index: 30; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); background: var(--foreground); color: var(--background); font-size: 0.875rem; font-weight: 500; white-space: nowrap; pointer-events: none; opacity: 0; visibility: hidden; }
+@container app (min-width: 768px) {
+  .theme-btn:hover::after, .theme-btn:focus-visible::after { opacity: 1; visibility: visible; }
+}
+.sidebar .theme-btn::after { left: 0; transform: none; }
+@container app (min-width: 1024px) { .sidebar .theme-btn::after { left: auto; right: 0; } }
+/* Pie de la barra lateral: contraída (768–1023) apila avatar y tema; ≥ 1024 van en la misma fila */
+.user { flex-direction: column; }
+@container app (min-width: 1024px) { .user { flex-direction: row; } .user .theme-btn { margin-inline-start: auto; } }
+.login-prefs { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.5rem 1rem; }
+/* Barra del prototipo: estado del tema */
+.proto-theme { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-height: 2.5rem; }
+.proto-theme button { min-height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); font-weight: 500; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -524,6 +555,8 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
   <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
   <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0"/></symbol>
   <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
   <symbol id="mark" viewBox="0 0 32 32"><rect class="mk-bg" width="32" height="32" rx="8"/><rect class="mk-fg" x="8" y="8" width="7" height="7" rx="1.5"/><rect class="mk-fg" x="17" y="8" width="7" height="7" rx="1.5"/><rect class="mk-fg" x="8" y="17" width="7" height="7" rx="1.5"/><rect class="mk-ac" x="17" y="17" width="7" height="7" rx="1.5"/></symbol>
 </svg>
 
@@ -531,9 +564,9 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
 <div class="proto-bar" role="region" aria-label="Controles del prototipo">
   <p class="title"><strong>Propuestas de rediseño · Tailwind + shadcn/ui</strong><span class="muted">Prototipo para comparar. Solo español. Datos de ejemplo.</span></p>
   <div class="proto-group" role="group" aria-labelledby="pg-p"><span id="pg-p">Propuesta</span>
-    <div class="proto-seg"><button type="button" data-set="p:a" aria-pressed="true">A · Sobria</button><button type="button" data-set="p:b" aria-pressed="false">B · Cuartico</button></div></div>
-  <div class="proto-group" role="group" aria-labelledby="pg-t"><span id="pg-t">Tema</span>
-    <div class="proto-seg"><button type="button" data-set="t:light" aria-pressed="true">Claro</button><button type="button" data-set="t:dark" aria-pressed="false">Oscuro</button></div></div>
+    <div class="proto-seg"><button type="button" data-set="p:a" aria-pressed="false">A · Sobria</button><button type="button" data-set="p:b" aria-pressed="true">B · Cuartico (aprobada)</button></div></div>
+  <div class="proto-group" role="group" aria-labelledby="pg-t"><span id="pg-t">Tema (se cambia con el sol/luna de la app)</span>
+    <div class="proto-theme"><span id="theme-src" class="muted"></span><button type="button" id="theme-forget">Olvidar elección (primera visita)</button></div></div>
   <div class="proto-group" role="group" aria-labelledby="pg-s"><span id="pg-s">Pantalla</span>
     <div class="proto-seg"><button type="button" data-set="s:login" aria-pressed="false">Login</button><button type="button" data-set="s:list" aria-pressed="true">Productos</button><button type="button" data-set="s:form" aria-pressed="false">Formulario</button></div></div>
   <div class="proto-group" role="group" aria-labelledby="pg-w"><span id="pg-w">Ancho</span>
@@ -571,8 +604,11 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
         </div>
         <div class="login-foot">
           <p class="help">¿Olvidaste tu contraseña? Pide a un administrador que te la restablezca.</p>
-          <div class="lang"><label for="l-lang" class="muted">Idioma</label>
-            <select class="select" id="l-lang"><option lang="es" selected>Español</option><option lang="en">English</option></select></div>
+          <div class="login-prefs">
+            <div class="lang"><label for="l-lang" class="muted">Idioma</label>
+              <select class="select" id="l-lang"><option lang="es" selected>Español</option><option lang="en">English</option></select></div>
+            <button type="button" class="theme-btn" data-theme-toggle><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+          </div>
         </div>
       </div>
     </section>
@@ -590,7 +626,8 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
           <li><a href="#" data-go="list" title="Categorías"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-tree"/></svg><span class="lbl">Categorías</span></a></li>
         </ul>
         <div class="sidebar-foot">
-          <div class="user"><span class="avatar" aria-hidden="true">DR</span><span class="who"><strong>Daniel Rodríguez</strong><span>Administrador</span></span></div>
+          <div class="user"><span class="avatar" aria-hidden="true">DR</span><span class="who"><strong>Daniel Rodríguez</strong><span>Administrador</span></span>
+            <button type="button" class="theme-btn" data-theme-toggle><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button></div>
           <ul class="nav"><li><a href="#" class="logout" data-go="login" title="Cerrar sesión"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-logout"/></svg><span class="lbl">Cerrar sesión</span></a></li></ul>
         </div>
       </aside>
@@ -598,6 +635,7 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
       <div class="main-col">
         <header class="topbar">
           <a class="brand" href="#" data-go="list"><svg aria-hidden="true"><use href="#mark"/></svg>Cuartico</a>
+          <button type="button" class="theme-btn" data-theme-toggle><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button>
           <button type="button" class="avatar-btn" aria-label="Cuenta de Daniel Rodríguez" data-proto-note="La hoja «Cuenta» no cambia en esta propuesta."><span class="avatar" aria-hidden="true">DR</span></button>
         </header>
 
@@ -656,6 +694,7 @@ html[data-compact="1"] .preset { min-height: 2.75rem; }
 </dialog>
 
 <section class="toaster" aria-label="Notificaciones"><ol id="toasts" aria-live="polite"></ol></section>
+<p class="sr-only" role="status" id="theme-status"></p>
 
 <script>
 (function () {
@@ -711,18 +750,27 @@ const money = (p) => p.price + NB + p.cur;
 const variantsLabel = (n) => (n === 1 ? "1 variante" : n + " variantes");
 
 /* ---------- Estado + URL ---------- */
-const state = { p: "a", t: "light", s: "list", w: "desktop", status: "active", q: "", type: "", cat: "", id: 9, editV: null, genOpen: false };
+/* ---------- Tema (design-system v0.2 §7.12) ----------
+   Primera vez: sigue al dispositivo (y lo sigue en vivo). Al pulsar sol/luna: se guarda en este navegador. */
+const THEME_KEY = "cuartico.theme";
+const darkMq = window.matchMedia("(prefers-color-scheme: dark)");
+let sessionTheme = null; /* respaldo si localStorage no está disponible */
+function storedTheme() {
+  try { const v = localStorage.getItem(THEME_KEY); if (v === "light" || v === "dark") return v; } catch (e) { /* sin almacenamiento */ }
+  return sessionTheme;
+}
+const deviceTheme = () => (darkMq.matches ? "dark" : "light");
+const state = { p: "b", t: storedTheme() || deviceTheme(), s: "list", w: "desktop", status: "active", q: "", type: "", cat: "", id: 9, editV: null, genOpen: false };
 const gen = { sizes: [], colors: [], prefix: "", min: "0" };
 (function readHash() {
   const h = new URLSearchParams(location.hash.slice(1));
   if (["a", "b"].includes(h.get("p"))) state.p = h.get("p");
-  if (["light", "dark"].includes(h.get("t"))) state.t = h.get("t");
   if (["login", "list", "form"].includes(h.get("s"))) state.s = h.get("s");
   if (["desktop", "mobile"].includes(h.get("w"))) state.w = h.get("w");
   if (byId(Number(h.get("id")))) state.id = Number(h.get("id"));
 })();
 function writeHash() {
-  const h = new URLSearchParams({ p: state.p, t: state.t, s: state.s, w: state.w });
+  const h = new URLSearchParams({ p: state.p, s: state.s, w: state.w });
   if (state.s === "form") h.set("id", String(state.id));
   history.replaceState(null, "", "#" + h.toString());
 }
@@ -735,8 +783,37 @@ function applyChrome() {
   root.dataset.theme = state.t;
   frame.classList.toggle("is-mobile", state.w === "mobile");
   $$("[data-set]").forEach((b) => { const [k, v] = b.dataset.set.split(":"); b.setAttribute("aria-pressed", String(state[k] === v)); });
+  updateThemeButtons();
   updateCompact();
 }
+function updateThemeButtons() {
+  const dark = state.t === "dark";
+  const label = dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"; /* theme.toggle_to_light / theme.toggle_to_dark */
+  $$("[data-theme-toggle]").forEach((b) => {
+    b.setAttribute("aria-label", label);
+    b.dataset.tip = label;
+    b.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon"); /* icono = modo al que se cambia */
+  });
+  const chosen = storedTheme();
+  $("#theme-src").textContent = chosen
+    ? "Elegido en este navegador: " + (chosen === "dark" ? "oscuro" : "claro") + "."
+    : "Sin elección: sigue al dispositivo (" + (dark ? "oscuro" : "claro") + ").";
+  $("#theme-forget").disabled = !chosen;
+}
+function toggleTheme() {
+  state.t = state.t === "dark" ? "light" : "dark";
+  sessionTheme = state.t;
+  try { localStorage.setItem(THEME_KEY, state.t); } catch (e) { /* queda solo en memoria */ }
+  applyChrome();
+  $("#theme-status").textContent = state.t === "dark" ? "Modo oscuro activado" : "Modo claro activado"; /* theme.dark_on / theme.light_on */
+}
+darkMq.addEventListener("change", () => { if (!storedTheme()) { state.t = deviceTheme(); applyChrome(); } });
+$("#theme-forget").addEventListener("click", () => {
+  sessionTheme = null;
+  try { localStorage.removeItem(THEME_KEY); } catch (e) { /* nada */ }
+  state.t = deviceTheme(); applyChrome();
+  toast("Prototipo: elección olvidada. Ahora sigue al modo del dispositivo, como la primera vez.");
+});
 function updateCompact() { document.documentElement.dataset.compact = frame.clientWidth < 768 ? "1" : "0"; }
 if ("ResizeObserver" in window) new ResizeObserver(updateCompact).observe(frame);
 
@@ -1068,6 +1145,7 @@ document.addEventListener("click", (e) => {
     state[k] = v; applyChrome(); writeHash(); return;
   }
   if (!t.closest("#menu") && !t.closest("[data-menu]")) closeMenu(false);
+  if (t.closest("[data-theme-toggle]")) { toggleTheme(); return; }
   const note = t.closest("[data-proto-note]");
   if (note) { toast("Prototipo: " + note.dataset.protoNote); return; }
   const goEl = t.closest("[data-go]");
