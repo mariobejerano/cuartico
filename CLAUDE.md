@@ -17,7 +17,7 @@
 ```
 cuartico/
 ├── backend/        Java 17 · Spring Boot 4.1 · Spring Security 7 (JWT HS256) · JPA · Flyway · PostgreSQL (H2 en dev)
-├── cuartico-web/   React + TypeScript (Vite) — panel de gestión (pendiente)
+├── cuartico-web/   React + TypeScript (Vite) · Tailwind CSS v4 + shadcn/ui sobre Base UI (ADR-004) — panel de gestión
 ├── combazo-web/    React + TypeScript — tienda para clientes (fase 2+)
 ├── docs/           documentación por rol (ver "Documentación" más abajo)
 └── .claude/agents/ definición del equipo de agentes
