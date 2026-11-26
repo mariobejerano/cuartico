@@ -1,6 +1,6 @@
 # Textos de interfaz (es / en) — Sprints 1 a 3
 
-> Responsable: Lienzo · **Estado: §1–7 aprobadas por la supervisión (2026-11-07); §8–10 (Sprint 2) Aprobado (2026-11-09); §11 (Sprint 3, tema) pendiente de aprobación.**
+> Responsable: Lienzo · **Estado: §1–7 aprobadas por la supervisión (2026-11-07); §8–10 (Sprint 2) Aprobado (2026-11-09); §11 (Sprint 3, tema) aprobada (2026-11-26).**
 > Complementa el [§9 del design system](design-system.md#9-textos-de-interfaz-comunes-es--en) (textos comunes).
 > Las claves son orientativas para `react-i18next` (Forja-Front fija la estructura); **el texto sí es el propuesto**.
 > Los prototipos usan exactamente estas claves: [`login.html`](prototypes/login.html) y [`products.html`](prototypes/products.html).
@@ -505,9 +505,9 @@ vacía esos campos); si llegara, se ve la alerta genérica con este `detail`.
 
 # Sprint 3 — Rediseño (TT-19)
 
-## 11. Tema claro / oscuro (TT-19) · **Pendiente de aprobación**
+## 11. Tema claro / oscuro (TT-19) · **Aprobado (2026-11-26)**
 
-> Botón sol/luna del layout (barra superior móvil, pie de la barra lateral y login): ver [design system §7.12](design-system.md#712-botón-de-tema-sol--luna-nuevo-decisión-de-la-supervisión-detalle-pendiente-de-aprobación).
+> Botón sol/luna del layout (barra superior móvil, pie de la barra lateral y login): ver [design system §7.12](design-system.md#712-botón-de-tema-sol--luna-nuevo-aprobado-por-la-supervisión-2026-11-26).
 > Prototipo: [`redesign-proposals.html`](prototypes/redesign-proposals.html) (propuesta B).
 
 | Clave | es | en | Cuándo |

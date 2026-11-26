@@ -1,7 +1,7 @@
 /* ==========================================================================
    Cuartico — design tokens v0.2 (propuesta B «Cuartico», claro y oscuro)
    Fuente de verdad: docs/design/design-system.md (v0.2) · Técnica: ADR-004 (Tailwind v4 + shadcn/ui sobre Base UI)
-   Estado: PENDIENTE DE APROBACIÓN de la supervisión (valores de la propuesta B aprobada el 2026-11-13).
+   Estado: aprobado por la supervisión (2026-11-26); valores de la propuesta B (2026-11-13).
 
    QUÉ CAMBIA RESPECTO A v0.1
      - Nombres de shadcn/ui (--background, --foreground, --primary, --muted, --border, --input, --ring…)

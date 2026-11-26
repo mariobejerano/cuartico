@@ -1,6 +1,6 @@
 # Design system de Cuartico (v0.2)
 
-> Responsable: Lienzo · Sprint 3 (TT-19) · **Estado: Pendiente de aprobación de la supervisión.**
+> Responsable: Lienzo · Sprint 3 (TT-19) · **Estado: aprobado por la supervisión (2026-11-26), salvo el punto 5 de §13.**
 > Base aprobada: propuesta B, tema claro y oscuro, botón sol/luna, densidad, badge «Activo» y filtro segmentado
 > ([redesign-proposals.md §6](redesign-proposals.md#6-decisiones-de-la-supervisión-2026-11-13), 2026-11-13).
 > Técnica: [ADR-004](../analysis/adr/ADR-004-tailwind-shadcn.md) (Tailwind v4 + shadcn/ui sobre Base UI, CSP intacta, sin Sonner); si algo de aquí lo contradice, manda el ADR.
@@ -315,7 +315,7 @@ El texto siempre está: el color es refuerzo.
 - Cierre: botón, Esc, toque en el fondo y deslizar hacia abajo. Foco atrapado; al cerrar vuelve al disparador (avatar o «Más»).
 - Por qué Drawer: es el componente de Base UI para hojas (gesto de arrastre incluido) y permite retirar el polyfill de `<dialog>` (ADR-004).
 
-### 7.12 Botón de tema sol / luna **[Nuevo, decisión de la supervisión; detalle pendiente de aprobación]**
+### 7.12 Botón de tema sol / luna **[Nuevo, aprobado por la supervisión 2026-11-26]**
 
 **Comportamiento**
 - **Primera vez** (sin elección guardada): la app sigue el modo del dispositivo (`prefers-color-scheme`) y lo sigue en vivo si el dispositivo cambia (p. ej. modo noche automático al anochecer).
@@ -410,7 +410,7 @@ Escritorio ≥1024px                       Móvil <768px (360 px)
 ## 9. Textos de interfaz comunes **[Sin cambios]**
 
 La tabla de claves comunes de v0.1 sigue vigente (`common.*`, `nav.*`, `confirm.*`, `validation.*`); los textos por pantalla
-están en [`copy.md`](copy.md). Nuevas de v0.2: botón de tema en [copy.md §11](copy.md#11-tema-claro--oscuro-tt-19--pendiente-de-aprobación) (pendientes de aprobación).
+están en [`copy.md`](copy.md). Nuevas de v0.2: botón de tema en [copy.md §11](copy.md#11-tema-claro--oscuro-tt-19--aprobado-2026-11-26) (aprobadas el 2026-11-26).
 
 | Clave | es | en |
 |---|---|---|
@@ -471,11 +471,13 @@ Pares de v0.1 que cambian de valor al apuntar a B (todos siguen en AA):
 
 ---
 
-## 13. Pendiente de aprobación de la supervisión (v0.2)
+## 13. Aprobación de la supervisión (v0.2)
+
+Puntos 1 a 4 aprobados el 2026-11-26. El punto 5 sigue pendiente.
 
 1. Este documento y `tokens.css` v0.2 como sustitutos de v0.1 (valores = propuesta B aprobada; nombres y estructura nuevos).
 2. **Botón sol/luna** (§7.12): icono = modo al que se cambia (luna en claro, sol en oscuro); posiciones (barra superior móvil, pie de la barra lateral, login); sin opción «como el dispositivo» tras elegir; la elección es del navegador, no del usuario, y no se borra al cerrar sesión.
-3. Claves de copy del tema ([copy.md §11](copy.md#11-tema-claro--oscuro-tt-19--pendiente-de-aprobación)).
+3. Claves de copy del tema ([copy.md §11](copy.md#11-tema-claro--oscuro-tt-19--aprobado-2026-11-26)).
 4. Que las pantallas sin migrar tomen ya la paleta B a través de los alias (§10–11), en vez de convivir dos estilos durante la migración.
 5. Lista de tarjetas en móvil (no tabla transformada) y menú «⋯» también en móvil para ≤ 3 acciones.
 
