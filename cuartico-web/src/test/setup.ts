@@ -29,5 +29,11 @@ beforeEach(async () => {
 })
 
 afterEach(() => {
+  // Guardarraíl CSP (ADR-004): con `css: false` ningún CSS nuestro llega al DOM de los tests, así que cualquier
+  // <style> lo ha creado un componente en tiempo de ejecución, y en staging lo bloquearía `style-src 'self'`.
+  const injected = document.querySelectorAll('style').length
   cleanup()
+  if (injected > 0) {
+    throw new Error(`CSP guardrail: ${injected} <style> element(s) injected at runtime (blocked by style-src 'self', ADR-004)`)
+  }
 })
