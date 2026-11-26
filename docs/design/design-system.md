@@ -8,7 +8,7 @@
 > v0.1 (aprobada 2026-11-05) queda sustituida por este documento. Cada sección indica **[Sustituye a v0.1]**, **[Nuevo]** o **[Sin cambios]**.
 
 Este documento define la base visual del panel interno **`cuartico-web`**. La tienda **Combazo** (fase 2) reutilizará
-la misma estructura de tokens con otra identidad (ver [§12](#12-preparado-para-combazo)).
+la misma estructura de tokens con otra identidad (ver [§12](#12-preparado-para-combazo-sustituye-a-v01-nombres-nuevos)).
 
 ## Qué cambia respecto a v0.1 (resumen)
 
@@ -57,11 +57,13 @@ la misma estructura de tokens con otra identidad (ver [§12](#12-preparado-para-
 
 **Uso en React (Forja-Front)**
 ```css
-/* src/styles/globals.css — único CSS importado en main.tsx */
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "./tokens.css";               /* copia de docs/design/tokens.css */
-@import "./global.css" layer(legacy); /* CSS v0.1 hasta la fase 6 */
+/* src/styles/index.css — único CSS importado en main.tsx (fase 0, PR #18) */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "./tokens.css" layer(legacy);   /* copia de docs/design/tokens.css */
+@import "./global.css" layer(legacy);   /* CSS v0.1 hasta la fase 6 */
+@import "tailwindcss/utilities.css" layer(utilities);
+/* Sin Preflight ni tw-animate-css hasta la fase 6 de ADR-004: las pantallas sin migrar no cambian. */
 ```
 ```tsx
 <button className="h-control rounded-md bg-primary px-4 text-control font-medium text-primary-foreground hover:bg-primary-hover">
@@ -305,7 +307,7 @@ El texto siempre está: el color es refuerzo.
 - Móvil: anclado abajo a ancho completo (esquinas superiores `rounded-xl`), acciones apiladas a ancho completo de 44 px, la principal arriba.
 - Foco: al abrir, en «Cancelar» si la acción es destructiva o bloquea uso; en el primer campo si pide datos. Esc cierra; al cerrar, foco al botón que lo abrió.
 - Texto concreto y verbo en el botón: «¿Desactivar «Arroz blanco»?» → [Desactivar], nunca «Aceptar».
-- CSP: Base UI bloquea el scroll del fondo por CSSOM (permitido). `CSPProvider disableStyleElements` en `main.tsx`.
+- CSP: Base UI bloquea el scroll del fondo por CSSOM (permitido). `CSPProvider disableStyleElements` en `App.tsx`.
 
 ### 7.11 Hoja inferior móvil (`Drawer` de Base UI) **[Nuevo; sustituye a los `<dialog>` de hoja de v0.1]**
 

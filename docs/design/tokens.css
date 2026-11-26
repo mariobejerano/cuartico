@@ -12,11 +12,14 @@
 
    CÓMO LO CONSUME FORJA-FRONT (cuartico-web)
      1. Copiar este archivo a src/styles/tokens.css (sigue siendo copia: si Lienzo lo cambia, se vuelve a copiar).
-     2. src/styles/globals.css (el único CSS que importa main.tsx):
-          @import "tailwindcss";
-          @import "tw-animate-css";
-          @import "./tokens.css";               (sin capa: solo declara variables, @theme y @custom-variant)
-          @import "./global.css" layer(legacy); (CSS v0.1 durante las fases 1–5 del ADR-004)
+     2. src/styles/index.css (el único CSS que importa main.tsx; ya existe desde la fase 0, PR #18):
+          @layer theme, base, legacy, components, utilities;
+          @import "tailwindcss/theme.css" layer(theme);
+          @import "./tokens.css" layer(legacy);   -- copia de docs/design/tokens.css
+          @import "./global.css" layer(legacy);   -- CSS v0.1 hasta la fase 6
+          @import "tailwindcss/utilities.css" layer(utilities);
+        Sin Preflight (el reset de Tailwind) y sin tw-animate-css: las pantallas sin migrar no cambian de aspecto.
+        Preflight se activa en la fase 6 de ADR-004, cuando no quede CSS v0.1.
      3. Tailwind procesa los bloques @theme inline (§5) y @custom-variant (§5) de este archivo: así existen
         bg-background, text-muted-foreground, border-input, ring-ring, bg-success-bg, rounded-lg, h-control, text-control…
         Un navegador que cargue este archivo sin Tailwind (los prototipos v0.1 con ../tokens.css) ignora esas
