@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { Button, ButtonSpinner } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -14,63 +16,54 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Diálogo de confirmación con `<dialog>` nativo: el navegador atrapa el foco, cierra con Escape y, al cerrarse,
- * devuelve el foco al botón que lo abrió. El botón de confirmar es primario y NO rojo: lo usamos para acciones
- * reversibles (desactivar, descartar cambios); el rojo se reserva a lo irreversible (design system §3.1).
+ * Diálogo de confirmación con el Dialog de shadcn/ui sobre Base UI (TT-19, fase 0; antes era un `<dialog>` nativo).
+ * Base UI atrapa el foco, cierra con Escape y, al cerrarse, devuelve el foco al botón que lo abrió. El botón de
+ * confirmar es primario y NO rojo: lo usamos para acciones reversibles (desactivar, descartar cambios); el rojo se
+ * reserva a lo irreversible (design system §3.1).
+ *
+ * Es un diálogo "controlado": React decide si está abierto (`open`). Base UI solo nos avisa de que el usuario quiere
+ * cerrarlo (`onOpenChange(false)` por Escape) y somos nosotros quienes llamamos a `onCancel`.
  */
 export function ConfirmDialog({ open, title, children, cancelLabel, confirmLabel, onCancel, onConfirm, busy }: ConfirmDialogProps) {
-  const ref = useRef<HTMLDialogElement>(null)
-  const titleId = useId()
-  const bodyId = useId()
-
-  // Efecto: sincroniza `open` (estado de React) con el <dialog> del navegador.
-  useEffect(() => {
-    const dialog = ref.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) {
-      dialog.close() // el navegador devuelve el foco al botón que lo abrió…
-      // …salvo que ese botón ya no exista (p. ej. la fila desactivada salió del listado): al inicio del contenido.
-      if (!document.activeElement || document.activeElement === document.body) document.getElementById('main')?.focus()
-    }
-  }, [open])
+  // Botón que tenía el foco al abrir, para devolvérselo al cerrar.
+  const returnTo = useRef<HTMLElement | null>(null)
 
   return (
-    <dialog
-      ref={ref}
-      className="c-modal"
-      aria-labelledby={titleId}
-      aria-describedby={children ? bodyId : undefined}
-      onCancel={(e) => {
-        e.preventDefault() // Escape: lo decide React (onCancel), no el navegador por su cuenta
-        if (!busy) onCancel()
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onCancel() // Escape: lo decide React (onCancel), nunca mientras hay una petición en curso
       }}
+      disablePointerDismissal // como el <dialog> nativo: pulsar fuera no cierra
     >
-      <div className="c-modal__body">
-        <h2 id={titleId}>{title}</h2>
-        {children && (
-          <div id={bodyId} className="c-modal__text">
-            {children}
-          </div>
-        )}
-      </div>
-      <div className="c-modal__actions btn-bar">
-        {cancelLabel && (
-          <button type="button" className="c-btn c-btn--secondary" onClick={onCancel} disabled={busy}>
-            {cancelLabel}
-          </button>
-        )}
-        <button
-          type="button"
-          className="c-btn c-btn--primary"
-          onClick={onConfirm}
-          disabled={busy}
-          aria-busy={busy || undefined}
-        >
-          {busy && <span className="spinner" aria-hidden="true" />}
-          {confirmLabel}
-        </button>
-      </div>
-    </dialog>
+      <DialogContent
+        initialFocus={() => {
+          // Se llama justo al abrir, antes de mover el foco dentro del diálogo.
+          returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          return true
+        }}
+        finalFocus={() => {
+          // Si el botón ya no existe (p. ej. la fila desactivada salió del listado): al inicio del contenido.
+          const target = returnTo.current
+          return target?.isConnected ? target : (document.getElementById('main') ?? true)
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {children && <DialogDescription>{children}</DialogDescription>}
+        </DialogHeader>
+        <DialogFooter>
+          {cancelLabel && (
+            <Button variant="secondary" onClick={onCancel} disabled={busy}>
+              {cancelLabel}
+            </Button>
+          )}
+          <Button onClick={onConfirm} disabled={busy} aria-busy={busy || undefined}>
+            {busy && <ButtonSpinner />}
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
