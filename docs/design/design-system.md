@@ -1,6 +1,6 @@
 # Design system de Cuartico (v0.2)
 
-> Responsable: Lienzo · Sprint 3 (TT-19) · **Estado: aprobado por la supervisión (2026-11-26), salvo el punto 5 de §13.**
+> Responsable: Lienzo · Sprint 3 (TT-19) · **Estado: aprobado por la supervisión (2026-11-26).**
 > Base aprobada: propuesta B, tema claro y oscuro, botón sol/luna, densidad, badge «Activo» y filtro segmentado
 > ([redesign-proposals.md §6](redesign-proposals.md#6-decisiones-de-la-supervisión-2026-11-13), 2026-11-13).
 > Técnica: [ADR-004](../analysis/adr/ADR-004-tailwind-shadcn.md) (Tailwind v4 + shadcn/ui sobre Base UI, CSP intacta, sin Sonner); si algo de aquí lo contradice, manda el ADR.
@@ -473,7 +473,7 @@ Pares de v0.1 que cambian de valor al apuntar a B (todos siguen en AA):
 
 ## 13. Aprobación de la supervisión (v0.2)
 
-Puntos 1 a 4 aprobados el 2026-11-26. El punto 5 sigue pendiente.
+Los cinco puntos fueron aprobados el 2026-11-26.
 
 1. Este documento y `tokens.css` v0.2 como sustitutos de v0.1 (valores = propuesta B aprobada; nombres y estructura nuevos).
 2. **Botón sol/luna** (§7.12): icono = modo al que se cambia (luna en claro, sol en oscuro); posiciones (barra superior móvil, pie de la barra lateral, login); sin opción «como el dispositivo» tras elegir; la elección es del navegador, no del usuario, y no se borra al cerrar sesión.
