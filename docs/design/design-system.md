@@ -60,7 +60,7 @@ la misma estructura de tokens con otra identidad (ver [§12](#12-preparado-para-
 /* src/styles/index.css — único CSS importado en main.tsx (fase 0, PR #18) */
 @layer theme, base, legacy, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
-@import "./tokens.css" layer(legacy);   /* copia de docs/design/tokens.css */
+@import "./tokens.css";                  /* copia de docs/design/tokens.css; SIN capa: @custom-variant no admite estar dentro de @layer */
 @import "./global.css" layer(legacy);   /* CSS v0.1 hasta la fase 6 */
 @import "tailwindcss/utilities.css" layer(utilities);
 /* Sin Preflight ni tw-animate-css hasta la fase 6 de ADR-004: las pantallas sin migrar no cambian. */
