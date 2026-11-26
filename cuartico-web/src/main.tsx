@@ -1,3 +1,4 @@
+import './config/zod' // el primero: configura Zod antes de que se cree ningún esquema (CSP, ver el archivo)
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/index.css'
