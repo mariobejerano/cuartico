@@ -13,6 +13,7 @@ import { messageForError, type UiMessage } from '../../components/errorMessage'
 import { BrandMark, Icon } from '../../components/Icon'
 import { LanguageSwitch } from '../../components/LanguageSwitch'
 import { ServerWakingNotice } from '../../components/ServerWakingNotice'
+import { ThemeToggle } from '../../components/ThemeToggle'
 import { useDocumentTitle } from '../../components/useDocumentTitle'
 import { loginSchema, type LoginForm } from './loginSchema'
 
@@ -71,7 +72,10 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <header className="login-top">
+      {/* Tema e idioma en la misma fila (design system §7.12); en el login el botón mide 44 px también en escritorio.
+          La fase 3 (acceso) los lleva al pie de la tarjeta. */}
+      <header className="login-top items-center gap-2">
+        <ThemeToggle className="md:size-11" />
         <LanguageSwitch variant="buttons" />
       </header>
 

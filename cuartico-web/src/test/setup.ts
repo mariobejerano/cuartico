@@ -5,6 +5,7 @@ import { afterEach, beforeEach } from 'vitest'
 import { wireApiClient } from '../app/wiring'
 import { resetSessionForTests } from '../auth/session'
 import i18n from '../i18n'
+import { resetThemeForTests } from '../theme/theme'
 
 wireApiClient()
 
@@ -26,6 +27,7 @@ if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.sho
 beforeEach(async () => {
   localStorage.clear()
   resetSessionForTests()
+  resetThemeForTests() // sin tema elegido, como una pestaña nueva
   await i18n.changeLanguage('es')
 })
 

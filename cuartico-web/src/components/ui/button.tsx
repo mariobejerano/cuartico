@@ -20,7 +20,8 @@ const buttonVariants = cva(
     'transition-colors duration-(--duration-fast) ease-(--easing-standard)',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
     'disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none',
-    '[&_svg]:size-4 [&_svg]:shrink-0',
+    // Iconos a 16 px salvo que el propio icono diga otro tamaño (`<Moon className="size-5" />`).
+    "[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   ],
   {
     variants: {

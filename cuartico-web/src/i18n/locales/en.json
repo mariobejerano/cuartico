@@ -68,6 +68,12 @@
     "more": "More",
     "manage": "Management"
   },
+  "theme": {
+    "toggle_to_dark": "Switch to dark mode",
+    "toggle_to_light": "Switch to light mode",
+    "dark_on": "Dark mode on",
+    "light_on": "Light mode on"
+  },
   "role": {
     "ADMIN": "Administrator",
     "OPERATOR": "Operator"
