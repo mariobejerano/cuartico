@@ -4,8 +4,9 @@ Responsable: Lienzo (diseñador web y de marca).
 
 | Archivo / carpeta | Qué es | Estado |
 |---|---|---|
-| [`design-system.md`](design-system.md) | Design system de Cuartico: principios, paleta con contraste AA verificado (claro y oscuro), tipografía, espaciado, radios, sombras, estados y componentes base. | v0.1.2 · **Aprobado (2026-11-05)** |
-| [`tokens.css`](tokens.css) | Tokens como CSS custom properties (capa base + capa semántica, temas claro/oscuro, hueco reservado para la marca Combazo). Forja-Front lo copia a `cuartico-web` y lo importa en `main.tsx`. | v0.1 · **Aprobado (2026-11-05)** |
+| [`design-system.md`](design-system.md) | Design system de Cuartico v0.2 (propuesta B, Tailwind + shadcn/ui): paleta AA claro y oscuro, tipografía, densidad, radios, sombras, estados, componentes (badge, segmentado, menú «⋯», toast propio, Drawer, botón sol/luna). Sustituye a v0.1. | v0.2 · **Aprobado (2026-11-26)** (sustituye a v0.1.2) |
+| [`tokens.css`](tokens.css) | Tokens con nombres de shadcn/ui, claro y oscuro (`data-theme` + `prefers-color-scheme`), puente `@theme inline` para Tailwind v4 y alias v0.1 para la migración. Forja-Front lo copia a `cuartico-web/src/styles/`. | v0.2 · **Aprobado (2026-11-26)** |
+| [`redesign-proposals.md`](redesign-proposals.md) · [`prototypes/redesign-proposals.html`](prototypes/redesign-proposals.html) | Propuestas A/B del rediseño; B aprobada (2026-11-13). El prototipo incluye el botón sol/luna (TT-19). | B **Aprobada** · botón sol/luna aprobado (2026-11-26) |
 | [`prototypes/`](prototypes/) | Prototipos HTML, aprobados por la supervisión antes de implementarlos. | — |
 | [`prototypes/design-system.html`](prototypes/design-system.html) | Muestrario navegable de todos los componentes (usa `../tokens.css`; ábrelo en el navegador y cambia el ancho de la ventana para ver móvil/tablet/escritorio). | v0.1 |
 | [`prototypes/login.html`](prototypes/login.html) | Login (HU-01): es/en, validación, credenciales inválidas, «servidor despertando» a los 5 s, error de red, comprobación de sesión. | Sprint 1 · **Aprobado (2026-11-05)** |

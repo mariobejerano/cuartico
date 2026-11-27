@@ -1,7 +1,7 @@
-# Textos de interfaz (es / en) — Sprints 1 y 2
+# Textos de interfaz (es / en) — Sprints 1 a 3
 
-> Responsable: Lienzo · **Estado: §1–7 aprobadas por la supervisión (2026-11-07); §8–10 (Sprint 2) Aprobado (2026-11-09).**
-> Complementa el [§9 del design system](design-system.md#9-textos-de-interfaz-comunes-es--en) (textos comunes).
+> Responsable: Lienzo · **Estado: §1–7 aprobadas por la supervisión (2026-11-07); §8–10 (Sprint 2) Aprobado (2026-11-09); §11 (Sprint 3, tema) aprobada (2026-11-26).**
+> Complementa el [§9 del design system](design-system.md#9-textos-de-interfaz-comunes-sin-cambios) (textos comunes).
 > Las claves son orientativas para `react-i18next` (Forja-Front fija la estructura); **el texto sí es el propuesto**.
 > Los prototipos usan exactamente estas claves: [`login.html`](prototypes/login.html) y [`products.html`](prototypes/products.html).
 
@@ -500,3 +500,30 @@ Redacción sugerida para `messages_es/en.properties` (los códigos son los de HU
 
 `{0}` de `product.attribute_not_allowed` es el nombre del campo de la API (`model`, `warrantyMonths`): el frontend no lo muestra (la UI ya
 vacía esos campos); si llegara, se ve la alerta genérica con este `detail`.
+
+---
+
+# Sprint 3 — Rediseño (TT-19)
+
+## 11. Tema claro / oscuro (TT-19) · **Aprobado (2026-11-26)**
+
+> Botón sol/luna del layout (barra superior móvil, pie de la barra lateral y login): ver [design system §7.12](design-system.md#712-botón-de-tema-sol--luna-nuevo-aprobado-por-la-supervisión-2026-11-26).
+> Prototipo: [`redesign-proposals.html`](prototypes/redesign-proposals.html) (propuesta B).
+
+| Clave | es | en | Cuándo |
+|---|---|---|---|
+| `theme.toggle_to_dark` | Cambiar a modo oscuro | Switch to dark mode | `aria-label` y tooltip del botón cuando el tema actual es claro (icono luna) |
+| `theme.toggle_to_light` | Cambiar a modo claro | Switch to light mode | ídem cuando el tema actual es oscuro (icono sol) |
+| `theme.dark_on` | Modo oscuro activado | Dark mode on | Texto oculto (`role="status"`) tras pulsar: lo anuncia el lector de pantalla |
+| `theme.light_on` | Modo claro activado | Light mode on | ídem |
+
+**Cómo llamar al modo** (criterio: palabra que el usuario ya conoce de su móvil, corta para tooltip y lector de pantalla):
+
+| Opción | Pros | Contras |
+|---|---|---|
+| **«modo oscuro / claro»** (recomendada) | Es lo que dicen iOS y la mayoría de apps en español; coincide con el ejemplo de la supervisión | — |
+| «tema oscuro / claro» | Lo usa Android | «Tema» es más técnico y en la app no se usa para nada más |
+| «modo noche / día» | Muy cercano | Sugiere que depende de la hora; en inglés "night mode" suele ser otra cosa (filtro de luz azul) |
+
+En inglés, "Switch to…" (no "Toggle…", que es jerga y no dice a qué cambia). Las dos claves de estado son recomendadas
+pero prescindibles: si la supervisión prefiere menos claves, se quitan y queda solo el cambio de etiqueta del botón.
