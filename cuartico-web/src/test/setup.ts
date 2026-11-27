@@ -1,3 +1,4 @@
+import '../config/zod' // el primero, como en main.tsx: los tests validan con la misma configuración de Zod que producción
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach } from 'vitest'
