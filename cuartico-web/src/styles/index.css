@@ -1,18 +1,20 @@
 /*
- * Punto de entrada de los estilos (ADR-004, TT-19).
+ * Punto de entrada de los estilos (ADR-004, TT-19; design system v0.2 §2).
  *
  * Cascade layers: con capas, gana la regla de la capa declarada MÁS TARDE, sin importar la especificidad.
- * Orden: theme (variables de Tailwind) → legacy (tokens.css + global.css de siempre) → utilities (clases de Tailwind).
+ * Y el CSS SIN capa gana a cualquier capa.
+ * Orden: theme (variables de Tailwind) → legacy (global.css de siempre) → utilities (clases de Tailwind).
  *   - Las utilidades de Tailwind ganan siempre al CSS antiguo: un componente migrado no hereda estilos viejos por accidente.
- *   - tokens.css va DESPUÉS de theme: donde los nombres coinciden (--radius-md, --text-sm, --shadow-lg…)
- *     manda el valor de Lienzo, también dentro de las utilidades (rounded-md usa nuestro --radius-md).
- *   - Sin Preflight (el reset de Tailwind, capa base): las pantallas sin migrar se ven exactamente igual.
- *     Se activará en la fase 6, cuando no quede CSS antiguo.
+ *   - tokens.css va SIN capa (fase 1): `@custom-variant` no puede ir dentro de `@layer`. Solo declara variables
+ *     (`--primary`, `--radius-md`…) en `:root`, así que no compite con ninguna regla de estilo; donde un nombre coincide
+ *     con uno de Tailwind (--radius-md, --text-sm, --shadow-lg…), manda el valor de Lienzo.
+ *   - Sin Preflight (el reset de Tailwind, capa base) ni tw-animate-css: las pantallas sin migrar mantienen su forma
+ *     (con la paleta nueva, gracias a los alias de tokens.css §6). Preflight se activa en la fase 6.
  * Todo acaba en un único .css estático del build (CSP style-src 'self').
  */
 @layer theme, base, legacy, components, utilities;
 
 @import "tailwindcss/theme.css" layer(theme);
-@import "./tokens.css" layer(legacy);
+@import "./tokens.css";
 @import "./global.css" layer(legacy);
 @import "tailwindcss/utilities.css" layer(utilities);

@@ -54,7 +54,7 @@ export function ConfirmDialog({ open, title, children, cancelLabel, confirmLabel
         </DialogHeader>
         <DialogFooter>
           {cancelLabel && (
-            <Button variant="secondary" onClick={onCancel} disabled={busy}>
+            <Button variant="outline" onClick={onCancel} disabled={busy}>
               {cancelLabel}
             </Button>
           )}

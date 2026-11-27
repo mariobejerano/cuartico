@@ -41,7 +41,7 @@ describe('Button (shadcn/ui sobre Base UI)', () => {
     render(
       <>
         <Button>Guardar</Button>
-        <Button variant="secondary" disabled>
+        <Button variant="outline" disabled>
           Cancelar
         </Button>
       </>,
