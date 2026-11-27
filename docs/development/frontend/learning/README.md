@@ -34,6 +34,7 @@ Se amplía con cada historia. Orden recomendado de lectura: de arriba abajo.
 | 27 | [Mover el foco después de pintar](#27-mover-el-foco-después-de-pintar) | 2 (HU-16) |
 | 28 | [«Deshacer» en vez de «¿Seguro?»](#28-deshacer-en-vez-de-seguro) | 2 (HU-16) |
 | 29 | [Tailwind CSS, cascade layers y shadcn/ui](#29-tailwind-css-cascade-layers-y-shadcnui) | 3 (TT-19) |
+| 30 | [Tokens de diseño, tema claro/oscuro y el botón sol/luna](#30-tokens-de-diseño-tema-clarooscuro-y-el-botón-solluna-tt-19-fase-1) | 3 (TT-19) |
 
 ---
 
@@ -638,7 +639,7 @@ Así convive lo viejo con lo nuevo durante la migración (`cuartico-web/src/styl
 ### 29.5 La CSP y los `<style>` (por qué hay un test "guardarraíl")
 Nuestra CSP dice `style-src 'self'`: solo valen hojas de estilo servidas como archivo. Un elemento `<style>` creado por
 JavaScript se **bloquea** (y aparece una violación en la consola). Algunos componentes de Base UI crean uno para ocultar
-barras de scroll; `<CSPProvider disableStyleElements>` (en `app/App.tsx`) se lo prohíbe. Para que nadie lo rompa sin darse
+barras de scroll; `<CSPProvider disableStyleElements>` (en `app/AppProviders.tsx`, que usan la app y los tests) se lo prohíbe. Para que nadie lo rompa sin darse
 cuenta, `src/test/setup.ts` hace fallar **cualquier** test tras el que quede un `<style>` en el DOM, y
 `components/ConfirmDialog.test.tsx` comprueba que el guardarraíl de verdad detecta uno (un "control": sin `CSPProvider`, el
 `ScrollArea` de Base UI sí lo crea). **Analogía:** un test de ArchUnit que falla si alguien rompe una regla de arquitectura.
@@ -655,6 +656,87 @@ la CSP no bloquea. Lo bloqueado son los **elementos** `<style>` y los atributos 
 **Mini-ejercicio (opcional):** en `components/ui/button.tsx` cambia `px-(--space-4)` por `px-(--space-8)`, arranca
 `npm run dev` y abre un diálogo de confirmación (desactivar una categoría): los botones se ensanchan, los del resto de la
 app no (siguen con `.c-btn`). Deshaz el cambio.
+
+---
+
+## 30. Tokens de diseño, tema claro/oscuro y el botón sol/luna (TT-19, fase 1)
+
+### 30.1 Variables CSS: la "configuración externa" de los estilos
+Una variable CSS (`--primary: #0f766e`) es un valor con nombre que cualquier regla lee con `var(--primary)`. Se define en
+`:root` (el `<html>`) y la heredan todos los elementos. **Analogía:** `application.yml` + `@Value("${…}")`: el código no
+lleva el valor, lleva la clave; si cambias el valor, cambia en toda la app sin tocar código.
+
+```css
+:root { --primary: #0f766e; }                 /* el valor */
+.boton { background: var(--primary); }        /* el uso */
+```
+
+`src/styles/tokens.css` (copia de `docs/design/tokens.css` de Lienzo) define todos los colores, radios, sombras y tamaños.
+Los nombres son los de shadcn/ui (`--background`, `--primary`, `--muted-foreground`…), así un componente copiado de shadcn
+funciona con nuestra paleta sin tocarlo.
+
+### 30.2 `@theme`: de variable a clase de Tailwind
+Tailwind solo sabe qué es `bg-primary` si se lo decimos. El bloque `@theme inline { --color-primary: var(--primary); }`
+de `tokens.css` crea las utilidades `bg-primary`, `text-primary`, `border-primary`… que apuntan a nuestra variable. Igual
+con `--spacing-control` → `h-control`, `size-control` (44 px en móvil, 40 px en escritorio: la variable cambia con una media
+query y la clase la sigue). **Analogía:** un `@ConfigurationProperties` que convierte claves de configuración en un bean
+tipado.
+
+### 30.3 Dos temas con los mismos nombres
+El tema oscuro **no** son clases distintas: son los mismos nombres de variable con otros valores.
+```css
+:root { --background: #faf8f5; }                       /* claro */
+:root[data-theme="dark"] { --background: #171412; }    /* oscuro elegido */
+@media (prefers-color-scheme: dark) {                  /* oscuro del dispositivo, si no se eligió otra cosa */
+  :root:not([data-theme="light"]) { --background: #171412; }
+}
+```
+Por eso `bg-background` funciona en ambos temas sin `dark:` en cada componente. **Analogía:** perfiles de Spring
+(`application-dev.yml` / `application-prod.yml`): mismas claves, otros valores según el perfil activo.
+
+Las pantallas aún no migradas (con `global.css`) usan nombres de v0.1 (`--color-surface`…). `tokens.css` §6 los define
+como **alias** de los nuevos (`--color-surface: var(--card)`): por eso toda la app tomó ya la paleta nueva y el modo oscuro
+sin reescribir su CSS. Los alias se borran en la fase 6.
+
+Por qué `tokens.css` va **sin capa** en `index.css`: contiene `@custom-variant dark` (lo que define el prefijo `dark:`), y
+Tailwind no lo acepta dentro de `@layer`. Como solo declara variables (no reglas de estilo), no compite con nada.
+
+### 30.4 Un "servicio" sin React con un hook encima
+`src/theme/theme.ts` es como `auth/session.ts`: estado (la elección), métodos (`setTheme`, `toggleTheme`) y suscriptores,
+**sin React**. `useTheme()` lo conecta con `useSyncExternalStore`, que vuelve a pintar el componente cuando el servicio
+avisa. **Analogía:** un `@Service` con un `ApplicationEventPublisher`, y el hook es el `@EventListener` del componente.
+
+```ts
+const theme = useSyncExternalStore(subscribeTheme, getTheme) // (cómo suscribirse, cómo leer el valor actual)
+```
+
+Reglas que implementa (design system §7.12): sin elección sigue al dispositivo (también si cambia en vivo); al pulsar se
+guarda en `localStorage` (`cuartico.theme`) y ya no sigue al dispositivo; si `localStorage` falla (navegación privada) se
+guarda en memoria: por eso cada acceso va en `try/catch`. Si otra pestaña elige tema, el evento `storage` avisa y esta lo sigue.
+
+### 30.5 Sin destello y sin romper la CSP: `public/theme-init.js`
+React arranca **después** de pintar la primera vez. Si quien eligió "oscuro" tiene el móvil en claro, vería un destello
+claro en cada carga. La solución es un script minúsculo en `<head>`, sin `defer`, que pone `data-theme` **antes** de pintar.
+Tiene que ser un **archivo** (`<script src="/theme-init.js">`): un `<script>` en línea lo prohíbe la CSP `script-src 'self'`.
+Todo lo de `public/` se copia tal cual al build.
+
+### 30.6 Accesibilidad del botón
+- El nombre accesible es la **acción** («Cambiar a modo oscuro»), y el icono dice lo mismo (luna = vas a oscuro). Por eso no
+  lleva `aria-pressed`: un botón conmutador no debería cambiar de nombre.
+- Tras pulsar, un `<span role="status" class="sr-only">` dice «Modo oscuro activado»: los lectores de pantalla anuncian los
+  cambios de una región `status` sin mover el foco.
+- El tooltip (solo ≥ 768 px) se carga con `lazy()`: trae Floating UI (~18 KB gzip) y en el móvil no se usa.
+
+### Qué aprendiste hoy (TT-19, fase 1)
+1. Las **variables CSS** son la configuración de los estilos; `@theme` las convierte en clases de Tailwind.
+2. Un tema = **mismos nombres, otros valores** (como los perfiles de Spring); los alias mantienen vivo el CSS antiguo.
+3. Lógica de estado **fuera de React** + hook con `useSyncExternalStore`: el patrón de la sesión, otra vez.
+4. Lo que debe pasar antes de pintar va en un **archivo** en `<head>`, nunca en línea (CSP).
+5. `localStorage` puede fallar: siempre `try/catch` y un plan B en memoria.
+
+**Mini-ejercicio (opcional):** con `npm run dev`, abre las herramientas del navegador → pestaña «Application» →
+Local Storage, pulsa el botón sol/luna y mira aparecer `cuartico.theme`. Borra la clave y recarga: vuelve a seguir al
+modo del sistema. Después, en «Rendering», emula `prefers-color-scheme: dark` sin recargar y mira cambiar la app.
 
 ---
 
