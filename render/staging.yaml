@@ -30,8 +30,8 @@ services:
         sync: false
       - key: SPRINGDOC_ENABLED   # Swagger UI y /v3/api-docs solo en staging (en producción quedan desactivados)
         value: "true"
-      - key: APP_CORS_ORIGINS   # frontend de staging (Render static site) y Vite en local
-        value: https://cuartico-web-staging.onrender.com,http://localhost:5173
+      - key: APP_CORS_ORIGINS   # frontend de staging (Render static site), Vite en local (5173) y vite preview (4173)
+        value: https://cuartico-web-staging.onrender.com,http://localhost:5173,http://localhost:4173
 
 
   # Panel cuartico-web de staging: sitio estático (gratis) ← develop.
