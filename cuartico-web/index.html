@@ -3,11 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Color de la barra del navegador = barra superior (--theme-color de tokens.css). Si hay tema elegido, lo fija src/theme/theme.ts -->
+    <meta name="theme-color" content="#134e4a" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#102624" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="Cuartico" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Sin defer y antes del CSS: pone data-theme en <html> antes de la primera pintada (sin destello del otro tema) -->
+    <script src="/theme-init.js"></script>
     <title>Cuartico</title>
   </head>
   <body>

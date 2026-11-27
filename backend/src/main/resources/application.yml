@@ -40,7 +40,7 @@ app:
     # Currency for average cost and profit reporting (ADR-002)
     reference: USD
   cors:
-    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173}
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://localhost:4173}  # Vite dev (5173) y vite preview (4173)
   admin:
     # Usuario administrador inicial: solo se crea si la tabla users está vacía
     username: ${APP_ADMIN_USERNAME:}

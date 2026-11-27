@@ -8,19 +8,38 @@ import { defineConfig, loadEnv } from 'vite'
 /**
  * Cabeceras de seguridad del sitio estático de staging, leídas de render/staging.yaml (única fuente de verdad).
  * Solo las usa `npm run preview`: así se prueba el build en local con la CSP real (ADR-004, «CSP»).
+ *
+ * `apiBaseUrl` (el VITE_API_BASE_URL del build): su origen sustituye a la API de staging en `connect-src`. Así un build
+ * local puede hablar con el backend local (`http://localhost:8080`) y se prueban las pantallas con sesión. El resto de
+ * la CSP (script-src, style-src…) queda idéntico al de staging.
  */
-function stagingHeaders(): Record<string, string> {
+function stagingHeaders(apiBaseUrl?: string): Record<string, string> {
   const file = fileURLToPath(new URL('../render/staging.yaml', import.meta.url))
   if (!existsSync(file)) return {}
   const headers: Record<string, string> = {}
   // Cada cabecera es un par `name: X` / `value: "…"` (o sin comillas) en líneas seguidas.
   const pattern = /name:\s*([\w-]+)[^\n]*\n\s*value:\s*(?:"([^"]*)"|(\S+))/g
   for (const [, name, quoted, plain] of readFileSync(file, 'utf8').matchAll(pattern)) headers[name] = quoted ?? plain
+  const csp = headers['Content-Security-Policy']
+  if (csp && apiBaseUrl) headers['Content-Security-Policy'] = withConnectOrigin(csp, new URL(apiBaseUrl).origin)
   return headers
 }
 
+/** `connect-src 'self' https://api-de-staging` → `connect-src 'self' <origin>` (las palabras entre comillas se conservan). */
+function withConnectOrigin(csp: string, origin: string): string {
+  return csp
+    .split(';')
+    .map((directive) => {
+      const [name, ...sources] = directive.trim().split(/\s+/)
+      if (name !== 'connect-src') return directive
+      return ` ${[name, ...sources.filter((source) => source.startsWith("'")), origin].join(' ')}`
+    })
+    .join(';')
+    .trim()
+}
+
 // https://vite.dev/config/
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ command, mode, isPreview }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   // Un build sin URL de la API daría una web que no puede hablar con nadie: mejor fallar aquí.
   if (command === 'build' && !env.VITE_API_BASE_URL) {
@@ -32,7 +51,8 @@ export default defineConfig(({ command, mode }) => {
     // Alias `@/` → `src/` (lo usan los componentes de shadcn/ui; también está en tsconfig.app.json).
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: { port: 5173 },
-    preview: { port: 4173, headers: stagingHeaders() },
+    // El CORS del backend, en local y en staging, admite http://localhost:4173 (APP_CORS_ORIGINS).
+    preview: { port: 4173, headers: isPreview ? stagingHeaders(env.VITE_API_BASE_URL) : {} },
     build: { outDir: 'dist', sourcemap: false },
     test: {
       environment: 'jsdom',

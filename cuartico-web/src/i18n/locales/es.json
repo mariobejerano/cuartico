@@ -68,6 +68,12 @@
     "more": "Más",
     "manage": "Gestión"
   },
+  "theme": {
+    "toggle_to_dark": "Cambiar a modo oscuro",
+    "toggle_to_light": "Cambiar a modo claro",
+    "dark_on": "Modo oscuro activado",
+    "light_on": "Modo claro activado"
+  },
   "role": {
     "ADMIN": "Administrador",
     "OPERATOR": "Operador"

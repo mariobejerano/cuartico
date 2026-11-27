@@ -116,7 +116,7 @@ administrador inicial no hay forma de entrar por la API.
 Variables de entorno y su uso por entorno: [`docs/devops/README.md`](../../devops/README.md).
 
 `application.yml` (común): `open-in-view: false`, `ddl-auto: validate`, puerto desde `PORT` (lo inyecta Render), TTL de tokens,
-CORS desde `APP_CORS_ORIGINS` (por defecto `http://localhost:5173`).
+CORS desde `APP_CORS_ORIGINS` (por defecto `http://localhost:5173,http://localhost:4173`: `npm run dev` y `npm run preview` del frontend).
 
 ## Errores
 

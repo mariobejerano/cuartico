@@ -1,6 +1,6 @@
 import { CSPProvider } from '@base-ui/react/csp-provider'
 import { ScrollArea } from '@base-ui/react/scroll-area'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -41,7 +41,7 @@ describe('Button (shadcn/ui sobre Base UI)', () => {
     render(
       <>
         <Button>Guardar</Button>
-        <Button variant="secondary" disabled>
+        <Button variant="outline" disabled>
           Cancelar
         </Button>
       </>,
@@ -92,6 +92,40 @@ describe('ConfirmDialog (Dialog de shadcn/ui sobre Base UI)', () => {
     expect(screen.getByRole('button', { name: 'Desactivar' })).toHaveAttribute('aria-busy', 'true')
     await ue.keyboard('{Escape}')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('si el botón que lo abrió ya no existe al cerrar, el foco va a #main', async () => {
+    // Como en el listado: desactivar un producto lo saca de la lista y su botón «Desactivar» desaparece.
+    function RemovesTrigger() {
+      const [open, setOpen] = useState(false)
+      const [rowVisible, setRowVisible] = useState(true)
+      return (
+        <CSPProvider disableStyleElements>
+          <main id="main" tabIndex={-1}>
+            {rowVisible && <Button onClick={() => setOpen(true)}>Abrir</Button>}
+          </main>
+          <ConfirmDialog
+            open={open}
+            title="¿Desactivar «Arroz»?"
+            cancelLabel="Cancelar"
+            confirmLabel="Desactivar"
+            onCancel={() => setOpen(false)}
+            onConfirm={() => {
+              setRowVisible(false)
+              setOpen(false)
+            }}
+          />
+        </CSPProvider>
+      )
+    }
+    const ue = userEvent.setup()
+    render(<RemovesTrigger />)
+    await ue.click(screen.getByRole('button', { name: 'Abrir' }))
+    await ue.click(await screen.findByRole('button', { name: 'Desactivar' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
   })
 
   it('informativo: un solo botón', async () => {

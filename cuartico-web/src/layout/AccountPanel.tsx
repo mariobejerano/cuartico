@@ -14,11 +14,14 @@ export function AccountPanel({
   user,
   nameId,
   onLogout,
+  nameAside,
   children,
 }: {
   user: UserResponse
   nameId?: string
   onLogout?: () => void
+  /** Lo que va a la derecha del nombre y el rol (en la barra lateral: el botón de tema). */
+  nameAside?: ReactNode
   /** Lo que va entre el nombre y el idioma (en la hoja «Más»: la sección «Gestión»). */
   children?: ReactNode
 }) {
@@ -29,15 +32,18 @@ export function AccountPanel({
   }
   return (
     <div className="account-panel">
-      <div>
-        {nameId ? (
-          <h2 id={nameId} className="user-name">
-            {user.fullName}
-          </h2>
-        ) : (
-          <div className="user-name">{user.fullName}</div>
-        )}
-        <span className="c-tag">{t(`role.${user.role}`)}</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          {nameId ? (
+            <h2 id={nameId} className="user-name">
+              {user.fullName}
+            </h2>
+          ) : (
+            <div className="user-name">{user.fullName}</div>
+          )}
+          <span className="c-tag">{t(`role.${user.role}`)}</span>
+        </div>
+        {nameAside}
       </div>
       {children}
       <LanguageSwitch variant="select" />

@@ -6,6 +6,7 @@ import { useCurrentUser } from '../auth/useSession'
 import { BrandMark, Icon } from '../components/Icon'
 import { OfflineNotice } from '../components/OfflineNotice'
 import { ServerWakingNotice } from '../components/ServerWakingNotice'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { ToastProvider } from '../components/toast'
 import { listPathFrom } from '../features/products/navigation'
 import { AccountPanel } from './AccountPanel'
@@ -68,9 +69,11 @@ export function AppLayout() {
           </ul>
         </nav>
         <div className="sidebar-footer">
+          {/* ≥ 1024 px: panel completo, con el botón de tema a la derecha del nombre (design system §7.12) */}
           <div className="account-full">
-            <AccountPanel user={user} />
+            <AccountPanel user={user} nameAside={<ThemeToggle />} />
           </div>
+          {/* 768–1023 px (barra de iconos): avatar y, debajo, el botón de tema */}
           <button
             type="button"
             className="avatar-btn avatar-btn--sidebar"
@@ -80,6 +83,9 @@ export function AppLayout() {
           >
             {initials(user.fullName)}
           </button>
+          <div className="flex justify-center lg:hidden">
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 
@@ -92,6 +98,7 @@ export function AppLayout() {
         <p className="topbar-title" aria-hidden="true">
           {t(titleKeyFor(pathname))}
         </p>
+        <ThemeToggle />
         <button
           type="button"
           className="avatar-btn"
