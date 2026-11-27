@@ -1,3 +1,4 @@
+import { CSPProvider } from '@base-ui/react/csp-provider'
 import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { createBrowserRouter, RouterProvider } from 'react-router'
@@ -10,14 +11,19 @@ const router = createBrowserRouter(routes)
 /**
  * Componente raíz. Los "Provider" son como el ApplicationContext de Spring:
  * ponen algo (la caché de datos, la sesión, el router) a disposición de todos los componentes de debajo.
+ *
+ * `CSPProvider disableStyleElements` (ADR-004): ningún componente de Base UI crea elementos `<style>` (los bloquearía
+ * nuestra CSP `style-src 'self'`); los estilos que pondrían ahí van en nuestro CSS.
  */
 export function App({ queryClient }: { queryClient?: QueryClient }) {
   const [client] = useState(() => queryClient ?? createQueryClient())
   return (
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </QueryClientProvider>
+    <CSPProvider disableStyleElements>
+      <QueryClientProvider client={client}>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </QueryClientProvider>
+    </CSPProvider>
   )
 }

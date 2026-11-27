@@ -33,6 +33,7 @@ Se amplía con cada historia. Orden recomendado de lectura: de arriba abajo.
 | 26 | [Componentes de presentación y componentes con estado propio](#26-componentes-de-presentación-y-componentes-con-estado-propio) | 2 (HU-16) |
 | 27 | [Mover el foco después de pintar](#27-mover-el-foco-después-de-pintar) | 2 (HU-16) |
 | 28 | [«Deshacer» en vez de «¿Seguro?»](#28-deshacer-en-vez-de-seguro) | 2 (HU-16) |
+| 29 | [Tailwind CSS, cascade layers y shadcn/ui](#29-tailwind-css-cascade-layers-y-shadcnui) | 3 (TT-19) |
 
 ---
 
@@ -562,6 +563,98 @@ En código, el aviso (`toast`, tema 18) acepta una acción: `toast({ text, actio
    usa la **actualización funcional** del estado cuando la respuesta puede llegar tarde.
 4. Un componente de presentación recibe **funciones** para no depender de un formulario concreto.
 5. El foco se mueve **después** de pintar, con un ref y un efecto (nunca estado dentro de un efecto).
+
+---
+
+## 29. Tailwind CSS, cascade layers y shadcn/ui
+Este tema va de **estilos**: cómo decide el navegador qué aspecto tiene cada cosa. Empieza desde cero.
+
+### 29.1 Lo mínimo de CSS
+Un archivo CSS es una lista de **reglas**: "a estos elementos, estas propiedades".
+```css
+.c-btn { background: teal; }      /* selector .c-btn → todo elemento con class="c-btn" */
+button { background: gray; }      /* selector button → todos los <button> */
+```
+Si dos reglas tocan la misma propiedad del mismo elemento, hay un **conflicto** y el navegador elige una con la
+*cascada*: primero gana la regla más **específica** (una clase gana a una etiqueta, un id gana a una clase) y, si empatan,
+la que aparece **más tarde**. **Analogía:** como la resolución de propiedades en Spring Boot: hay un orden de prioridad
+(línea de comandos > variables de entorno > `application-dev.yml` > `application.yml`) y gana el más prioritario.
+
+El problema de un CSS grande (nuestro `global.css`, ~420 líneas) es que esas prioridades se vuelven imprevisibles: cambias
+una regla y se rompe otra pantalla.
+
+### 29.2 Tailwind: clases pequeñas en vez de reglas propias
+Tailwind da **una clase por propiedad**, y se escriben directamente en el JSX:
+```tsx
+// Antes: una clase con nombre propio y su regla en global.css
+<div className="c-modal__body">…</div>            /* .c-modal__body { padding: …; display: grid; gap: … } */
+// Con Tailwind: lo mismo, leído en el propio componente
+<div className="grid gap-(--space-3) p-(--space-6)">…</div>
+```
+- `grid` → `display: grid`; `p-(--space-6)` → `padding: var(--space-6)` (los paréntesis dicen "usa esta variable CSS";
+  así seguimos usando **solo** los tokens de Lienzo, nunca colores ni tamaños a mano).
+- Prefijos = condiciones: `md:` "desde 768 px", `hover:` "al pasar el ratón (solo en dispositivos con ratón)",
+  `disabled:` "si está deshabilitado", `enabled:hover:` "al pasar el ratón y no está deshabilitado".
+- **¿Y la CSP?** Tailwind **no** inyecta nada en el navegador: en `npm run build` lee nuestros `.tsx`, encuentra las clases
+  usadas y genera **un único `.css` estático** con solo esas. Es un archivo propio (`'self'`), así que la CSP no se queja.
+  **Analogía:** como un procesador de anotaciones en compilación (MapStruct): el trabajo se hace en el build, no en ejecución.
+
+### 29.3 Cascade layers (`@layer`): poner orden en la prioridad
+Una *capa* es un cajón con nombre para reglas CSS. Se declara el orden de los cajones una vez y, entre capas,
+**gana siempre la capa declarada más tarde**, sin importar la especificidad:
+```css
+@layer legacy, utilities;           /* utilities manda sobre legacy */
+@layer legacy    { .c-btn.c-btn--primary { background: teal; } }  /* muy específica… */
+@layer utilities { .bg-red { background: red; } }                 /* …pero pierde: su capa va después */
+```
+Así convive lo viejo con lo nuevo durante la migración (`cuartico-web/src/styles/index.css`):
+```css
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);       /* variables de Tailwind */
+@import "./tokens.css" layer(legacy);               /* nuestros tokens: mandan sobre los de Tailwind con el mismo nombre */
+@import "./global.css" layer(legacy);               /* el CSS de siempre, tal cual */
+@import "tailwindcss/utilities.css" layer(utilities); /* clases de Tailwind: mandan sobre todo lo anterior */
+```
+- Un componente migrado (con clases de Tailwind) nunca hereda por accidente un estilo viejo: `utilities` gana.
+- Las pantallas sin migrar se ven **igual**: comparamos capturas de develop y de la rama (login, inicio, productos,
+  nuevo producto y categorías; claro y oscuro; 1280 y 360 px) y los píxeles son idénticos.
+- **No cargamos Preflight**, el *reset* de Tailwind (quita márgenes, tipografías y bordes por defecto del navegador):
+  cambiaría el aspecto de las pantallas viejas. Se activará en la fase 6, cuando no quede CSS antiguo.
+- Cuidado con los nombres: Tailwind genera una clase si encuentra la palabra en el código. Si una clase antigua se llamara
+  igual que una utilidad (`hidden`, `grid`, `table`…), la de Tailwind la pisaría. Hoy solo coincide `sr-only`, y hace lo mismo.
+
+### 29.4 shadcn/ui y Base UI: componentes que son nuestros
+- **Base UI** (`@base-ui/react`) da el **comportamiento accesible** sin aspecto: un `Dialog` que atrapa el foco, cierra con
+  Escape, pone `role="dialog"` y `aria-labelledby`, bloquea el scroll de la página y devuelve el foco al cerrar.
+- **shadcn/ui** no es una dependencia: es una **plantilla que se copia al repo** (`src/components/ui/`), Base UI + clases
+  de Tailwind. Una vez copiada, el código es nuestro: lo leemos, lo cambiamos (quitamos el «Close» en inglés, usamos los tokens).
+  **Analogía:** como generar un proyecto con Spring Initializr: el código generado es tuyo; no "se actualiza solo".
+- `cva` (class-variance-authority) define **variantes** de un componente (`variant="secondary"`, `size="sm"`) como un mapa
+  de clases, y `cn()` las combina resolviendo conflictos (`px-2` + `px-4` → `px-4`).
+```tsx
+<Button variant="secondary" onClick={onCancel}>{t('common.cancel')}</Button>   // components/ui/button.tsx
+```
+
+### 29.5 La CSP y los `<style>` (por qué hay un test "guardarraíl")
+Nuestra CSP dice `style-src 'self'`: solo valen hojas de estilo servidas como archivo. Un elemento `<style>` creado por
+JavaScript se **bloquea** (y aparece una violación en la consola). Algunos componentes de Base UI crean uno para ocultar
+barras de scroll; `<CSPProvider disableStyleElements>` (en `app/App.tsx`) se lo prohíbe. Para que nadie lo rompa sin darse
+cuenta, `src/test/setup.ts` hace fallar **cualquier** test tras el que quede un `<style>` en el DOM, y
+`components/ConfirmDialog.test.tsx` comprueba que el guardarraíl de verdad detecta uno (un "control": sin `CSPProvider`, el
+`ScrollArea` de Base UI sí lo crea). **Analogía:** un test de ArchUnit que falla si alguien rompe una regla de arquitectura.
+
+Ojo: `style={{ top: 10 }}` en React **sí** está permitido: React lo aplica con JavaScript (`el.style.top = …`, CSSOM), que
+la CSP no bloquea. Lo bloqueado son los **elementos** `<style>` y los atributos `style="…"` escritos en el HTML.
+
+### Qué aprendiste hoy (TT-19, fase 0)
+1. El navegador resuelve conflictos de CSS con la **cascada**; las **capas** (`@layer`) fijan un orden explícito.
+2. **Tailwind** son clases de una sola propiedad, generadas en el **build** a un `.css` estático (compatible con la CSP).
+3. **Base UI** aporta el comportamiento accesible y **shadcn/ui** el código copiado en `src/components/ui/`, que es nuestro.
+4. Un `<style>` inyectado rompe la CSP; `CSPProvider` lo evita y un **test guardarraíl** lo vigila.
+
+**Mini-ejercicio (opcional):** en `components/ui/button.tsx` cambia `px-(--space-4)` por `px-(--space-8)`, arranca
+`npm run dev` y abre un diálogo de confirmación (desactivar una categoría): los botones se ensanchan, los del resto de la
+app no (siguen con `.c-btn`). Deshaz el cambio.
 
 ---
 

@@ -20,11 +20,19 @@ Responsable: Forja-Front. **Estado:** `cuartico-web/` creado (TT-08) con el logi
 | react-i18next | Textos en es/en | `MessageSource` + `messages_*.properties` |
 | Vitest + Testing Library | Tests de componentes y flujos | JUnit + MockMvc |
 | ESLint (typescript-eslint, react-hooks) | Reglas de estilo y de errores | Checkstyle / SpotBugs |
+| Tailwind CSS 4.3 (`@tailwindcss/vite`) | Clases de estilo generadas en el build a un `.css` estático | — (procesador en compilación) |
+| shadcn/ui (estilo `base-nova`) sobre Base UI 1.9 | Componentes accesibles copiados en `src/components/ui/` | Código generado (Initializr) que es nuestro |
+| `class-variance-authority` + `cn` | Variantes de componentes y unión de clases sin conflictos | — |
 
 > **TypeScript 6, no 7:** la plantilla de Vite trae TypeScript 7, pero `typescript-eslint` todavía solo admite
 > `< 6.1`. Como se pidió ESLint, fijamos `typescript ~6.0.3`. Cuando `typescript-eslint` admita la 7, se sube.
 
-Sin librerías de componentes (MUI, etc.): los estilos salen de los tokens de Lienzo. Bundle actual: ~190 KB gzip en total; cada pantalla de productos es un trozo aparte (~4 KB gzip) que solo se descarga al visitarla.
+Sin kits de componentes con CSS-in-JS (MUI, etc.: chocan con la CSP, ADR-004). Los estilos salen de los tokens de Lienzo.
+Migración en curso a Tailwind + shadcn/ui (TT-19, ver «Estilos: Tailwind y shadcn/ui» más abajo).
+
+Bundle (gzip, `vite build`): JS ~243 KB + CSS ~9 KB en total. La entrada (`index-*.js`, ~120 KB) no cambió con TT-19; Base UI
+(Dialog + Floating UI) va en el trozo compartido de `ConfirmDialog` (~36 KB), que se descarga con la primera pantalla de
+datos. Antes de TT-19: JS ~211 KB + CSS ~7 KB. Cada pantalla es un trozo aparte que solo se descarga al visitarla.
 
 ## Cómo arrancar
 
@@ -44,7 +52,7 @@ npm run dev                                  # http://localhost:5173
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Comprobación de tipos (`tsc -b`) |
 | `npm run build` | Comprueba tipos y genera `dist/` (exige `VITE_API_BASE_URL`) |
-| `npm run preview` | Sirve `dist/` en local para probar el build |
+| `npm run preview` | Sirve `dist/` en `http://localhost:4173` **con las cabeceras de `render/staging.yaml`** (CSP incluida) |
 
 ### Variables de entorno
 
@@ -91,12 +99,14 @@ cuartico-web/
     ├── auth/               Sesión (sin React) + hooks y guardas de rutas (con React)
     ├── i18n/               i18next y locales/es.json, en.json
     ├── components/         Piezas de UI reutilizables (Alert, Icon, ConfirmDialog, toast, OfflineNotice, useMediaQuery…)
+    ├── components/ui/      Componentes de shadcn/ui sobre Base UI, adaptados (button, dialog)
+    ├── lib/utils.ts        `cn()` para unir clases de Tailwind (lo importan los componentes de shadcn)
     ├── layout/             Esqueleto del panel: barra lateral, barra inferior, hoja «Cuenta»/«Más», navItems.ts (menú por rol)
     ├── features/login/     La pantalla de login y su esquema de validación
     ├── features/products/  Catálogo de productos (HU-02, HU-15, HU-16): ver «Productos» y «Variantes» más abajo
     ├── features/categories/ Categorías (HU-15): ver «Categorías» más abajo
     ├── pages/              Páginas simples (Inicio, 404, «No tienes acceso»)
-    ├── styles/             tokens.css (copia de docs/design) y global.css
+    ├── styles/             index.css (entrada: capas de Tailwind), tokens.css (copia de docs/design) y global.css
     └── test/               Utilidades de test (API falsa, renderApp)
 ```
 
@@ -112,8 +122,10 @@ componentes solo pintan y llaman. En React Native se cambiará el almacenamiento
 - **Errores de la API**: se decide por `code`/`kind` de `ApiError`, nunca por el texto. `detail` ya llega traducido.
   `components/errorMessage.ts` convierte un error en el mensaje a mostrar.
 - **Tipos de la API**: a mano en `src/api/types.ts` (único sitio) hasta generarlos desde `/v3/api-docs`.
-- **Estilos**: solo variables de `tokens.css`; clases del design system (`c-btn`, `c-input`, `c-alert`…) en `global.css`.
+- **Estilos**: solo variables de `tokens.css`. Código nuevo o migrado: clases de Tailwind y componentes de
+  `src/components/ui/`; el resto aún usa las clases del design system (`c-btn`, `c-input`, `c-alert`…) de `global.css`.
   `src/styles/tokens.css` es una **copia** de `docs/design/tokens.css`: si Lienzo lo cambia, se vuelve a copiar.
+- **Imports**: `@/` es `src/` (alias en `vite.config.ts` y `tsconfig.app.json`); lo usan los componentes de shadcn/ui.
 - **Componentes**: funciones en PascalCase, un componente principal por archivo. Las páginas cargadas con `lazy()` se
   exportan con `export default`.
 - **Accesibilidad**: `label` en cada campo, `aria-invalid` + `aria-describedby` en errores, `role="alert"`/`"status"`
@@ -121,6 +133,43 @@ componentes solo pintan y llaman. En React Native se cambiará el almacenamiento
 - **Prohibido** `dangerouslySetInnerHTML` (regla de ESLint, ADR-001) y `console.log` (tokens jamás en consola).
 - **Tests**: junto al código (`*.test.ts(x)`). Se usa la API falsa de `src/test/fakeApi.ts` (equivale a MockMvc al revés:
   simula al servidor). Se busca por rol y texto visible, como lo haría el usuario.
+
+## Estilos: Tailwind y shadcn/ui (TT-19, ADR-004)
+
+Migración por fases (plan en ADR-004). **Fase 0 (spike) hecha**: infraestructura + `Button` y `Dialog` migrados, usados por
+`ConfirmDialog` (los 7 diálogos de confirmación de productos, variantes y categorías). El resto de pantallas sigue con `global.css`.
+
+| Pieza | Dónde | Notas |
+|---|---|---|
+| Plugin de Vite y alias `@/` | `vite.config.ts`, `tsconfig.app.json` | `tailwindcss()` genera un `.css` estático en el build |
+| Capas CSS | `src/styles/index.css` | `theme → base → legacy → components → utilities`. `tokens.css` y `global.css` en `legacy`. **Sin Preflight** hasta la fase 6 |
+| Configuración de shadcn | `components.json` | Estilo `base-nova` (base Base UI), CSS en `src/styles/index.css`, alias `@/components/ui`, `@/lib/utils` |
+| CSP | `app/App.tsx` (y `test/renderApp.tsx`) | `<CSPProvider disableStyleElements>` de `@base-ui/react/csp-provider`: Base UI no crea `<style>` |
+| Guardarraíl | `test/setup.ts` | Todo test falla si deja un `<style>` en el DOM. Control y casos en `components/ConfirmDialog.test.tsx` |
+| Zod sin `eval` | `config/zod.ts` (primer import de `main.tsx`) | `z.config({ jitless: true })`: sin esto, Zod prueba `new Function` y Chrome registra una violación `script-src` |
+
+**Cómo se añade un componente de shadcn/ui** (siempre a propósito y revisando lo que llega):
+1. `cd cuartico-web && npx shadcn@4.23.0 add <componente> --dry-run` para ver qué archivos y dependencias traería;
+   luego sin `--dry-run`. Con `components.json` ya configurado llega a `src/components/ui/<componente>.tsx` sobre Base UI.
+   Si pide instalar `lucide-react`, `tw-animate-css` o importar `shadcn/tailwind.css`, decide si hace falta (hoy no los usamos).
+2. Adáptalo antes de usarlo:
+   - `import { cn } from "cn"` → `import { cn } from '@/lib/utils'`.
+   - **Textos fijos en inglés** (`sr-only` «Close», «Previous/Next»…) → `t()` con claves en `es.json`/`en.json`, o quítalos.
+   - Colores y tamaños de shadcn (`bg-primary`, `rounded-xl`…) → tokens de Lienzo (`bg-(--color-action-primary-bg)`…)
+     hasta que la fase 1 lleve los tokens a `@theme`.
+   - Utilidades lógicas (`ms-*`, `me-*`, `start-*`) y sin anchos fijos (es/en tienen longitudes distintas).
+   - Revisa que no cree `<style>` (el guardarraíl lo detecta) ni use `dangerouslySetInnerHTML`.
+3. Tests por rol y nombre accesible; `npm test -- --run`, `npm run lint`, build.
+4. Comprueba la CSP en local: `VITE_API_BASE_URL=… npm run build && npm run preview` (cabeceras de staging) y abre el
+   componente con la consola abierta: cero violaciones.
+
+Diferencias con el ADR-004 detectadas en la fase 0:
+- `cn` ya es un paquete propio (`cn`, de shadcn) que sustituye a `clsx` + `tailwind-merge`: instalamos solo `cn`.
+- shadcn trae `tw-animate-css` y `@import "shadcn/tailwind.css"` (este exige el paquete `shadcn`, el CLI, como dependencia):
+  no los instalamos; las animaciones usan los atributos de Base UI (`data-starting-style:`) y utilidades de Tailwind.
+- `lucide-react` (iconos) llegará cuando un componente migrado necesite un icono (fase 1/2).
+- El `Dialog` de Base UI solo tiene animación de **entrada**: al cerrar desaparece al momento, como el `<dialog>` nativo.
+- En jsdom no hizo falta ningún polyfill nuevo para el Dialog de Base UI.
 
 ## Sesión y tokens (HU-01, ADR-001)
 
